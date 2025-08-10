@@ -29,12 +29,12 @@ export default function RoutesScreen() {
       setLoading(true);
       setError('');
       
-      const response = await api.getRoutes(); // Espera-se que retorne ApiResponse<RouteMobile[]>
+      const response = await api.getRoutes();
       
       if (response.success && response.data) {
         setRoutes(response.data);
-        // Status para rota ativa agora é 'iniciado'
-        const active = response.data.find(route => route.status === 'iniciado'); 
+        // CORREÇÃO: Status para rota ativa agora é 'INICIADO' (UPPER_CASE)
+        const active = response.data.find(route => route.status === 'INICIADO'); 
         setActiveRoute(active);
         
       } else {
@@ -55,14 +55,9 @@ export default function RoutesScreen() {
     setRefreshing(false);
   };
 
-  const navigateToRoute = (routeId: string) => { // routeId já é string
+  const navigateToRoute = (routeId: string) => {
     router.push(`/route/${routeId}`);
   };
-  
-  // As funções getStatusColor e getStatusText agora usarão getRouteMobileStatusConfig
-  // Se precisar apenas da cor ou texto, pode acessá-los de lá.
-  // Exemplo: const statusConfig = getRouteMobileStatusConfig(route.status);
-  // Cor: statusConfig.color, Texto: statusConfig.text
 
   if (loading) {
     return (
@@ -109,7 +104,6 @@ export default function RoutesScreen() {
                 <Text style={styles.activeRouteTitle}>
                   Roteiro {new Date(activeRoute.date).toLocaleDateString('pt-BR')}
                 </Text>
-                {/* Usando getRouteMobileStatusConfig para cor e texto */}
                 <View style={[styles.statusBadge, { backgroundColor: getRouteMobileStatusConfig(activeRoute.status).color }]}>
                   <Text style={styles.statusText}>
                     {getRouteMobileStatusConfig(activeRoute.status).icon} {getRouteMobileStatusConfig(activeRoute.status).text}
@@ -145,8 +139,8 @@ export default function RoutesScreen() {
                 key={route.id}
                 style={[
                   styles.routeCard,
-                  // Usando 'iniciado' para o status ativo
-                  route.status === 'iniciado' && styles.activeRouteCardBorder 
+                  // CORREÇÃO: Usando 'INICIADO' para o status ativo
+                  route.status === 'INICIADO' && styles.activeRouteCardBorder 
                 ]}
                 onPress={() => navigateToRoute(route.id)}
               >
@@ -168,7 +162,7 @@ export default function RoutesScreen() {
                   📦 {route.deliveries.length} entregas
                 </Text>
                 
-                {route.status === 'iniciado' && (
+                {route.status === 'INICIADO' && (
                   <Text style={styles.activeIndicator}>
                     🔥 Roteiro em andamento
                   </Text>
@@ -178,7 +172,7 @@ export default function RoutesScreen() {
           })}
         </View>
 
-        {routes.length === 0 && !loading && ( // Adicionado !loading para não mostrar com o loading
+        {routes.length === 0 && !loading && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateEmoji}>📭</Text>
             <Text style={styles.emptyStateTitle}>Nenhum roteiro encontrado</Text>
@@ -276,7 +270,7 @@ const styles = StyleSheet.create({
   activeRouteTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1976d2', // Tom de azul mais escuro
+    color: '#00695c', // Tom de azul mais escuro
   },
   activeRouteDetails: {
     flexDirection: 'row',
@@ -300,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   continueButtonText: {
-    color: '#1976d2',
+    color: '#00695c',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -317,7 +311,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  activeRouteCardBorder: { // Usado para roteiros 'iniciado' na lista geral
+  activeRouteCardBorder: { // Usado para roteiros 'INICIADO' na lista geral
     borderColor: '#4CAF50', // Verde para indicar ativo
     borderLeftWidth: 4,
   },

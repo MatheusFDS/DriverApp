@@ -168,7 +168,7 @@ export default function HistoryScreen() {
                       📦 {route.deliveries.length} entregas
                     </Text>
                     <Text style={styles.routeSuccess}>
-                      ✅ {route.deliveries.filter(d => d.status === 'entregue').length} entregues
+                      ✅ {route.deliveries.filter(d => d.status === 'ENTREGUE').length} entregues
                     </Text>
                   </View>
 
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   },
   tapHint: {
     fontSize: 11,
-    color: '#1976d2',
+    color: '#00695c',
     fontWeight: '600',
   },
   emptyState: {

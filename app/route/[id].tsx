@@ -19,9 +19,7 @@ import {
   getAvailableOrderActions,
   getOrderMobileStatusConfig,
   getRouteMobileStatusConfig,
-  OrderActionMobile,
-  getActionColor
-} from '../../types'; 
+  OrderActionMobile} from '../../types'; 
 import { api } from '../../services/api';
 
 export default function RouteDetailsScreen() {
@@ -74,7 +72,7 @@ export default function RouteDetailsScreen() {
       setUpdatingStatusDeliveryId(deliveryItem.id);
       
       const payload: StatusUpdatePayload = { status: newStatus };
-      if (newStatus === 'nao_entregue' && motivo) {
+      if (newStatus === 'NAO_ENTREGUE' && motivo) {
         payload.motivoNaoEntrega = motivo;
       }
 
@@ -109,6 +107,8 @@ export default function RouteDetailsScreen() {
       const currentItemStatusConfig = getOrderMobileStatusConfig(deliveryItem.status);
       const routeStatusConfig = route ? getRouteMobileStatusConfig(route.status) : null;
       let message = `A entrega "${deliveryItem.customerName}" já está ${currentItemStatusConfig.text.toLowerCase()}.`;
+      
+      // CORREÇÃO: Verificação usando 'INICIADO' ao invés de 'iniciado'
       if (routeStatusConfig && routeStatusConfig.text !== 'INICIADO') {
         message = `O roteiro está ${routeStatusConfig.text.toLowerCase()} e não permite mais alterações nas entregas.`;
       }
@@ -116,12 +116,12 @@ export default function RouteDetailsScreen() {
       return;
     }
 
-    const alertOptions: Array<{ text: string; style?: 'cancel' | 'destructive' | undefined; onPress?: () => void }> = [
+    const alertOptions: { text: string; style?: 'cancel' | 'destructive' | undefined; onPress?: () => void }[] = [
       { text: 'Cancelar', style: 'cancel' },
       ...availableActions.map((action: OrderActionMobile) => ({
         text: action.label,
         onPress: () => {
-          if (action.requiresReason && action.targetStatus === 'nao_entregue') {
+          if (action.requiresReason && action.targetStatus === 'NAO_ENTREGUE') {
             Alert.prompt(
               'Reportar Problema',
               `Motivo para "${deliveryItem.customerName}" não ter sido entregue:`,
@@ -153,7 +153,7 @@ export default function RouteDetailsScreen() {
     router.push(`/delivery/${deliveryItemId}`); 
   };
   
-  const currentRouteStatusConfig = route ? getRouteMobileStatusConfig(route.status) : getRouteMobileStatusConfig('iniciado' as RouteMobileStatus);
+  const currentRouteStatusConfig = route ? getRouteMobileStatusConfig(route.status) : getRouteMobileStatusConfig('INICIADO' as RouteMobileStatus);
 
   if (loading && !route) {
     return (
@@ -202,7 +202,7 @@ export default function RouteDetailsScreen() {
     );
   }
 
-  const completedCount = route.deliveries.filter(d => d.status === 'entregue').length;
+  const completedCount = route.deliveries.filter(d => d.status === 'ENTREGUE').length;
 
   return (
     <View style={styles.container}>
@@ -223,7 +223,8 @@ export default function RouteDetailsScreen() {
           <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Valor Total</Text><Text style={[styles.summaryValue, { color: '#007AFF' }]}>R$ {route.totalValue.toFixed(2)}</Text></View>
         </View>
 
-        {route.status === 'iniciado' && (
+        {/* CORREÇÃO: Usando 'INICIADO' para verificar se deve mostrar progresso */}
+        {route.status === 'INICIADO' && (
           <View style={styles.progressContainer}>
             <Text style={styles.progressLabel}>Progresso: {completedCount} de {route.deliveries.length}</Text>
             <View style={styles.progressBar}><View style={[styles.progressFill, { width: `${route.deliveries.length > 0 ? (completedCount / route.deliveries.length) * 100 : 0}%` }]} /></View>
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   errorEmoji: { fontSize: 56, marginBottom: 16 },
   errorTitle: { fontSize: 20, fontWeight: 'bold', color: '#D32F2F', marginBottom: 8 },
   errorText: { fontSize: 15, color: '#424242', textAlign: 'center', marginBottom: 24 },
-  retryButton: { backgroundColor: '#1976D2', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, elevation: 2, marginBottom: 10 },
+  retryButton: { backgroundColor: '#00695c', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, elevation: 2, marginBottom: 10 },
   retryButtonText: { color: 'white', fontWeight: '600', fontSize: 15 },
   backButton: { backgroundColor: '#757575', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, elevation: 2 },
   backButtonText: { color: 'white', fontWeight: '600', fontSize: 15 },

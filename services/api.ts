@@ -64,7 +64,7 @@ class ApiService {
         try {
             const errorJson = JSON.parse(responseBodyText);
             errorMessage = errorJson.message || (errorJson.errors ? JSON.stringify(errorJson.errors) : errorMessage) ;
-        } catch (e) {
+        } catch {
             if (responseBodyText) errorMessage = responseBodyText;
         }
         throw new Error(errorMessage);
@@ -207,7 +207,9 @@ class ApiService {
             try { 
               const errorJson = JSON.parse(responseBodyText); 
               errorMessage = errorJson.message || errorMessage; 
-            } catch (e) {}
+            } catch {
+              // Falha silenciosa ao fazer parse do erro
+            }
             throw new Error(errorMessage);
         }
         
@@ -266,7 +268,12 @@ class ApiService {
         const responseBodyText = await response.text();
         if (!response.ok) {
             let errorMessage = `Upload failed: HTTP ${response.status} ${response.statusText}`;
-            try { const errorJson = JSON.parse(responseBodyText); errorMessage = errorJson.message || errorMessage; } catch (e) {}
+            try { 
+              const errorJson = JSON.parse(responseBodyText); 
+              errorMessage = errorJson.message || errorMessage; 
+            } catch {
+              // Falha silenciosa ao fazer parse do erro
+            }
             throw new Error(errorMessage);
         }
         const data = responseBodyText ? JSON.parse(responseBodyText) : null;
@@ -290,9 +297,9 @@ class ApiService {
       const response = await fetch(`${this.baseURL}/health`, { method: 'GET', signal: controller.signal });
       clearTimeout(timeoutId);
       return response.ok;
-    } catch (error) {
+    } catch {
       clearTimeout(timeoutId);
-      console.warn('Falha ao verificar conexão:', error);
+      console.warn('Falha ao verificar conexão');
       return false;
     }
   }

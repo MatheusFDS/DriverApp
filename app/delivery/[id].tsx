@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,6 @@ import ProofCamera from '../../components/ProofCamera';
 import {
   DeliveryItemMobile,
   OrderMobileStatus,
-  OrderActionMobile,
   getOrderMobileStatusConfig,
   getAvailableOrderActions,
   getActionColor,
@@ -38,7 +37,7 @@ export default function DeliveryDetailsScreen() {
   const [showProofCamera, setShowProofCamera] = useState(false);
   const [viewingProof, setViewingProof] = useState<string | null>(null);
 
-  const loadDeliveryDetails = async () => {
+  const loadDeliveryDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -58,31 +57,31 @@ export default function DeliveryDetailsScreen() {
         Alert.alert('Erro', response.message || 'Erro ao carregar detalhes da entrega.');
       }
     } catch (err) {
-      const e = err as Error;
-      setError(`Erro de conexão: ${e.message}`);
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      setError(`Erro de conexão: ${errorMessage}`);
       Alert.alert('Erro de Conexão', 'Verifique sua internet e tente novamente.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) {
       loadDeliveryDetails();
     }
-  }, [id]);
+  }, [id, loadDeliveryDetails]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadDeliveryDetails();
     setRefreshing(false);
-  };
+  }, [loadDeliveryDetails]);
 
   const handleUpdateStatus = async (newStatus: OrderMobileStatus, motivo?: string, requiresProof?: boolean) => {
     if (!deliveryItem || !id) return;
 
     const payload: StatusUpdatePayload = { status: newStatus };
-    if (newStatus === 'nao_entregue' && motivo) {
+    if (newStatus === 'NAO_ENTREGUE' && motivo) {
         payload.motivoNaoEntrega = motivo;
     }
 
@@ -102,7 +101,7 @@ export default function DeliveryDetailsScreen() {
           [{ 
             text: 'OK',
             onPress: () => {
-              if (requiresProof && (newStatus === 'entregue' || newStatus === 'nao_entregue')) {
+              if (requiresProof && (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE')) {
                 setShowProofCamera(true);
               }
             }
@@ -111,10 +110,10 @@ export default function DeliveryDetailsScreen() {
       } else {
         throw new Error(response.message || 'Erro ao atualizar status');
       }
-    } catch (error) {
+    } catch (updateError) {
       Alert.alert(
         'Erro ao Atualizar',
-        error instanceof Error ? error.message : 'Não foi possível atualizar o status da entrega.',
+        updateError instanceof Error ? updateError.message : 'Não foi possível atualizar o status da entrega.',
         [{ text: 'OK' }]
       );
     } finally {
@@ -122,54 +121,8 @@ export default function DeliveryDetailsScreen() {
     }
   };
 
-  const showStatusUpdateOptions = () => {
-    if (!deliveryItem) return;
-
-    const actions = getAvailableOrderActions(deliveryItem.status);
-    
-    if (actions.length === 0) {
-      Alert.alert(
-        'Sem ações disponíveis',
-        `O status atual "${getOrderMobileStatusConfig(deliveryItem.status).text}" não permite mais ações pelo app.`
-      );
-      return;
-    }
-
-    const alertOptions: Array<{ text: string; style?: 'cancel' | 'destructive' | undefined; onPress?: () => void }> = [
-      { text: 'Cancelar', style: 'cancel' },
-      ...actions.map((action: OrderActionMobile) => ({
-        text: action.label,
-        onPress: () => {
-          if (action.requiresReason && action.targetStatus === 'nao_entregue') {
-            Alert.prompt(
-              'Reportar Problema',
-              'Por favor, descreva o motivo da não entrega:',
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Confirmar Problema',
-                  onPress: (motivo) => {
-                    if (motivo) {
-                        handleUpdateStatus(action.targetStatus, motivo, action.requiresProof);
-                    } else {
-                        Alert.alert("Atenção", "O motivo é obrigatório para reportar um problema.")
-                    }
-                  },
-                },
-              ],
-              'plain-text'
-            );
-          } else {
-            handleUpdateStatus(action.targetStatus, undefined, action.requiresProof);
-          }
-        }
-      }))
-    ];
-
-    Alert.alert('Atualizar Status', 'Escolha uma nova situação para esta entrega:', alertOptions);
-  };
-
   const handleProofSuccess = (proofUrl: string) => {
+    console.log('Proof uploaded:', proofUrl);
     loadDeliveryDetails();
   };
 
@@ -178,7 +131,10 @@ export default function DeliveryDetailsScreen() {
   };
 
   const callCustomer = () => {
-    if (!deliveryItem?.phone) { Alert.alert('Aviso', 'Número de telefone não disponível.'); return; }
+    if (!deliveryItem?.phone) { 
+      Alert.alert('Aviso', 'Número de telefone não disponível.'); 
+      return; 
+    }
     const phoneNumber = deliveryItem.phone.replace(/[^\d]/g, '');
     const url = `tel:${phoneNumber}`;
     Linking.canOpenURL(url).then(supported => {
@@ -188,7 +144,10 @@ export default function DeliveryDetailsScreen() {
   };
 
   const openMaps = () => {
-    if (!deliveryItem?.address) { Alert.alert('Aviso', 'Endereço não disponível.'); return; }
+    if (!deliveryItem?.address) { 
+      Alert.alert('Aviso', 'Endereço não disponível.'); 
+      return; 
+    }
     const encodedAddress = encodeURIComponent(deliveryItem.address);
     const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
@@ -261,9 +220,24 @@ export default function DeliveryDetailsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>👤 Informações do Cliente</Text>
           <View style={styles.infoCard}>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Nome:</Text><Text style={styles.infoValue}>{deliveryItem.customerName}</Text></View>
-            {deliveryItem.phone && (<View style={styles.infoRow}><Text style={styles.infoLabel}>Telefone:</Text><TouchableOpacity onPress={callCustomer}><Text style={[styles.infoValue, styles.linkText]}>📞 {deliveryItem.phone}</Text></TouchableOpacity></View>)}
-            {deliveryItem.nomeContato && (<View style={styles.infoRow}><Text style={styles.infoLabel}>Contato:</Text><Text style={styles.infoValue}>{deliveryItem.nomeContato}</Text></View>)}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Nome:</Text>
+              <Text style={styles.infoValue}>{deliveryItem.customerName}</Text>
+            </View>
+            {deliveryItem.phone && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Telefone:</Text>
+                <TouchableOpacity onPress={callCustomer}>
+                  <Text style={[styles.infoValue, styles.linkText]}>📞 {deliveryItem.phone}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {deliveryItem.nomeContato && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Contato:</Text>
+                <Text style={styles.infoValue}>{deliveryItem.nomeContato}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -271,16 +245,25 @@ export default function DeliveryDetailsScreen() {
           <Text style={styles.sectionTitle}>📍 Endereço de Entrega</Text>
           <View style={styles.addressCard}>
             <Text style={styles.addressText}>{deliveryItem.address}</Text>
-            <TouchableOpacity style={styles.mapsButton} onPress={openMaps}><Text style={styles.mapsButtonText}>🗺️ Abrir no Mapa</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
+              <Text style={styles.mapsButtonText}>🗺️ Abrir no Mapa</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Detalhes do Pedido</Text>
           <View style={styles.infoCard}>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Valor:</Text><Text style={[styles.infoValue, styles.valueText]}>R$ {deliveryItem.value.toFixed(2)}</Text></View>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Pagamento:</Text><Text style={styles.infoValue}>{deliveryItem.paymentMethod}</Text></View>
-            <View style={styles.infoRow}><Text style={styles.infoLabel}>Itens:</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Valor:</Text>
+              <Text style={[styles.infoValue, styles.valueText]}>R$ {deliveryItem.value.toFixed(2)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Pagamento:</Text>
+              <Text style={styles.infoValue}>{deliveryItem.paymentMethod}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Itens:</Text>
               <View style={styles.itemsList}>
                 {deliveryItem.items.map((item: string, index: number) => (
                   <Text key={index} style={styles.itemText}>• {item}</Text>
@@ -293,7 +276,9 @@ export default function DeliveryDetailsScreen() {
         {deliveryItem.notes && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>💬 Instruções Especiais</Text>
-            <View style={styles.notesCard}><Text style={styles.notesText}>{deliveryItem.notes}</Text></View>
+            <View style={styles.notesCard}>
+              <Text style={styles.notesText}>{deliveryItem.notes}</Text>
+            </View>
           </View>
         )}
 
@@ -301,7 +286,7 @@ export default function DeliveryDetailsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📸 Comprovantes de Entrega ({deliveryItem.proofCount})</Text>
             <View style={styles.proofsContainer}>
-              {deliveryItem.proofs.map((proof, index) => (
+              {deliveryItem.proofs.map((proof: DeliveryProof) => (
                 <TouchableOpacity 
                   key={proof.id} 
                   style={styles.proofCard}
@@ -336,10 +321,10 @@ export default function DeliveryDetailsScreen() {
             <TouchableOpacity style={[styles.actionButtonBase, styles.navigateButton]} onPress={openMaps}>
               <Text style={styles.actionButtonText}>🗺️ Navegar</Text>
             </TouchableOpacity>
-            
-            {(deliveryItem.status === 'entregue' || deliveryItem.status === 'nao_entregue') && (
-              <TouchableOpacity 
-                style={[styles.actionButtonBase, styles.proofButton]} 
+
+            {(deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE') && (
+              <TouchableOpacity
+                style={[styles.actionButtonBase, styles.proofButton]}
                 onPress={() => setShowProofCamera(true)}
               >
                 <Text style={styles.actionButtonText}>📷 Adicionar Comprovante</Text>
@@ -352,12 +337,12 @@ export default function DeliveryDetailsScreen() {
           <View style={styles.statusActionsSection}>
             <Text style={styles.sectionTitle}>🎯 Atualizar Situação da Entrega</Text>
             <View style={styles.statusActionsContainer}>
-              {availableActions.map((action: OrderActionMobile) => (
+              {availableActions.map((action) => (
                 <TouchableOpacity
                   key={action.id}
                   style={[ styles.statusActionButtonBase, { backgroundColor: getActionColor(action.style) }]}
                   onPress={() => {
-                    if (action.requiresReason && action.targetStatus === 'nao_entregue') {
+                    if (action.requiresReason && action.targetStatus === 'NAO_ENTREGUE') {
                         Alert.prompt( 'Reportar Problema', 'Descreva o motivo da não entrega:',
                             [{ text: 'Cancelar', style: 'cancel' }, { 
                               text: 'Confirmar', 

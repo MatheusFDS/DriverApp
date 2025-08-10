@@ -5,17 +5,25 @@ import { User } from '../types';
 import { Alert } from 'react-native';
 import { currentApiConfig } from '../config/apiConfig';
 
-const MOBILE_APP_DOMAIN = 'keromax.com.br'; // <- DOMÍNIO FIXO DO APP
+const BASE_URL = currentApiConfig.baseURL;
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>; // Domain removido daqui
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const BASE_URL = currentApiConfig.baseURL;
+
+function extractDomainFromUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.hostname;
+  } catch {
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -23,17 +31,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutInternal = useCallback(async (notifyBackend = true) => {
     if (notifyBackend) {
-        const token = await AsyncStorage.getItem('auth_token');
-        if (token) {
-            try {
-            await fetch(`${BASE_URL}/auth/logout`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
-            });
-            } catch (error) {
-            console.warn('Aviso: Erro ao fazer logout no servidor (token local será removido de qualquer forma):', error);
-            }
+      const token = await AsyncStorage.getItem('auth_token');
+      if (token) {
+        try {
+          await fetch(`${BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          });
+        } catch {
+          console.warn('Aviso: Erro ao fazer logout no servidor (token local será removido de qualquer forma)');
         }
+      }
     }
     await AsyncStorage.multiRemove(['user', 'auth_token', 'refresh_token']);
     setUser(null);
@@ -45,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profileResponse = await fetch(`${BASE_URL}/mobile/v1/profile`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
@@ -63,8 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Alert.alert('Erro de Perfil', `Erro ${profileResponse.status}: ${errorData.message}`);
       }
       return null;
-    } catch (error) {
-      console.error('Exceção ao buscar perfil do usuário:', error);
+    } catch {
       Alert.alert('Erro de Rede', 'Ocorreu um erro ao buscar dados do perfil. Verifique sua conexão.');
       return null;
     } finally {
@@ -76,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const storedToken = await AsyncStorage.getItem('auth_token');
-      
+
       if (storedToken) {
         const freshUserData = await fetchAndFormatUserProfile(storedToken);
         if (freshUserData) {
@@ -89,26 +96,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setUser(null);
       }
-    } catch (error) {
-      console.error('Erro ao verificar usuário armazenado:', error);
+    } catch {
       await logoutInternal(false);
       router.replace('/login');
     } finally {
       setIsLoading(false);
     }
   }, [fetchAndFormatUserProfile, logoutInternal]);
-  
+
   useEffect(() => {
     checkStoredUser();
   }, [checkStoredUser]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
+
+    const domainToSend = (() => {
+      const domain = extractDomainFromUrl(BASE_URL);
+      if (!domain) return 'localhost';
+      if (domain === 'localhost' || domain === '127.0.0.1') return 'localhost';
+      return domain;
+    })();
+
     try {
       const loginResponse = await fetch(`${BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, domain: MOBILE_APP_DOMAIN }), // Usa a constante
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          domain: domainToSend, 
+          isMobile: true 
+        }),
       });
 
       if (!loginResponse.ok) {
@@ -118,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const loginData = await loginResponse.json();
-      
+
       if (!loginData.access_token) {
         Alert.alert('Erro de Login', 'Não foi possível obter o token de acesso do servidor.');
         return false;
@@ -137,9 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await logoutInternal(true);
         return false;
       }
-      
-    } catch (error) {
-      console.error('Exceção durante o login:', error);
+    } catch {
       Alert.alert('Erro Crítico de Login', 'Ocorreu um erro inesperado. Verifique sua conexão e tente novamente.');
       return false;
     } finally {
@@ -148,17 +165,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async (): Promise<void> => {
-      setIsLoading(true);
-      try {
-        await logoutInternal(true);
-      } catch (error) {
-        console.error("Erro durante o processo de logout:", error);
-        await AsyncStorage.multiRemove(['user', 'auth_token', 'refresh_token']);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-        router.replace('/login');
-      }
+    setIsLoading(true);
+    try {
+      await logoutInternal(true);
+    } catch {
+      await AsyncStorage.multiRemove(['user', 'auth_token', 'refresh_token']);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+      router.replace('/login');
+    }
   };
 
   return (

@@ -1,6 +1,8 @@
 export interface LoginCredentials {
   email: string;
   password: string;
+  domain?: string;
+  isMobile?: boolean;
 }
 
 export interface User {
@@ -16,19 +18,20 @@ export interface User {
   driverId?: string;
 }
 
+// CORREÇÃO: Tipos ajustados para serem consistentes com backend
 export type RouteMobileStatus =
-  | 'a_liberar'
-  | 'iniciado'
-  | 'finalizado'
-  | 'rejeitado';
+  | 'A_LIBERAR'
+  | 'INICIADO'
+  | 'FINALIZADO'
+  | 'REJEITADO';
 
 export type OrderMobileStatus =
-  | 'sem_rota'
-  | 'aguardando_liberacao_rota'
-  | 'em_rota'
-  | 'em_entrega'
-  | 'entregue'
-  | 'nao_entregue';
+  | 'SEM_ROTA'
+  | 'EM_ROTA_AGUARDANDO_LIBERACAO'
+  | 'EM_ROTA'
+  | 'EM_ENTREGA'
+  | 'ENTREGUE'
+  | 'NAO_ENTREGUE';
 
 export interface DeliveryProof {
   id: string;
@@ -105,42 +108,128 @@ export interface OrderActionMobile {
   requiresProof?: boolean;
 }
 
+// CORREÇÃO: Configurações de status ajustadas
 export const getRouteMobileStatusConfig = (status: RouteMobileStatus): StatusConfig => {
   const configs: Record<RouteMobileStatus, StatusConfig> = {
-    'a_liberar': { color: '#FFC107', text: 'A LIBERAR', icon: '🚦', description: 'Roteiro aguardando liberação.' },
-    'iniciado': { color: '#4CAF50', text: 'INICIADO', icon: '▶️', description: 'Roteiro liberado e em andamento.' },
-    'finalizado': { color: '#2196F3', text: 'FINALIZADO', icon: '✅', description: 'Roteiro concluído.' },
-    'rejeitado': { color: '#F44336', text: 'REJEITADO', icon: '❌', description: 'Roteiro rejeitado.' }
+    'A_LIBERAR': { 
+      color: '#FFC107', 
+      text: 'A LIBERAR', 
+      icon: '🚦', 
+      description: 'Roteiro aguardando liberação.' 
+    },
+    'INICIADO': { 
+      color: '#4CAF50', 
+      text: 'INICIADO', 
+      icon: '▶️', 
+      description: 'Roteiro liberado e em andamento.' 
+    },
+    'FINALIZADO': { 
+      color: '#2196F3', 
+      text: 'FINALIZADO', 
+      icon: '✅', 
+      description: 'Roteiro concluído.' 
+    },
+    'REJEITADO': { 
+      color: '#F44336', 
+      text: 'REJEITADO', 
+      icon: '❌', 
+      description: 'Roteiro rejeitado.' 
+    }
   };
-  return configs[status] || { color: '#757575', text: String(status).toUpperCase(), icon: '❓', description: 'Status desconhecido.'};
+  return configs[status] || { 
+    color: '#757575', 
+    text: String(status).toUpperCase(), 
+    icon: '❓', 
+    description: 'Status desconhecido.'
+  };
 };
 
 export const getOrderMobileStatusConfig = (status: OrderMobileStatus): StatusConfig => {
   const configs: Record<OrderMobileStatus, StatusConfig> = {
-    'sem_rota': { color: '#BDBDBD', text: 'SEM ROTA', icon: '📑', description: 'Aguardando inclusão em roteiro.' },
-    'aguardando_liberacao_rota': { color: '#FFD54F', text: 'AG. LIBERAÇÃO', icon: '⏳', description: 'Roteiro aguarda liberação.' },
-    'em_rota': { color: '#90CAF9', text: 'EM ROTA', icon: '📍', description: 'Pronto para entrega.' },
-    'em_entrega': { color: '#2196F3', text: 'EM ENTREGA', icon: '🚚', description: 'Motorista a caminho.' },
-    'entregue': { color: '#4CAF50', text: 'ENTREGUE', icon: '📦✅', description: 'Entrega realizada!' },
-    'nao_entregue': { color: '#EF5350', text: 'NÃO ENTREGUE', icon: '⚠️', description: 'Problema na entrega.' }
+    'SEM_ROTA': { 
+      color: '#BDBDBD', 
+      text: 'SEM ROTA', 
+      icon: '📑', 
+      description: 'Aguardando inclusão em roteiro.' 
+    },
+    'EM_ROTA_AGUARDANDO_LIBERACAO': { 
+      color: '#FFD54F', 
+      text: 'AG. LIBERAÇÃO', 
+      icon: '⏳', 
+      description: 'Roteiro aguarda liberação.' 
+    },
+    'EM_ROTA': { 
+      color: '#90CAF9', 
+      text: 'PENDENTE', 
+      icon: '📍', 
+      description: 'Pronto para entrega. Toque para iniciar.' 
+    },
+    'EM_ENTREGA': { 
+      color: '#2196F3', 
+      text: 'EM ENTREGA', 
+      icon: '🚚', 
+      description: 'Motorista a caminho do cliente.' 
+    },
+    'ENTREGUE': { 
+      color: '#4CAF50', 
+      text: 'ENTREGUE', 
+      icon: '📦✅', 
+      description: 'Entrega realizada com sucesso!' 
+    },
+    'NAO_ENTREGUE': { 
+      color: '#EF5350', 
+      text: 'NÃO ENTREGUE', 
+      icon: '⚠️', 
+      description: 'Problema na entrega.' 
+    }
   };
-  return configs[status] || { color: '#757575', text: String(status).toUpperCase(), icon: '❓', description: 'Status desconhecido.'};
+  return configs[status] || { 
+    color: '#757575', 
+    text: String(status).toUpperCase(), 
+    icon: '❓', 
+    description: 'Status desconhecido.'
+  };
 };
 
+// CORREÇÃO: Ações ajustadas conforme fluxo do usuário
 export const getAvailableOrderActions = (currentStatus: OrderMobileStatus, routeStatus?: RouteMobileStatus): OrderActionMobile[] => {
-  if (routeStatus && routeStatus !== 'iniciado') {
+  // Se o roteiro não estiver INICIADO, não permite ações
+  if (routeStatus && routeStatus !== 'INICIADO') {
     return [];
   }
 
   const actions: Partial<Record<OrderMobileStatus, OrderActionMobile[]>> = {
-    'em_rota': [
-      { id: 'iniciar_entrega_especifica', label: '🚚 Iniciar Entrega', targetStatus: 'em_entrega', style: 'primary' }
+    // Quando está EM_ROTA (pendente), pode iniciar a entrega
+    'EM_ROTA': [
+      { 
+        id: 'iniciar_entrega', 
+        label: '🚚 Iniciar Entrega', 
+        targetStatus: 'EM_ENTREGA', 
+        style: 'primary' 
+      }
     ],
-    'em_entrega': [
-      { id: 'marcar_entregue', label: '✅ Entregue', targetStatus: 'entregue', style: 'success', requiresProof: true },
-      { id: 'reportar_nao_entrega', label: '⚠️ Não Entregue', targetStatus: 'nao_entregue', style: 'warning', requiresReason: true, requiresProof: true }
+    // Quando está EM_ENTREGA, pode finalizar como entregue ou não entregue
+    'EM_ENTREGA': [
+      { 
+        id: 'marcar_entregue', 
+        label: '✅ Entregue', 
+        targetStatus: 'ENTREGUE', 
+        style: 'success', 
+        requiresProof: true 
+      },
+      { 
+        id: 'reportar_nao_entrega', 
+        label: '⚠️ Não Entregue', 
+        targetStatus: 'NAO_ENTREGUE', 
+        style: 'warning', 
+        requiresReason: true, 
+        requiresProof: true 
+      }
     ],
+    // Status finais não permitem mais ações por padrão
+    // Mas pode permitir adicionar mais comprovantes se necessário
   };
+  
   return actions[currentStatus] || [];
 };
 

@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   infoIcon: {
     fontSize: 16,
     marginRight: 8,
-    color: '#1976d2',
+    color: '#00695c',
   },
   infoText: {
     flex: 1,
