@@ -1,5 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, LoginCredentials, ApiResponse, DeliveryProof, RouteMobile, DeliveryItemMobile, StatusUpdatePayload } from '../types';
+import {
+  User,
+  LoginCredentials,
+  ApiResponse,
+  DeliveryProof,
+  RouteMobile,
+  DeliveryItemMobile,
+  StatusUpdatePayload,
+  Notification,
+  PaginatedNotifications,
+} from '../types';
 import { currentApiConfig } from '../config/apiConfig';
 
 class ApiService {
@@ -71,11 +81,18 @@ class ApiService {
       }
 
       const data = responseBodyText ? JSON.parse(responseBodyText) : null;
-
-      if (data && typeof data === 'object' && 'success' in data && ('data' in data || data.success === false)) {
-        return data as ApiResponse<T>;
+      
+      // Ajuste para lidar com a resposta padrão do backend (com 'success', 'data', etc.)
+      if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+        if (data.success) {
+            // A API do backend já retorna a estrutura ApiResponse, então podemos retorná-la diretamente
+            return data as ApiResponse<T>;
+        } else {
+            throw new Error(data.message || 'Erro retornado pela API.');
+        }
       }
       
+      // Fallback para APIs que retornam o dado diretamente
       return {
         data: data as T,
         success: true,
@@ -85,14 +102,12 @@ class ApiService {
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        console.error('Request timed out:', endpoint);
         return {
           data: null,
           success: false,
-          message: `A requisição para ${endpoint} excedeu o tempo limite de ${this.timeout / 1000}s.`,
+          message: `A requisição excedeu o tempo limite.`,
         };
       }
-      console.error(`Erro na requisição para ${endpoint}:`, error);
       return {
         data: null,
         success: false,
@@ -112,6 +127,7 @@ class ApiService {
       return {
         data: {
           token: response.data.access_token,
+          user: response.data.user
         } as { user: User; token: string },
         success: true,
         message: response.message
@@ -169,11 +185,31 @@ class ApiService {
       }
     );
   }
+  
+  // --- NOVOS MÉTODOS DE NOTIFICAÇÃO ---
+
+  async getNotifications(page: number = 1, pageSize: number = 15): Promise<ApiResponse<PaginatedNotifications>> {
+    const params = new URLSearchParams({ page: page.toString(), pageSize: pageSize.toString() });
+    return this.request<PaginatedNotifications>(`/notifications?${params.toString()}`);
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<ApiResponse<Notification>> {
+    return this.request<Notification>(`/notifications/${notificationId}/read`, {
+      method: 'PATCH',
+    });
+  }
+
+  async markAllNotificationsAsRead(): Promise<ApiResponse<{ count: number }>> {
+    return this.request<{ count: number }>(`/notifications/read-all`, {
+      method: 'PATCH',
+    });
+  }
+
+  // --- FIM DOS NOVOS MÉTODOS ---
 
   async uploadDeliveryProof(
     orderId: string,
     file: { uri: string; name: string; type: string; },
-    description?: string
   ): Promise<ApiResponse<{ id: string; proofUrl: string; message: string; }>> {
     const formData = new FormData();
     formData.append('file', { 
@@ -181,10 +217,6 @@ class ApiService {
       name: file.name, 
       type: file.type 
     } as any);
-    
-    if (description) {
-      formData.append('description', description);
-    }
     
     const token = await this.getAuthToken();
     const controller = new AbortController();
@@ -200,35 +232,14 @@ class ApiService {
             signal: controller.signal,
         });
         clearTimeout(timeoutId);
-        const responseBodyText = await response.text();
+        const data = await response.json();
         
         if (!response.ok) {
-            let errorMessage = `Upload failed: HTTP ${response.status} ${response.statusText}`;
-            try { 
-              const errorJson = JSON.parse(responseBodyText); 
-              errorMessage = errorJson.message || errorMessage; 
-            } catch {
-              // Falha silenciosa ao fazer parse do erro
-            }
-            throw new Error(errorMessage);
+            throw new Error(data.message || 'Falha no upload');
         }
-        
-        const data = responseBodyText ? JSON.parse(responseBodyText) : null;
-        
-        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
-             return data as ApiResponse<{ id: string; proofUrl: string; message: string; }>;
-        }
-        
-        return { 
-          data: data as { id: string; proofUrl: string; message: string; }, 
-          success: true, 
-          message: (data as any)?.message || "Comprovante enviado com sucesso" 
-        };
+        return data as ApiResponse<{ id: string; proofUrl: string; message: string; }>;
     } catch (error: any) {
         clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-            return { data: null, success: false, message: 'Upload excedeu o tempo limite.' };
-        }
         return { 
           data: null, 
           success: false, 
@@ -240,56 +251,7 @@ class ApiService {
   async getOrderProofs(orderId: string): Promise<ApiResponse<DeliveryProof[]>> {
     return this.request<DeliveryProof[]>(`/mobile/v1/orders/${orderId}/proofs`);
   }
-
-  async uploadEvidence(
-    deliveryId: string,
-    file: { uri: string; name: string; type: string; },
-    evidenceType: string,
-    description?: string
-  ): Promise<ApiResponse<{ url: string }>> {
-    const formData = new FormData();
-    formData.append('file', { uri: file.uri, name: file.name, type: file.type } as any);
-    formData.append('type', evidenceType);
-    if (description) {
-      formData.append('description', description);
-    }
-    const token = await this.getAuthToken();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout + 20000);
-
-    try {
-        const response = await fetch(`${this.baseURL}/mobile/v1/deliveries/${deliveryId}/evidence`, {
-            method: 'POST',
-            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            body: formData,
-            signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
-        const responseBodyText = await response.text();
-        if (!response.ok) {
-            let errorMessage = `Upload failed: HTTP ${response.status} ${response.statusText}`;
-            try { 
-              const errorJson = JSON.parse(responseBodyText); 
-              errorMessage = errorJson.message || errorMessage; 
-            } catch {
-              // Falha silenciosa ao fazer parse do erro
-            }
-            throw new Error(errorMessage);
-        }
-        const data = responseBodyText ? JSON.parse(responseBodyText) : null;
-        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
-             return data as ApiResponse<{ url: string }>;
-        }
-        return { data: data as {url: string}, success: true, message: (data as any)?.message || "Upload bem-sucedido" };
-    } catch (error: any) {
-        clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-            return { data: null, success: false, message: 'Upload excedeu o tempo limite.' };
-        }
-        return { data: null, success: false, message: error instanceof Error ? error.message : 'Falha no upload' };
-    }
-  }
-
+  
   async checkConnection(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -299,30 +261,9 @@ class ApiService {
       return response.ok;
     } catch {
       clearTimeout(timeoutId);
-      console.warn('Falha ao verificar conexão');
       return false;
     }
   }
 }
 
 export const api = new ApiService();
-
-export const useApi = () => {
-  return {
-    login: api.login.bind(api),
-    logout: api.logout.bind(api),
-    getProfile: api.getProfile.bind(api),
-    getRoutes: api.getRoutes.bind(api),
-    getHistory: api.getHistory.bind(api),
-    getDriverReceivables: api.getDriverReceivables.bind(api),
-    getRouteDetails: api.getRouteDetails.bind(api),
-    getDeliveryDetails: api.getDeliveryDetails.bind(api),
-    updateDeliveryStatus: api.updateDeliveryStatus.bind(api),
-    uploadDeliveryProof: api.uploadDeliveryProof.bind(api),
-    getOrderProofs: api.getOrderProofs.bind(api),
-    uploadEvidence: api.uploadEvidence.bind(api),
-    checkConnection: api.checkConnection.bind(api),
-  };
-};
-
-export default api;

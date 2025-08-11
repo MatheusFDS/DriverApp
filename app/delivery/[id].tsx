@@ -13,7 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import ProofCamera from '../../components/ProofCamera';
+import ProofUploaderModal from '../../components/ProofUploaderModal';
 
 import {
   DeliveryItemMobile,
@@ -22,10 +22,11 @@ import {
   getAvailableOrderActions,
   getActionColor,
   StatusUpdatePayload,
-  DeliveryProof
+  DeliveryProof,
 } from '../../types';
 
 import { api } from '../../services/api';
+import { currentApiConfig } from '@/config/apiConfig';
 
 export default function DeliveryDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -149,7 +150,7 @@ export default function DeliveryDetailsScreen() {
       return; 
     }
     const encodedAddress = encodeURIComponent(deliveryItem.address);
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    const url = `https://maps.google.com/?q=${encodedAddress}`;
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
   };
 
@@ -195,7 +196,7 @@ export default function DeliveryDetailsScreen() {
   }
 
   const statusConfig = getOrderMobileStatusConfig(deliveryItem.status);
-  const availableActions = getAvailableOrderActions(deliveryItem.status);
+  const availableActions = getAvailableOrderActions(deliveryItem.status, deliveryItem.routeStatus);
 
   return (
     <View style={styles.container}>
@@ -282,30 +283,36 @@ export default function DeliveryDetailsScreen() {
           </View>
         )}
 
-        {deliveryItem.hasProof && deliveryItem.proofs && deliveryItem.proofs.length > 0 && (
+        {deliveryItem.proofs && deliveryItem.proofs.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>📸 Comprovantes de Entrega ({deliveryItem.proofCount})</Text>
             <View style={styles.proofsContainer}>
-              {deliveryItem.proofs.map((proof: DeliveryProof) => (
-                <TouchableOpacity 
-                  key={proof.id} 
-                  style={styles.proofCard}
-                  onPress={() => viewProofImage(proof.proofUrl)}
-                >
-                  <Image 
-                    source={{ uri: proof.proofUrl }} 
-                    style={styles.proofThumbnail}
-                    resizeMode="cover"
-                  />
-                  <Text style={styles.proofDate}>
-                    {new Date(proof.createdAt).toLocaleDateString('pt-BR')} às{' '}
-                    {new Date(proof.createdAt).toLocaleTimeString('pt-BR', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {deliveryItem.proofs.map((proof: DeliveryProof) => {
+                const fullProofUrl = proof.proofUrl.startsWith('http')
+                  ? proof.proofUrl
+                  : `${currentApiConfig.baseURL}${proof.proofUrl}`;
+
+                return (
+                  <TouchableOpacity 
+                    key={proof.id} 
+                    style={styles.proofCard}
+                    onPress={() => viewProofImage(fullProofUrl)}
+                  >
+                    <Image 
+                      source={{ uri: fullProofUrl }} 
+                      style={styles.proofThumbnail}
+                      resizeMode="cover"
+                    />
+                    <Text style={styles.proofDate}>
+                      {new Date(proof.createdAt).toLocaleDateString('pt-BR')} às{' '}
+                      {new Date(proof.createdAt).toLocaleTimeString('pt-BR', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -357,7 +364,7 @@ export default function DeliveryDetailsScreen() {
                   disabled={updatingStatus}
                 >
                   <Text style={styles.statusActionButtonText}>
-                    {action.label} {updatingStatus && action.targetStatus === deliveryItem.status ? '(Atualizando...)' : ''}
+                    {action.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -375,7 +382,7 @@ export default function DeliveryDetailsScreen() {
         </View>
       </ScrollView>
 
-      <ProofCamera
+      <ProofUploaderModal
         orderId={id || ''}
         visible={showProofCamera}
         onClose={() => setShowProofCamera(false)}
@@ -453,9 +460,9 @@ const styles = StyleSheet.create({
   notesCard: { backgroundColor: '#FFF9C4', marginHorizontal: 16, padding: 16, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#FFEB3B', elevation: 1 },
   notesText: { fontSize: 14, color: '#5D4037', lineHeight: 20 },
 
-  proofsContainer: { paddingHorizontal: 16 },
-  proofCard: { backgroundColor: 'white', borderRadius: 8, padding: 12, marginBottom: 12, elevation: 2 },
-  proofThumbnail: { width: '100%', height: 200, borderRadius: 8, marginBottom: 8 },
+  proofsContainer: { paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap' },
+  proofCard: { backgroundColor: 'white', borderRadius: 8, padding: 8, marginBottom: 12, elevation: 2, marginRight: 12, width: 150, alignItems: 'center' },
+  proofThumbnail: { width: 134, height: 100, borderRadius: 8, marginBottom: 8 },
   proofDate: { fontSize: 12, color: '#666', textAlign: 'center' },
 
   actionsSection: { marginBottom: 16, marginTop: 10 },

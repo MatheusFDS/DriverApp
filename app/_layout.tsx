@@ -1,15 +1,12 @@
-// ==============================================================================
-// CORREÇÃO 1: _layout.tsx PRINCIPAL
-// ==============================================================================
-
 // app/_layout.tsx
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../contexts/AuthContext';
+import { NotificationProvider } from '../contexts/NotificationContext'; // 1. Importar
+import Toast from 'react-native-toast-message';
 
-// Previne que a splash screen seja escondida automaticamente
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -18,7 +15,6 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Simula tempo de inicialização
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         console.warn(e);
@@ -26,7 +22,6 @@ export default function RootLayout() {
         setAppIsReady(true);
       }
     }
-
     prepare();
   }, []);
 
@@ -42,45 +37,41 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#2196F3',
-          },
-          headerTintColor: '#fff',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-          },
-        }}
-      >
-        {/* REMOVIDO: "(auth)" - agora registra diretamente as rotas específicas */}
-        <Stack.Screen 
-          name="login" 
-          options={{ 
-            headerShown: false,
-            title: 'Login'
-          }} 
-        />
-        <Stack.Screen 
-          name="(tabs)" 
-          options={{ headerShown: false }} 
-        />
-        <Stack.Screen 
-          name="route/[id]" 
-          options={{ 
-            title: 'Detalhes do Roteiro',
-            presentation: 'card'
-          }} 
-        />
-        <Stack.Screen 
-          name="delivery/[id]" 
-          options={{ 
-            title: 'Entrega',
-            presentation: 'card'
-          }} 
-        />
-      </Stack>
-      <StatusBar style="light" />
+      {/* 2. Envelopar a navegação com o NotificationProvider */}
+      <NotificationProvider>
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: '#2196F3' },
+            headerTintColor: '#fff',
+            headerTitleStyle: { fontWeight: 'bold' },
+          }}
+        >
+          <Stack.Screen 
+            name="login" 
+            options={{ headerShown: false }} 
+          />
+          <Stack.Screen 
+            name="(tabs)" 
+            options={{ headerShown: false }} 
+          />
+          <Stack.Screen 
+            name="route/[id]" 
+            options={{ title: 'Detalhes do Roteiro' }} 
+          />
+          <Stack.Screen 
+            name="delivery/[id]" 
+            options={{ title: 'Entrega' }} 
+          />
+          {/* Adicionar a tela de notificações como um modal */}
+          <Stack.Screen
+            name="notifications"
+            options={{ title: 'Notificações', presentation: 'modal' }}
+          />
+        </Stack>
+        <StatusBar style="light" />
+        {/* 3. Adicionar o Toast global para os pop-ups */}
+        <Toast />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

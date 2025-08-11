@@ -1,7 +1,8 @@
 // app/(tabs)/_layout.tsx
 import { Tabs, Redirect } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import NotificationBadge from '../../components/NotificationBadge';
 
 export default function TabLayout() {
   const { user, isLoading } = useAuth();
@@ -48,6 +49,11 @@ export default function TabLayout() {
             <TabBarIcon name="🚚" color={color} size={size} />
           ),
           headerTitle: 'Meus Roteiros',
+          headerRight: () => (
+            <View style={{ marginRight: 15 }}>
+              <NotificationBadge size={20} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -58,6 +64,11 @@ export default function TabLayout() {
             <TabBarIcon name="📊" color={color} size={size} />
           ),
           headerTitle: 'Histórico de Entregas',
+          headerRight: () => (
+            <View style={{ marginRight: 15 }}>
+              <NotificationBadge size={20} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -68,6 +79,11 @@ export default function TabLayout() {
             <TabBarIcon name="👤" color={color} size={size} />
           ),
           headerTitle: 'Meu Perfil',
+          headerRight: () => (
+            <View style={{ marginRight: 15 }}>
+              <NotificationBadge size={20} />
+            </View>
+          ),
         }}
       />
     </Tabs>

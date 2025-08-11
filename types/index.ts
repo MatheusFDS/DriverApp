@@ -1,3 +1,5 @@
+// types/index.ts
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -18,7 +20,6 @@ export interface User {
   driverId?: string;
 }
 
-// CORREÇÃO: Tipos ajustados para serem consistentes com backend
 export type RouteMobileStatus =
   | 'A_LIBERAR'
   | 'INICIADO'
@@ -32,6 +33,37 @@ export type OrderMobileStatus =
   | 'EM_ENTREGA'
   | 'ENTREGUE'
   | 'NAO_ENTREGUE';
+
+// --- TIPOS DE NOTIFICAÇÃO ---
+
+export interface Notification {
+  id: string;
+  tenantId: string;
+  userId: string;
+  isRead: boolean;
+  message: string;
+  type: string;
+  linkTo?: string | null;
+  createdAt: string;
+}
+
+export interface PaginatedNotifications {
+  data: Notification[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  pageSize: number;
+  lastPage: number;
+}
+
+// Tipo adicional necessário para o backend
+export interface PaginatedNotificationsResponse {
+  success: boolean;
+  message?: string;
+  data: PaginatedNotifications;
+}
+
+// --- FIM DOS TIPOS DE NOTIFICAÇÃO ---
 
 export interface DeliveryProof {
   id: string;
@@ -59,6 +91,7 @@ export interface DeliveryItemMobile {
   hasProof?: boolean;
   proofCount?: number;
   proofs?: DeliveryProof[];
+  routeStatus?: RouteMobileStatus;
 }
 
 export interface RouteMobile {
@@ -108,128 +141,39 @@ export interface OrderActionMobile {
   requiresProof?: boolean;
 }
 
-// CORREÇÃO: Configurações de status ajustadas
 export const getRouteMobileStatusConfig = (status: RouteMobileStatus): StatusConfig => {
   const configs: Record<RouteMobileStatus, StatusConfig> = {
-    'A_LIBERAR': { 
-      color: '#FFC107', 
-      text: 'A LIBERAR', 
-      icon: '🚦', 
-      description: 'Roteiro aguardando liberação.' 
-    },
-    'INICIADO': { 
-      color: '#4CAF50', 
-      text: 'INICIADO', 
-      icon: '▶️', 
-      description: 'Roteiro liberado e em andamento.' 
-    },
-    'FINALIZADO': { 
-      color: '#2196F3', 
-      text: 'FINALIZADO', 
-      icon: '✅', 
-      description: 'Roteiro concluído.' 
-    },
-    'REJEITADO': { 
-      color: '#F44336', 
-      text: 'REJEITADO', 
-      icon: '❌', 
-      description: 'Roteiro rejeitado.' 
-    }
+    'A_LIBERAR': { color: '#FFC107', text: 'A LIBERAR', icon: '🚦', description: 'Roteiro aguardando liberação.' },
+    'INICIADO': { color: '#4CAF50', text: 'INICIADO', icon: '▶️', description: 'Roteiro liberado e em andamento.' },
+    'FINALIZADO': { color: '#2196F3', text: 'FINALIZADO', icon: '✅', description: 'Roteiro concluído.' },
+    'REJEITADO': { color: '#F44336', text: 'REJEITADO', icon: '❌', description: 'Roteiro rejeitado.' }
   };
-  return configs[status] || { 
-    color: '#757575', 
-    text: String(status).toUpperCase(), 
-    icon: '❓', 
-    description: 'Status desconhecido.'
-  };
+  return configs[status] || { color: '#757575', text: String(status).toUpperCase(), icon: '❓', description: 'Status desconhecido.'};
 };
 
 export const getOrderMobileStatusConfig = (status: OrderMobileStatus): StatusConfig => {
   const configs: Record<OrderMobileStatus, StatusConfig> = {
-    'SEM_ROTA': { 
-      color: '#BDBDBD', 
-      text: 'SEM ROTA', 
-      icon: '📑', 
-      description: 'Aguardando inclusão em roteiro.' 
-    },
-    'EM_ROTA_AGUARDANDO_LIBERACAO': { 
-      color: '#FFD54F', 
-      text: 'AG. LIBERAÇÃO', 
-      icon: '⏳', 
-      description: 'Roteiro aguarda liberação.' 
-    },
-    'EM_ROTA': { 
-      color: '#90CAF9', 
-      text: 'PENDENTE', 
-      icon: '📍', 
-      description: 'Pronto para entrega. Toque para iniciar.' 
-    },
-    'EM_ENTREGA': { 
-      color: '#2196F3', 
-      text: 'EM ENTREGA', 
-      icon: '🚚', 
-      description: 'Motorista a caminho do cliente.' 
-    },
-    'ENTREGUE': { 
-      color: '#4CAF50', 
-      text: 'ENTREGUE', 
-      icon: '📦✅', 
-      description: 'Entrega realizada com sucesso!' 
-    },
-    'NAO_ENTREGUE': { 
-      color: '#EF5350', 
-      text: 'NÃO ENTREGUE', 
-      icon: '⚠️', 
-      description: 'Problema na entrega.' 
-    }
+    'SEM_ROTA': { color: '#BDBDBD', text: 'SEM ROTA', icon: '📑', description: 'Aguardando inclusão em roteiro.' },
+    'EM_ROTA_AGUARDANDO_LIBERACAO': { color: '#FFD54F', text: 'AG. LIBERAÇÃO', icon: '⏳', description: 'Roteiro aguarda liberação.' },
+    'EM_ROTA': { color: '#90CAF9', text: 'PENDENTE', icon: '📍', description: 'Pronto para entrega. Toque para iniciar.' },
+    'EM_ENTREGA': { color: '#2196F3', text: 'EM ENTREGA', icon: '🚚', description: 'Motorista a caminho do cliente.' },
+    'ENTREGUE': { color: '#4CAF50', text: 'ENTREGUE', icon: '📦✅', description: 'Entrega realizada com sucesso!' },
+    'NAO_ENTREGUE': { color: '#EF5350', text: 'NÃO ENTREGUE', icon: '⚠️', description: 'Problema na entrega.' }
   };
-  return configs[status] || { 
-    color: '#757575', 
-    text: String(status).toUpperCase(), 
-    icon: '❓', 
-    description: 'Status desconhecido.'
-  };
+  return configs[status] || { color: '#757575', text: String(status).toUpperCase(), icon: '❓', description: 'Status desconhecido.'};
 };
 
-// CORREÇÃO: Ações ajustadas conforme fluxo do usuário
 export const getAvailableOrderActions = (currentStatus: OrderMobileStatus, routeStatus?: RouteMobileStatus): OrderActionMobile[] => {
-  // Se o roteiro não estiver INICIADO, não permite ações
   if (routeStatus && routeStatus !== 'INICIADO') {
     return [];
   }
-
   const actions: Partial<Record<OrderMobileStatus, OrderActionMobile[]>> = {
-    // Quando está EM_ROTA (pendente), pode iniciar a entrega
-    'EM_ROTA': [
-      { 
-        id: 'iniciar_entrega', 
-        label: '🚚 Iniciar Entrega', 
-        targetStatus: 'EM_ENTREGA', 
-        style: 'primary' 
-      }
-    ],
-    // Quando está EM_ENTREGA, pode finalizar como entregue ou não entregue
+    'EM_ROTA': [{ id: 'iniciar_entrega', label: '🚚 Iniciar Entrega', targetStatus: 'EM_ENTREGA', style: 'primary' }],
     'EM_ENTREGA': [
-      { 
-        id: 'marcar_entregue', 
-        label: '✅ Entregue', 
-        targetStatus: 'ENTREGUE', 
-        style: 'success', 
-        requiresProof: true 
-      },
-      { 
-        id: 'reportar_nao_entrega', 
-        label: '⚠️ Não Entregue', 
-        targetStatus: 'NAO_ENTREGUE', 
-        style: 'warning', 
-        requiresReason: true, 
-        requiresProof: true 
-      }
+      { id: 'marcar_entregue', label: '✅ Entregue', targetStatus: 'ENTREGUE', style: 'success', requiresProof: true },
+      { id: 'reportar_nao_entrega', label: '⚠️ Não Entregue', targetStatus: 'NAO_ENTREGUE', style: 'warning', requiresReason: true, requiresProof: true }
     ],
-    // Status finais não permitem mais ações por padrão
-    // Mas pode permitir adicionar mais comprovantes se necessário
   };
-  
   return actions[currentStatus] || [];
 };
 
