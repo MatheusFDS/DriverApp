@@ -18,6 +18,9 @@ export interface User {
   companyCnpj?: string;
   tenantId: string;
   driverId?: string;
+  role?: {
+    name: string;
+  };
 }
 
 export type RouteMobileStatus =

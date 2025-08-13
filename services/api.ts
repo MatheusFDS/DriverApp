@@ -82,17 +82,14 @@ class ApiService {
 
       const data = responseBodyText ? JSON.parse(responseBodyText) : null;
       
-      // Ajuste para lidar com a resposta padrão do backend (com 'success', 'data', etc.)
       if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
         if (data.success) {
-            // A API do backend já retorna a estrutura ApiResponse, então podemos retorná-la diretamente
             return data as ApiResponse<T>;
         } else {
             throw new Error(data.message || 'Erro retornado pela API.');
         }
       }
       
-      // Fallback para APIs que retornam o dado diretamente
       return {
         data: data as T,
         success: true,
@@ -186,8 +183,6 @@ class ApiService {
     );
   }
   
-  // --- NOVOS MÉTODOS DE NOTIFICAÇÃO ---
-
   async getNotifications(page: number = 1, pageSize: number = 15): Promise<ApiResponse<PaginatedNotifications>> {
     const params = new URLSearchParams({ page: page.toString(), pageSize: pageSize.toString() });
     return this.request<PaginatedNotifications>(`/notifications?${params.toString()}`);
@@ -204,8 +199,6 @@ class ApiService {
       method: 'PATCH',
     });
   }
-
-  // --- FIM DOS NOVOS MÉTODOS ---
 
   async uploadDeliveryProof(
     orderId: string,
@@ -263,6 +256,27 @@ class ApiService {
       clearTimeout(timeoutId);
       return false;
     }
+  }
+  
+  async getInviteDetails(token: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`/invites/${token}`);
+  }
+
+  async acceptInvite(
+    token: string, 
+    payload: { name: string; email: string; password?: string; cpf?: string; license?: string }
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/invites/${token}/accept`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async completeDriverProfile(payload: { name: string; license: string; cpf: string }): Promise<ApiResponse<any>> {
+    return this.request<any>('/drivers/complete-profile', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 }
 
