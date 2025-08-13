@@ -10,8 +10,10 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button, Card, Theme, CommonStyles } from '../../components/ui';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -49,24 +51,36 @@ export default function ProfileScreen() {
     );
   };
 
+  const openPrivacyPolicy = () => {
+    Alert.alert("Política de Privacidade", "Link para a política aqui.");
+  };
+
+  const openTermsOfUse = () => {
+    Alert.alert("Termos de Uso", "Link para os termos aqui.");
+  };
+
+  const openEditProfile = () => {
+    Alert.alert("Editar Perfil", "Funcionalidade a ser implementada.");
+  };
+
   if (authLoading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Carregando perfil...</Text>
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.loadingState}>
+        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          Carregando perfil...
+        </Text>
+      </SafeAreaView>
     );
   }
 
   if (!user) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Usuário não encontrado...</Text>
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.loadingState}>
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          Usuário não encontrado...
+        </Text>
+      </SafeAreaView>
     );
   }
 
@@ -77,375 +91,406 @@ export default function ProfileScreen() {
     return '?';
   };
 
+  const notificationSettings = [
+    { key: 'newRoutes', label: 'Novos Roteiros', icon: '🚛' },
+    { key: 'deliveryReminders', label: 'Lembretes de Entrega', icon: '⏰' },
+    { key: 'paymentUpdates', label: 'Atualizações de Pagamento', icon: '💰' },
+    { key: 'systemMessages', label: 'Mensagens do Sistema', icon: '📢' },
+  ];
+
+  const actionItems = [
+    { 
+      key: 'support', 
+      label: 'Suporte', 
+      description: 'Entre em contato conosco',
+      icon: '🎧',
+      onPress: openSupport 
+    },
+    { 
+      key: 'editProfile', 
+      label: 'Editar Perfil', 
+      description: 'Alterar dados pessoais',
+      icon: '✏️',
+      onPress: openEditProfile 
+    },
+  ];
+
+  const infoItems = [
+    { label: 'Versão do App', value: '1.0.1' },
+    { label: 'Política de Privacidade', value: null, onPress: openPrivacyPolicy },
+    { label: 'Termos de Uso', value: null, onPress: openTermsOfUse },
+  ];
+
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.userCard}>
-          <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>
-              {getAvatarInitials(user.name)}
-            </Text>
+    <SafeAreaView style={CommonStyles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Card do Usuário */}
+        <Card style={styles.userCard}>
+          <View style={styles.userHeader}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userAvatarText}>
+                {getAvatarInitials(user.name)}
+              </Text>
+            </View>
+            
+            <View style={styles.userInfo}>
+              <Text style={[CommonStyles.heading3, styles.userName]}>
+                {user.name || 'Nome não disponível'}
+              </Text>
+              <Text style={[CommonStyles.body, styles.userEmail]}>
+                {user.email || 'Email não disponível'}
+              </Text>
+              {user.phone && (
+                <Text style={[CommonStyles.body, styles.userPhone]}>
+                  📞 {user.phone}
+                </Text>
+              )}
+            </View>
           </View>
-          
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user.name || 'Nome não disponível'}</Text>
-            <Text style={styles.userEmail}>{user.email || 'Email não disponível'}</Text>
-            <Text style={styles.userPhone}>{user.phone || 'Telefone não disponível'}</Text>
-          </View>
-        </View>
+        </Card>
 
-        <View style={styles.vehicleCard}>
-          <Text style={styles.sectionTitle}>🚗 Veículo</Text>
-          <View style={styles.vehicleInfo}>
+        {/* Card do Veículo */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            🚗 Veículo
+          </Text>
+          <View style={styles.infoList}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Modelo:</Text>
-              <Text style={styles.infoValue}>{user.vehicle || 'Não informado'}</Text>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>Modelo:</Text>
+              <Text style={[CommonStyles.body, styles.infoValue]}>
+                {user.vehicle || 'Não informado'}
+              </Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Placa:</Text>
-              <Text style={styles.infoValue}>{user.plate || 'Não informado'}</Text>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>Placa:</Text>
+              <Text style={[CommonStyles.body, styles.infoValue]}>
+                {user.plate || 'Não informado'}
+              </Text>
             </View>
           </View>
-        </View>
+        </Card>
 
+        {/* Card da Empresa */}
         {user.companyName && (
-          <View style={styles.companyCard}>
-            <Text style={styles.sectionTitle}>🏢 Empresa</Text>
-            <View style={styles.companyInfo}>
+          <Card style={styles.sectionCard}>
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              🏢 Empresa
+            </Text>
+            <View style={styles.infoList}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Nome:</Text>
-                <Text style={styles.infoValue}>{user.companyName}</Text>
+                <Text style={[CommonStyles.body, styles.infoLabel]}>Nome:</Text>
+                <Text style={[CommonStyles.body, styles.infoValue]}>
+                  {user.companyName}
+                </Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>CNPJ:</Text>
-                <Text style={styles.infoValue}>{user.companyCnpj || 'Não informado'}</Text>
+                <Text style={[CommonStyles.body, styles.infoLabel]}>CNPJ:</Text>
+                <Text style={[CommonStyles.body, styles.infoValue]}>
+                  {user.companyCnpj || 'Não informado'}
+                </Text>
               </View>
             </View>
-          </View>
+          </Card>
         )}
 
-        <View style={styles.notificationsSection}>
-          <Text style={styles.sectionTitle}>🔔 Notificações</Text>
+        {/* Card de Notificações */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            🔔 Notificações
+          </Text>
           <View style={styles.settingsList}>
-            {(Object.keys(notifications) as (keyof typeof notifications)[]).map((key) => (
-              <View style={styles.settingItem} key={key}>
+            {notificationSettings.map((setting) => (
+              <View key={setting.key} style={styles.settingItem}>
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>
-                    {key === 'newRoutes' ? 'Novos Roteiros' : 
-                     key === 'deliveryReminders' ? 'Lembretes de Entrega' : 
-                     key === 'paymentUpdates' ? 'Atualizações de Pagamento' : 
-                     'Mensagens do Sistema'}
+                  <View style={styles.settingIcon}>
+                    <Text style={styles.settingIconText}>{setting.icon}</Text>
+                  </View>
+                  <Text style={[CommonStyles.body, styles.settingLabel]}>
+                    {setting.label}
                   </Text>
                 </View>
                 <Switch
-                  value={notifications[key]}
-                  onValueChange={(value) => updateNotificationSetting(key, value)}
-                  trackColor={{ false: '#e1e5e9', true: '#81c784' }}
-                  thumbColor={notifications[key] ? '#4CAF50' : '#f4f3f4'}
+                  value={notifications[setting.key as keyof typeof notifications]}
+                  onValueChange={(value) => updateNotificationSetting(setting.key as keyof typeof notifications, value)}
+                  trackColor={{ 
+                    false: Theme.colors.gray[300], 
+                    true: `${Theme.colors.status.success}50` // 50% opacity
+                  }}
+                  thumbColor={
+                    notifications[setting.key as keyof typeof notifications] 
+                      ? Theme.colors.status.success 
+                      : Theme.colors.gray[400]
+                  }
                 />
               </View>
             ))}
           </View>
-        </View>
+        </Card>
 
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>⚙️ Configurações</Text>
+        {/* Card de Configurações */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            ⚙️ Configurações
+          </Text>
           <View style={styles.actionsList}>
-            <TouchableOpacity style={styles.actionItem} onPress={openSupport}>
-              <View style={styles.actionIcon}>
-                <Text style={styles.actionIconText}>🎧</Text>
-              </View>
-              <View style={styles.actionInfo}>
-                <Text style={styles.actionLabel}>Suporte</Text>
-                <Text style={styles.actionDescription}>Entre em contato conosco</Text>
-              </View>
-              <Text style={styles.actionChevron}>›</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionItem} 
-              onPress={() => Alert.alert("Editar Perfil", "Funcionalidade a ser implementada.")}
-            >
-              <View style={styles.actionIcon}>
-                <Text style={styles.actionIconText}>📝</Text>
-              </View>
-              <View style={styles.actionInfo}>
-                <Text style={styles.actionLabel}>Editar Perfil</Text>
-                <Text style={styles.actionDescription}>Alterar dados pessoais</Text>
-              </View>
-              <Text style={styles.actionChevron}>›</Text>
-            </TouchableOpacity>
+            {actionItems.map((action) => (
+              <TouchableOpacity 
+                key={action.key} 
+                style={styles.actionItem} 
+                onPress={action.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={styles.actionIcon}>
+                  <Text style={styles.actionIconText}>{action.icon}</Text>
+                </View>
+                <View style={styles.actionInfo}>
+                  <Text style={[CommonStyles.body, styles.actionLabel]}>
+                    {action.label}
+                  </Text>
+                  <Text style={[CommonStyles.bodySmall, styles.actionDescription]}>
+                    {action.description}
+                  </Text>
+                </View>
+                <Text style={styles.actionChevron}>›</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        </View>
+        </Card>
 
-        <View style={styles.appInfoSection}>
-          <Text style={styles.sectionTitle}>📱 Informações do App</Text>
+        {/* Card de Informações do App */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            📱 Informações do App
+          </Text>
           <View style={styles.infoList}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Versão do App</Text>
-              <Text style={styles.infoValue}>1.0.1</Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.infoRow} 
-              onPress={() => Alert.alert("Política de Privacidade", "Link para a política aqui.")}
-            >
-              <Text style={styles.infoLabel}>Política de Privacidade</Text>
-              <Text style={styles.actionChevron}>›</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.infoRow} 
-              onPress={() => Alert.alert("Termos de Uso", "Link para os termos aqui.")}
-            >
-              <Text style={styles.infoLabel}>Termos de Uso</Text>
-              <Text style={styles.actionChevron}>›</Text>
-            </TouchableOpacity>
+            {infoItems.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.infoRow}
+                onPress={item.onPress}
+                disabled={!item.onPress}
+                activeOpacity={item.onPress ? 0.7 : 1}
+              >
+                <Text style={[CommonStyles.body, styles.infoLabel]}>
+                  {item.label}
+                </Text>
+                <View style={styles.infoValueContainer}>
+                  {item.value ? (
+                    <Text style={[CommonStyles.body, styles.infoValue]}>
+                      {item.value}
+                    </Text>
+                  ) : (
+                    <Text style={styles.actionChevron}>›</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
-        </View>
+        </Card>
 
+        {/* Botão de Logout */}
         <View style={styles.logoutSection}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutButtonText}>🚪 Sair do App</Text>
-          </TouchableOpacity>
+          <Button
+            title="🚪 Sair do App"
+            onPress={handleLogout}
+            variant="danger"
+            fullWidth
+            size="large"
+          />
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
   scrollView: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+  
+  scrollContent: {
+    paddingBottom: Theme.spacing['3xl'],
   },
+  
   loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 10,
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
+  
   userCard: {
-    backgroundColor: 'white',
-    margin: 16,
-    padding: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    margin: Theme.spacing.lg,
+    backgroundColor: Theme.colors.primary.main,
   },
+  
+  userHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
   userAvatar: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: '#2196F3',
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: Theme.spacing.lg,
   },
+  
   userAvatarText: {
-    color: 'white',
+    color: Theme.colors.primary.contrastText,
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
+  
   userInfo: {
-    alignItems: 'center',
+    flex: 1,
   },
+  
   userName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    color: Theme.colors.primary.contrastText,
+    marginBottom: Theme.spacing.xs,
   },
+  
   userEmail: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 2,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: Theme.spacing.xs,
   },
+  
   userPhone: {
-    fontSize: 14,
-    color: '#2196F3',
+    color: Theme.colors.secondary.light,
+    fontWeight: Theme.typography.fontWeight.medium,
   },
-  vehicleCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  
+  sectionCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.lg,
   },
-  vehicleInfo: {
-    marginTop: 8,
+  
+  sectionTitle: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.lg,
   },
-  companyCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  
+  infoList: {
+    gap: Theme.spacing.sm,
   },
-  companyInfo: {
-    marginTop: 8,
-  },
+  
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: Theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f6',
+    borderBottomColor: Theme.colors.gray[100],
   },
+  
   infoLabel: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.secondary,
   },
+  
   infoValue: {
-    fontSize: 14,
-    color: '#333',
+    color: Theme.colors.text.primary,
     textAlign: 'right',
-    flexShrink: 1,
+    flex: 1,
+    marginLeft: Theme.spacing.md,
   },
-  notificationsSection: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  
+  infoValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
+  
   settingsList: {
-    marginTop: 8,
+    gap: Theme.spacing.md,
   },
+  
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f6',
+    paddingVertical: Theme.spacing.sm,
   },
+  
   settingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    marginRight: 12,
+    marginRight: Theme.spacing.md,
   },
+  
+  settingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: Theme.borderRadius.lg,
+    backgroundColor: Theme.colors.gray[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Theme.spacing.md,
+  },
+  
+  settingIconText: {
+    fontSize: Theme.typography.fontSize.lg,
+  },
+  
   settingLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#333',
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.primary,
   },
-  actionsSection: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+  
   actionsList: {
-    marginTop: 8,
+    gap: Theme.spacing.sm,
   },
+  
   actionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: Theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f6',
+    borderBottomColor: Theme.colors.gray[100],
   },
+  
   actionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#e9ecef',
+    width: 40,
+    height: 40,
+    borderRadius: Theme.borderRadius.lg,
+    backgroundColor: Theme.colors.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: Theme.spacing.md,
   },
+  
   actionIconText: {
-    fontSize: 16,
+    fontSize: Theme.typography.fontSize.lg,
   },
+  
   actionInfo: {
     flex: 1,
   },
+  
   actionLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 1,
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.xs / 2,
   },
+  
   actionDescription: {
-    fontSize: 12,
-    color: '#777',
+    color: Theme.colors.text.secondary,
   },
+  
   actionChevron: {
     fontSize: 18,
-    color: '#adb5bd',
+    color: Theme.colors.text.hint,
+    fontWeight: Theme.typography.fontWeight.medium,
   },
-  appInfoSection: {
-    backgroundColor: 'white',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoList: {
-    marginTop: 8,
-  },
+  
   logoutSection: {
-    marginHorizontal: 16,
-    marginBottom: 24,
-  },
-  logoutButton: {
-    backgroundColor: '#D32F2F',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  logoutButtonText: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: 'bold',
+    paddingHorizontal: Theme.spacing.lg,
+    marginTop: Theme.spacing.md,
   },
 });

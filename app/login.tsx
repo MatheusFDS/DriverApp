@@ -3,16 +3,17 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
+import { Button, Card, Theme, CommonStyles } from '../components/ui';
 
 export default function LoginScreen() {
   const { login, isLoading: authIsLoading, user } = useAuth();
@@ -34,8 +35,9 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      const success = await login(email, password); // Não envia mais o domínio
+      const success = await login(email, password);
       if (!success) {
+        // Error handling é feito pelo contexto
       }
     } catch (error) {
       console.error("Erro inesperado no handleLogin:", error);
@@ -46,183 +48,190 @@ export default function LoginScreen() {
   };
   
   if (authIsLoading) {
-      return (
-          <View style={styles.loadingScreenContainer}>
-              <ActivityIndicator size="large" color="#2196F3"/>
-              <Text style={styles.loadingScreenText}>Verificando sessão...</Text>
-          </View>
-      );
+    return (
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          Verificando sessão...
+        </Text>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logo}>🚚</Text>
-          <Text style={styles.title}>DeliveryApp</Text>
-          <Text style={styles.subtitle}>Sistema para Motoristas</Text>
-        </View>
-
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>📧 Seu Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Digite seu email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!isSubmitting}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>🔒 Sua Senha</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Digite sua senha"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!isSubmitting}
-            />
-          </View>
-
-          {/* CAMPO DE DOMÍNIO REMOVIDO DAQUI */}
-
-          <TouchableOpacity 
-            style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
-            onPress={handleLogin}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.loginButtonText}>🚀 Entrar</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
-            <Text style={styles.infoText}>
-              Use suas credenciais de motorista fornecidas pela empresa.
+    <SafeAreaView style={CommonStyles.safeContainer}>
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header com Logo */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoIcon}>
+              <Text style={styles.logoEmoji}>🚚</Text>
+            </View>
+            <Text style={[CommonStyles.heading1, styles.title]}>
+              DeliveryApp
+            </Text>
+            <Text style={[CommonStyles.bodyLarge, styles.subtitle]}>
+              Sistema para Motoristas
             </Text>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+          {/* Form Card */}
+          <Card style={styles.formCard}>
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                📧 Seu Email
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Digite seu email"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!isSubmitting}
+                autoComplete="email"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                🔒 Sua Senha
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Digite sua senha"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!isSubmitting}
+                autoComplete="password"
+              />
+            </View>
+
+            <Button
+              title={isSubmitting ? "Entrando..." : "🚀 Entrar"}
+              onPress={handleLogin}
+              disabled={isSubmitting}
+              loading={isSubmitting}
+              fullWidth
+              size="large"
+              style={styles.loginButton}
+            />
+          </Card>
+
+          {/* Info Card */}
+          <Card variant="outlined" style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoIcon}>ℹ️</Text>
+              <Text style={[CommonStyles.bodySmall, styles.infoText]}>
+                Use suas credenciais de motorista fornecidas pela empresa.
+              </Text>
+            </View>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingScreenContainer: {
+  keyboardContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
   },
-  loadingScreenText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
+  
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing['2xl'],
   },
+  
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: Theme.spacing['5xl'],
   },
-  logo: {
-    fontSize: 64,
-    marginBottom: 16,
+  
+  logoIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: Theme.borderRadius.xl,
+    backgroundColor: Theme.colors.primary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.lg,
+    ...Theme.shadows.lg,
   },
+  
+  logoEmoji: {
+    fontSize: 40,
+  },
+  
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#2196F3',
-    marginBottom: 8,
+    color: Theme.colors.primary.main,
+    marginBottom: Theme.spacing.sm,
   },
+  
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    color: Theme.colors.text.secondary,
     textAlign: 'center',
   },
-  formContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2, },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  
+  formCard: {
+    marginBottom: Theme.spacing.lg,
   },
+  
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: Theme.spacing.lg,
   },
+  
   inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.sm,
   },
+  
   input: {
-    borderWidth: 1,
-    borderColor: '#e1e5e9',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#f8f9fa',
+    fontSize: Theme.typography.fontSize.lg,
+    paddingVertical: Theme.spacing.lg,
   },
+  
   loginButton: {
-    backgroundColor: '#2196F3',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
+    marginTop: Theme.spacing.sm,
+  },
+  
+  infoCard: {
+    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    borderColor: `${Theme.colors.primary.main}20`, // 20% opacity
+  },
+  
+  infoRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  loginButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  loginButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  infoContainer: {
-    flexDirection: 'row',
-    marginTop: 24,
-    padding: 12,
-    backgroundColor: '#e3f2fd',
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
-  },
+  
   infoIcon: {
-    fontSize: 16,
-    marginRight: 8,
-    color: '#00695c',
+    fontSize: Theme.typography.fontSize.lg,
+    marginRight: Theme.spacing.sm,
+    color: Theme.colors.primary.main,
   },
+  
   infoText: {
     flex: 1,
-    fontSize: 12,
-    color: '#1e3a8a',
-    lineHeight: 16,
+    color: Theme.colors.primary.main,
+    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.relaxed,
+  },
+  
+  loadingText: {
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
   },
 });

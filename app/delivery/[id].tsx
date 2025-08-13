@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import ProofUploaderModal from '../../components/ProofUploaderModal';
@@ -20,13 +21,13 @@ import {
   OrderMobileStatus,
   getOrderMobileStatusConfig,
   getAvailableOrderActions,
-  getActionColor,
   StatusUpdatePayload,
   DeliveryProof,
 } from '../../types';
 
 import { api } from '../../services/api';
 import { currentApiConfig } from '@/config/apiConfig';
+import { Button, Card, StatusBadge, Theme, CommonStyles, getOrderStatusVariant } from '../../components/ui';
 
 export default function DeliveryDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -154,44 +155,66 @@ export default function DeliveryDetailsScreen() {
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
   };
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    });
+  };
+
   if (loading && !deliveryItem) {
     return (
-      <View style={styles.centeredFeedback}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>📦 Carregando detalhes da entrega...</Text>
-      </View>
+      <SafeAreaView style={CommonStyles.loadingState}>
+        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          📦 Carregando detalhes da entrega...
+        </Text>
+      </SafeAreaView>
     );
   }
 
   if (error && !deliveryItem) {
     return (
-      <View style={styles.centeredFeedback}>
-        <Text style={styles.errorEmoji}>❌</Text>
-        <Text style={styles.errorTitle}>Erro ao carregar</Text>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={loadDeliveryDetails}>
-          <Text style={styles.retryButtonText}>🔄 Tentar novamente</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Text style={styles.errorEmoji}>⚠️</Text>
+        <Text style={[CommonStyles.heading3, styles.errorTitle]}>
+          Erro ao carregar
+        </Text>
+        <Text style={[CommonStyles.body, styles.errorText]}>
+          {error}
+        </Text>
+        <Button
+          title="🔄 Tentar novamente"
+          onPress={loadDeliveryDetails}
+          style={styles.retryButton}
+        />
         {router.canGoBack() && (
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Text style={styles.backButtonText}>← Voltar</Text>
-            </TouchableOpacity>
+          <Button
+            title="← Voltar"
+            onPress={() => router.back()}
+            variant="outline"
+            style={styles.backButton}
+          />
         )}
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!deliveryItem) {
     return (
-      <View style={styles.centeredFeedback}>
-        <Text style={styles.errorEmoji}>📭</Text>
-        <Text style={styles.errorTitle}>Entrega não encontrada</Text>
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Text style={styles.errorEmoji}>🔭</Text>
+        <Text style={[CommonStyles.heading3, styles.errorTitle]}>
+          Entrega não encontrada
+        </Text>
         {router.canGoBack() && (
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Text style={styles.backButtonText}>← Voltar</Text>
-            </TouchableOpacity>
+          <Button
+            title="← Voltar"
+            onPress={() => router.back()}
+            variant="outline"
+          />
         )}
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -199,93 +222,148 @@ export default function DeliveryDetailsScreen() {
   const availableActions = getAvailableOrderActions(deliveryItem.status, deliveryItem.routeStatus);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={CommonStyles.container}>
       <ScrollView
-        contentContainerStyle={styles.scrollViewContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#007AFF"]} tintColor={"#007AFF"}/>}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[Theme.colors.primary.main]} 
+            tintColor={Theme.colors.primary.main}
+          />
+        }
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.deliveryHeader}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.deliveryTitle}>Pedido N°: {deliveryItem.numeroPedido}</Text>
-            <Text style={styles.customerName}>{deliveryItem.customerName}</Text>
+        {/* Header da Entrega */}
+        <Card style={styles.deliveryHeader}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerInfo}>
+              <Text style={[CommonStyles.bodySmall, styles.orderNumber]}>
+                Pedido Nº: {deliveryItem.numeroPedido}
+              </Text>
+              <Text style={[CommonStyles.heading3, styles.customerName]}>
+                {deliveryItem.customerName}
+              </Text>
+            </View>
+            <StatusBadge
+              text={statusConfig.text}
+              icon={statusConfig.icon}
+              variant={getOrderStatusVariant(deliveryItem.status)}
+              size="medium"
+            />
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
-            <Text style={styles.statusText}>{statusConfig.icon} {statusConfig.text}</Text>
-          </View>
-        </View>
+        </Card>
 
-        <View style={styles.statusDescription}>
-          <Text style={styles.statusDescriptionText}>{statusConfig.description}</Text>
-        </View>
+        {/* Descrição do Status */}
+        <Card variant="outlined" style={styles.statusDescription}>
+          <Text style={[CommonStyles.bodySmall, styles.statusDescriptionText]}>
+            {statusConfig.description}
+          </Text>
+        </Card>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👤 Informações do Cliente</Text>
-          <View style={styles.infoCard}>
+        {/* Informações do Cliente */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            👤 Informações do Cliente
+          </Text>
+          <View style={styles.infoList}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Nome:</Text>
-              <Text style={styles.infoValue}>{deliveryItem.customerName}</Text>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>Nome:</Text>
+              <Text style={[CommonStyles.body, styles.infoValue]}>
+                {deliveryItem.customerName}
+              </Text>
             </View>
             {deliveryItem.phone && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Telefone:</Text>
-                <TouchableOpacity onPress={callCustomer}>
-                  <Text style={[styles.infoValue, styles.linkText]}>📞 {deliveryItem.phone}</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity 
+                style={styles.infoRow} 
+                onPress={callCustomer}
+                activeOpacity={0.7}
+              >
+                <Text style={[CommonStyles.body, styles.infoLabel]}>Telefone:</Text>
+                <Text style={[CommonStyles.body, styles.infoValue, styles.linkText]}>
+                  📞 {deliveryItem.phone}
+                </Text>
+              </TouchableOpacity>
             )}
             {deliveryItem.nomeContato && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Contato:</Text>
-                <Text style={styles.infoValue}>{deliveryItem.nomeContato}</Text>
+                <Text style={[CommonStyles.body, styles.infoLabel]}>Contato:</Text>
+                <Text style={[CommonStyles.body, styles.infoValue]}>
+                  {deliveryItem.nomeContato}
+                </Text>
               </View>
             )}
           </View>
-        </View>
+        </Card>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📍 Endereço de Entrega</Text>
-          <View style={styles.addressCard}>
-            <Text style={styles.addressText}>{deliveryItem.address}</Text>
-            <TouchableOpacity style={styles.mapsButton} onPress={openMaps}>
-              <Text style={styles.mapsButtonText}>🗺️ Abrir no Mapa</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* Endereço de Entrega */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            📍 Endereço de Entrega
+          </Text>
+          <Text style={[CommonStyles.body, styles.addressText]}>
+            {deliveryItem.address}
+          </Text>
+          <Button
+            title="🗺️ Abrir no Mapa"
+            onPress={openMaps}
+            variant="outline"
+            fullWidth
+            style={styles.mapsButton}
+          />
+        </Card>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Detalhes do Pedido</Text>
-          <View style={styles.infoCard}>
+        {/* Detalhes do Pedido */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            📋 Detalhes do Pedido
+          </Text>
+          <View style={styles.infoList}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Valor:</Text>
-              <Text style={[styles.infoValue, styles.valueText]}>R$ {deliveryItem.value.toFixed(2)}</Text>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>Valor:</Text>
+              <Text style={[CommonStyles.body, styles.infoValue, styles.valueText]}>
+                {formatCurrency(deliveryItem.value)}
+              </Text>
             </View>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Pagamento:</Text>
-              <Text style={styles.infoValue}>{deliveryItem.paymentMethod}</Text>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>Pagamento:</Text>
+              <Text style={[CommonStyles.body, styles.infoValue]}>
+                {deliveryItem.paymentMethod}
+              </Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Itens:</Text>
+            <View style={styles.infoRowVertical}>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>Itens:</Text>
               <View style={styles.itemsList}>
                 {deliveryItem.items.map((item: string, index: number) => (
-                  <Text key={index} style={styles.itemText}>• {item}</Text>
+                  <Text key={index} style={[CommonStyles.bodySmall, styles.itemText]}>
+                    • {item}
+                  </Text>
                 ))}
               </View>
             </View>
           </View>
-        </View>
+        </Card>
 
+        {/* Instruções Especiais */}
         {deliveryItem.notes && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💬 Instruções Especiais</Text>
-            <View style={styles.notesCard}>
-              <Text style={styles.notesText}>{deliveryItem.notes}</Text>
-            </View>
-          </View>
+          <Card style={styles.notesCard}>
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              💬 Instruções Especiais
+            </Text>
+            <Text style={[CommonStyles.body, styles.notesText]}>
+              {deliveryItem.notes}
+            </Text>
+          </Card>
         )}
 
+        {/* Comprovantes de Entrega */}
         {deliveryItem.proofs && deliveryItem.proofs.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📸 Comprovantes de Entrega ({deliveryItem.proofCount})</Text>
+          <Card style={styles.sectionCard}>
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              📸 Comprovantes de Entrega ({deliveryItem.proofCount})
+            </Text>
             <View style={styles.proofsContainer}>
               {deliveryItem.proofs.map((proof: DeliveryProof) => {
                 const fullProofUrl = proof.proofUrl.startsWith('http')
@@ -297,13 +375,14 @@ export default function DeliveryDetailsScreen() {
                     key={proof.id} 
                     style={styles.proofCard}
                     onPress={() => viewProofImage(fullProofUrl)}
+                    activeOpacity={0.8}
                   >
                     <Image 
                       source={{ uri: fullProofUrl }} 
                       style={styles.proofThumbnail}
                       resizeMode="cover"
                     />
-                    <Text style={styles.proofDate}>
+                    <Text style={[CommonStyles.bodySmall, styles.proofDate]}>
                       {new Date(proof.createdAt).toLocaleDateString('pt-BR')} às{' '}
                       {new Date(proof.createdAt).toLocaleTimeString('pt-BR', { 
                         hour: '2-digit', 
@@ -314,70 +393,90 @@ export default function DeliveryDetailsScreen() {
                 );
               })}
             </View>
-          </View>
+          </Card>
         )}
         
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>⚡ Ações Rápidas</Text>
-          <View style={styles.actionButtonsContainer}>
+        {/* Ações Rápidas */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            ⚡ Ações Rápidas
+          </Text>
+          <View style={styles.quickActionsGrid}>
             {deliveryItem.phone && (
-              <TouchableOpacity style={[styles.actionButtonBase, styles.callButton]} onPress={callCustomer}>
-                <Text style={styles.actionButtonText}>📞 Ligar</Text>
-              </TouchableOpacity>
+              <Button
+                title="📞 Ligar"
+                onPress={callCustomer}
+                variant="outline"
+                style={styles.quickActionButton}
+              />
             )}
-            <TouchableOpacity style={[styles.actionButtonBase, styles.navigateButton]} onPress={openMaps}>
-              <Text style={styles.actionButtonText}>🗺️ Navegar</Text>
-            </TouchableOpacity>
-
+            <Button
+              title="🗺️ Navegar"
+              onPress={openMaps}
+              variant="outline"
+              style={styles.quickActionButton}
+            />
             {(deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE') && (
-              <TouchableOpacity
-                style={[styles.actionButtonBase, styles.proofButton]}
+              <Button
+                title="📷 Comprovante"
                 onPress={() => setShowProofCamera(true)}
-              >
-                <Text style={styles.actionButtonText}>📷 Adicionar Comprovante</Text>
-              </TouchableOpacity>
+                variant="outline"
+                style={styles.quickActionButton}
+              />
             )}
           </View>
-        </View>
+        </Card>
 
+        {/* Atualizar Status */}
         {availableActions.length > 0 && (
-          <View style={styles.statusActionsSection}>
-            <Text style={styles.sectionTitle}>🎯 Atualizar Situação da Entrega</Text>
+          <Card style={styles.sectionCard}>
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              🎯 Atualizar Situação da Entrega
+            </Text>
             <View style={styles.statusActionsContainer}>
               {availableActions.map((action) => (
-                <TouchableOpacity
+                <Button
                   key={action.id}
-                  style={[ styles.statusActionButtonBase, { backgroundColor: getActionColor(action.style) }]}
+                  title={action.label}
                   onPress={() => {
                     if (action.requiresReason && action.targetStatus === 'NAO_ENTREGUE') {
-                        Alert.prompt( 'Reportar Problema', 'Descreva o motivo da não entrega:',
-                            [{ text: 'Cancelar', style: 'cancel' }, { 
+                        Alert.prompt( 
+                          'Reportar Problema', 
+                          'Descreva o motivo da não entrega:',
+                          [
+                            { text: 'Cancelar', style: 'cancel' }, 
+                            { 
                               text: 'Confirmar', 
                               onPress: (motivo) => motivo && handleUpdateStatus(action.targetStatus, motivo, action.requiresProof) 
-                            }],
-                            'plain-text'
+                            }
+                          ],
+                          'plain-text'
                         );
                     } else {
                         handleUpdateStatus(action.targetStatus, undefined, action.requiresProof);
                     }
                   }}
+                  variant={action.style === 'success' ? 'success' : action.style === 'warning' ? 'danger' : 'primary'}
                   disabled={updatingStatus}
-                >
-                  <Text style={styles.statusActionButtonText}>
-                    {action.label}
-                  </Text>
-                </TouchableOpacity>
+                  loading={updatingStatus}
+                  fullWidth
+                  style={styles.statusActionButton}
+                />
               ))}
             </View>
-          </View>
+          </Card>
         )}
-        {updatingStatus && <ActivityIndicator style={{marginTop:10}} size="small" color="#007AFF"/>}
 
+        {/* Rodapé */}
         <View style={styles.footer}>
           {router.canGoBack() && (
-            <TouchableOpacity style={styles.backToRouteButton} onPress={() => router.back()}>
-              <Text style={styles.backToRouteText}>← Voltar</Text>
-            </TouchableOpacity>
+            <Button
+              title="← Voltar ao Roteiro"
+              onPress={() => router.back()}
+              variant="outline"
+              fullWidth
+              size="large"
+            />
           )}
         </View>
       </ScrollView>
@@ -394,11 +493,13 @@ export default function DeliveryDetailsScreen() {
         visible={!!viewingProof}
         transparent={true}
         onRequestClose={() => setViewingProof(null)}
+        animationType="fade"
       >
         <View style={styles.imageViewerContainer}>
           <TouchableOpacity 
             style={styles.imageViewerOverlay} 
             onPress={() => setViewingProof(null)}
+            activeOpacity={1}
           >
             <Image 
               source={{ uri: viewingProof || '' }} 
@@ -414,77 +515,257 @@ export default function DeliveryDetailsScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#E9ECEF' },
-  scrollViewContent: { paddingBottom: 20 },
-  centeredFeedback: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#E9ECEF' },
-  loadingText: { fontSize: 16, color: '#495057', marginTop: 10 },
-  errorEmoji: { fontSize: 50, marginBottom: 15 },
-  errorTitle: { fontSize: 20, fontWeight: 'bold', color: '#343A40', marginBottom: 8 },
-  errorText: { fontSize: 14, color: '#495057', textAlign: 'center', marginBottom: 20 },
-  retryButton: { backgroundColor: '#007AFF', paddingHorizontal: 25, paddingVertical: 12, borderRadius: 8, marginBottom: 10, elevation: 2 },
-  retryButtonText: { color: 'white', fontWeight: '600', fontSize: 15 },
-  backButton: { backgroundColor: '#6C757D', paddingHorizontal: 25, paddingVertical: 12, borderRadius: 8, elevation: 2 },
-  backButtonText: { color: 'white', fontWeight: '600', fontSize: 15 },
+  scrollView: {
+    flex: 1,
+  },
   
-  deliveryHeader: { backgroundColor: 'white', padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#DEE2E6' },
-  headerLeft: { flex: 1, marginRight: 10 },
-  deliveryTitle: { fontSize: 14, color: '#6C757D', marginBottom: 2 },
-  customerName: { fontSize: 22, fontWeight: 'bold', color: '#212529' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, minWidth: 100, alignItems: 'center', justifyContent: 'center' },
-  statusText: { color: 'white', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
-  statusDescription: { backgroundColor: '#f8f9fa', paddingVertical: 10, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#DEE2E6'},
-  statusDescriptionText: { fontSize: 13, color: '#495057', textAlign: 'center', fontStyle: 'italic' },
+  scrollContent: {
+    paddingBottom: Theme.spacing['2xl'],
+  },
   
-  section: { marginBottom: 12, },
-  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#343A40', paddingHorizontal: 16, marginBottom: 8, marginTop: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  loadingText: {
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
+  },
   
-  infoCard: { backgroundColor: 'white', marginHorizontal: 16, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, elevation: 1, borderWidth:1, borderColor:'#F0F0F0' },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  infoLabel: { fontSize: 14, color: '#6C757D', fontWeight: '500', marginRight: 8 },
-  infoValue: { fontSize: 14, color: '#212529', flexShrink: 1, textAlign: 'right' },
-  linkText: { color: '#007AFF', textDecorationLine: 'underline' },
-  valueText: { color: '#28A745', fontWeight: 'bold', fontSize: 15 },
-  itemsList: { flex: 1, alignItems: 'flex-end' },
-  itemText: { fontSize: 14, color: '#212529', marginBottom: 2 },
+  errorEmoji: {
+    fontSize: 64,
+    marginBottom: Theme.spacing.lg,
+  },
   
-  addressCard: { backgroundColor: 'white', marginHorizontal: 16, padding: 16, borderRadius: 8, elevation: 1, borderWidth:1, borderColor:'#F0F0F0' },
-  addressText: { fontSize: 15, color: '#212529', lineHeight: 22, marginBottom: 12 },
-  mapsButton: { backgroundColor: '#007AFF', padding: 12, borderRadius: 8, alignItems: 'center', elevation: 2 },
-  mapsButtonText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  errorTitle: {
+    color: Theme.colors.status.error,
+    marginBottom: Theme.spacing.sm,
+    textAlign: 'center',
+  },
   
-  notesCard: { backgroundColor: '#FFF9C4', marginHorizontal: 16, padding: 16, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#FFEB3B', elevation: 1 },
-  notesText: { fontSize: 14, color: '#5D4037', lineHeight: 20 },
-
-  proofsContainer: { paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap' },
-  proofCard: { backgroundColor: 'white', borderRadius: 8, padding: 8, marginBottom: 12, elevation: 2, marginRight: 12, width: 150, alignItems: 'center' },
-  proofThumbnail: { width: 134, height: 100, borderRadius: 8, marginBottom: 8 },
-  proofDate: { fontSize: 12, color: '#666', textAlign: 'center' },
-
-  actionsSection: { marginBottom: 16, marginTop: 10 },
-  actionButtonsContainer: { flexDirection: 'row', paddingHorizontal: 16, justifyContent: 'space-around', flexWrap: 'wrap' },
-  actionButtonBase: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginHorizontal: 4, marginVertical: 4, elevation: 2, borderWidth:1, borderColor: '#CED4DA'},
-  actionButtonText: { color: '#333', fontWeight: 'bold', fontSize: 12 },
-  callButton: { backgroundColor: '#E3F2FD' },
-  navigateButton: { backgroundColor: '#E8F5E9' },
-  proofButton: { backgroundColor: '#FFF3E0' },
+  errorText: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing.xl,
+  },
   
-  statusActionsSection: { marginBottom: 16, marginTop: 10 },
-  statusActionsContainer: { paddingHorizontal: 16, gap: 10 },
-  statusActionButtonBase: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', elevation: 2, borderWidth:1, borderColor:'transparent' },
-  statusActionButtonText: { color: 'white', fontSize: 14, fontWeight: 'bold' },
+  retryButton: {
+    marginBottom: Theme.spacing.md,
+  },
   
-  footer: { paddingHorizontal: 16, paddingTop:10, paddingBottom: 24 },
-  backToRouteButton: { backgroundColor: '#6C757D', padding: 14, borderRadius: 8, alignItems: 'center', elevation: 2 },
-  backToRouteText: { color: 'white', fontSize: 15, fontWeight: 'bold' },
-
-  imageViewerContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)' },
-  imageViewerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  fullScreenImage: { width: '90%', height: '80%' },
-  closeImageViewer: { position: 'absolute', top: 50, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.8)', justifyContent: 'center', alignItems: 'center' },
-  closeImageViewerText: { fontSize: 20, fontWeight: 'bold' },
+  backButton: {
+    minWidth: 200,
+  },
+  
+  deliveryHeader: {
+    margin: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
+  },
+  
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  
+  headerInfo: {
+    flex: 1,
+    marginRight: Theme.spacing.md,
+  },
+  
+  orderNumber: {
+    color: Theme.colors.text.secondary,
+    marginBottom: Theme.spacing.xs / 2,
+  },
+  
+  customerName: {
+    color: Theme.colors.text.primary,
+  },
+  
+  statusDescription: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    borderColor: `${Theme.colors.primary.main}20`, // 20% opacity
+  },
+  
+  statusDescriptionText: {
+    color: Theme.colors.primary.main,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  
+  sectionCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+  },
+  
+  sectionTitle: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.lg,
+  },
+  
+  infoList: {
+    gap: Theme.spacing.sm,
+  },
+  
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.gray[100],
+  },
+  
+  infoRowVertical: {
+    paddingVertical: Theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.gray[100],
+  },
+  
+  infoLabel: {
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.secondary,
+    marginRight: Theme.spacing.sm,
+  },
+  
+  infoValue: {
+    color: Theme.colors.text.primary,
+    textAlign: 'right',
+    flex: 1,
+  },
+  
+  linkText: {
+    color: Theme.colors.primary.main,
+    textDecorationLine: 'underline',
+  },
+  
+  valueText: {
+    color: Theme.colors.status.success,
+    fontWeight: Theme.typography.fontWeight.bold,
+    fontSize: Theme.typography.fontSize.lg,
+  },
+  
+  itemsList: {
+    marginTop: Theme.spacing.sm,
+    gap: Theme.spacing.xs,
+  },
+  
+  itemText: {
+    color: Theme.colors.text.primary,
+    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.normal,
+  },
+  
+  addressText: {
+    color: Theme.colors.text.primary,
+    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.relaxed,
+    marginBottom: Theme.spacing.lg,
+  },
+  
+  mapsButton: {
+    borderColor: Theme.colors.status.info,
+  },
+  
+  notesCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    backgroundColor: `${Theme.colors.secondary.main}08`, // 8% opacity
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.secondary.main,
+  },
+  
+  notesText: {
+    color: Theme.colors.text.primary,
+    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.relaxed,
+  },
+  
+  proofsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Theme.spacing.md,
+  },
+  
+  proofCard: {
+    backgroundColor: Theme.colors.gray[50],
+    borderRadius: Theme.borderRadius.base,
+    padding: Theme.spacing.sm,
+    alignItems: 'center',
+    width: 150,
+    ...Theme.shadows.sm,
+  },
+  
+  proofThumbnail: {
+    width: 134,
+    height: 100,
+    borderRadius: Theme.borderRadius.base,
+    marginBottom: Theme.spacing.sm,
+    backgroundColor: Theme.colors.gray[200],
+  },
+  
+  proofDate: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+  
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Theme.spacing.sm,
+  },
+  
+  quickActionButton: {
+    flex: 1,
+    minWidth: 100,
+  },
+  
+  statusActionsContainer: {
+    gap: Theme.spacing.md,
+  },
+  
+  statusActionButton: {
+    // Estilos específicos se necessário
+  },
+  
+  footer: {
+    paddingHorizontal: Theme.spacing.lg,
+    paddingTop: Theme.spacing.md,
+  },
+  
+  imageViewerContainer: {
+    flex: 1,
+    backgroundColor: Theme.colors.overlay,
+  },
+  
+  imageViewerOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  fullScreenImage: {
+    width: '90%',
+    height: '80%',
+  },
+  
+  closeImageViewer: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  closeImageViewerText: {
+    fontSize: 20,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Theme.colors.text.primary,
+  },
 });

@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { 
@@ -19,8 +20,10 @@ import {
   getAvailableOrderActions,
   getOrderMobileStatusConfig,
   getRouteMobileStatusConfig,
-  OrderActionMobile} from '../../types'; 
+  OrderActionMobile
+} from '../../types'; 
 import { api } from '../../services/api';
+import { Button, Card, StatusBadge, Theme, CommonStyles, getOrderStatusVariant, getRouteStatusVariant } from '../../components/ui';
 
 export default function RouteDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -108,7 +111,6 @@ export default function RouteDetailsScreen() {
       const routeStatusConfig = route ? getRouteMobileStatusConfig(route.status) : null;
       let message = `A entrega "${deliveryItem.customerName}" já está ${currentItemStatusConfig.text.toLowerCase()}.`;
       
-      // CORREÇÃO: Verificação usando 'INICIADO' ao invés de 'iniciado'
       if (routeStatusConfig && routeStatusConfig.text !== 'INICIADO') {
         message = `O roteiro está ${routeStatusConfig.text.toLowerCase()} e não permite mais alterações nas entregas.`;
       }
@@ -152,181 +154,522 @@ export default function RouteDetailsScreen() {
   const navigateToDeliveryItemDetails = (deliveryItemId: string) => {
     router.push(`/delivery/${deliveryItemId}`); 
   };
+
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  };
   
   const currentRouteStatusConfig = route ? getRouteMobileStatusConfig(route.status) : getRouteMobileStatusConfig('INICIADO' as RouteMobileStatus);
 
   if (loading && !route) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>⏳ Carregando detalhes do roteiro...</Text>
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.loadingState}>
+        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          ⏳ Carregando detalhes do roteiro...
+        </Text>
+      </SafeAreaView>
     );
   }
 
   if (error && !route) {
     return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>❌</Text>
-          <Text style={styles.errorTitle}>Erro ao carregar</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadRouteDetails}>
-            <Text style={styles.retryButtonText}>🔄 Tentar novamente</Text>
-          </TouchableOpacity>
-          {router.canGoBack() && (
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Text style={styles.backButtonText}>← Voltar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Text style={styles.errorEmoji}>⚠️</Text>
+        <Text style={[CommonStyles.heading3, styles.errorTitle]}>
+          Erro ao carregar
+        </Text>
+        <Text style={[CommonStyles.body, styles.errorText]}>
+          {error}
+        </Text>
+        <Button
+          title="🔄 Tentar novamente"
+          onPress={loadRouteDetails}
+          style={styles.retryButton}
+        />
+        {router.canGoBack() && (
+          <Button
+            title="← Voltar"
+            onPress={() => router.back()}
+            variant="outline"
+            style={styles.backButton}
+          />
+        )}
+      </SafeAreaView>
     );
   }
 
   if (!route) {
     return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>📭</Text>
-          <Text style={styles.errorTitle}>Roteiro não encontrado</Text>
-          {router.canGoBack() && (
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                <Text style={styles.backButtonText}>← Voltar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Text style={styles.errorEmoji}>🔭</Text>
+        <Text style={[CommonStyles.heading3, styles.errorTitle]}>
+          Roteiro não encontrado
+        </Text>
+        {router.canGoBack() && (
+          <Button
+            title="← Voltar"
+            onPress={() => router.back()}
+            variant="outline"
+          />
+        )}
+      </SafeAreaView>
     );
   }
 
   const completedCount = route.deliveries.filter(d => d.status === 'ENTREGUE').length;
+  const progress = route.deliveries.length > 0 ? (completedCount / route.deliveries.length) * 100 : 0;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={CommonStyles.container}>
       <ScrollView 
         style={styles.scrollView}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#007AFF"]} tintColor={"#007AFF"} />}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[Theme.colors.primary.main]} 
+            tintColor={Theme.colors.primary.main}
+          />
+        }
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.routeHeader, {backgroundColor: currentRouteStatusConfig.color || '#2196F3'}]}>
-          <Text style={styles.routeTitle}>🚛 Roteiro {new Date(route.date).toLocaleDateString('pt-BR')}</Text>
-          <View style={styles.statusBadgeAlt}>
-            <Text style={styles.statusTextAlt}>{currentRouteStatusConfig.icon} {currentRouteStatusConfig.text}</Text>
+        {/* Header do Roteiro */}
+        <Card style={StyleSheet.flatten([styles.routeHeader, { backgroundColor: currentRouteStatusConfig.color || Theme.colors.primary.main }])}>
+          <View style={styles.headerContent}>
+            <View style={styles.headerInfo}>
+              <Text style={[CommonStyles.heading3, styles.routeTitle]}>
+                🚛 Roteiro {formatDate(route.date)}
+              </Text>
+              <Text style={[CommonStyles.bodyLarge, styles.routeValue]}>
+                💰 {formatCurrency(route.totalValue)}
+              </Text>
+            </View>
+            
+            <StatusBadge
+              text={currentRouteStatusConfig.text}
+              icon={currentRouteStatusConfig.icon}
+              variant={getRouteStatusVariant(route.status)}
+              size="medium"
+              style={styles.statusBadgeHeader}
+            />
           </View>
-        </View>
+        </Card>
 
-        <View style={styles.routeSummary}>
-          <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Entregas</Text><Text style={styles.summaryValue}>{route.deliveries.length}</Text></View>
-          <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Concluídas</Text><Text style={[styles.summaryValue, { color: '#4CAF50' }]}>{completedCount}</Text></View>
-          <View style={styles.summaryItem}><Text style={styles.summaryLabel}>Valor Total</Text><Text style={[styles.summaryValue, { color: '#007AFF' }]}>R$ {route.totalValue.toFixed(2)}</Text></View>
-        </View>
+        {/* Resumo do Roteiro */}
+        <Card style={styles.summaryCard}>
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryItem}>
+              <View style={styles.summaryIcon}>
+                <Text style={styles.summaryIconText}>📦</Text>
+              </View>
+              <Text style={[CommonStyles.heading2, styles.summaryNumber]}>
+                {route.deliveries.length}
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.summaryLabel]}>
+                Total de Entregas
+              </Text>
+            </View>
+            
+            <View style={styles.summaryItem}>
+              <View style={styles.summaryIcon}>
+                <Text style={styles.summaryIconText}>✅</Text>
+              </View>
+              <Text style={[CommonStyles.heading2, styles.summaryNumber, styles.successNumber]}>
+                {completedCount}
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.summaryLabel]}>
+                Concluídas
+              </Text>
+            </View>
+            
+            <View style={styles.summaryItem}>
+              <View style={styles.summaryIcon}>
+                <Text style={styles.summaryIconText}>💰</Text>
+              </View>
+              <Text style={[CommonStyles.heading2, styles.summaryNumber, styles.valueNumber]}>
+                {formatCurrency(route.totalValue)}
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.summaryLabel]}>
+                Valor Total
+              </Text>
+            </View>
+          </View>
+        </Card>
 
-        {/* CORREÇÃO: Usando 'INICIADO' para verificar se deve mostrar progresso */}
+        {/* Barra de Progresso */}
         {route.status === 'INICIADO' && (
-          <View style={styles.progressContainer}>
-            <Text style={styles.progressLabel}>Progresso: {completedCount} de {route.deliveries.length}</Text>
-            <View style={styles.progressBar}><View style={[styles.progressFill, { width: `${route.deliveries.length > 0 ? (completedCount / route.deliveries.length) * 100 : 0}%` }]} /></View>
-          </View>
+          <Card style={styles.progressCard}>
+            <View style={styles.progressHeader}>
+              <Text style={[CommonStyles.body, styles.progressLabel]}>
+                Progresso do Roteiro
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.progressPercentage]}>
+                {progress.toFixed(0)}%
+              </Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${progress}%` }]} />
+              </View>
+            </View>
+            <Text style={[CommonStyles.bodySmall, styles.progressText]}>
+              {completedCount} de {route.deliveries.length} entregas concluídas
+            </Text>
+          </Card>
         )}
 
+        {/* Lista de Entregas */}
         <View style={styles.deliveriesSection}>
-          <Text style={styles.sectionTitle}>📋 Itens de Entrega ({route.deliveries.length})</Text>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            📋 Itens de Entrega ({route.deliveries.length})
+          </Text>
+          
           {route.deliveries.map((deliveryItem, index) => {
             const itemStatusConfig = getOrderMobileStatusConfig(deliveryItem.status);
+            const isUpdating = updatingStatusDeliveryId === deliveryItem.id;
+            
             return (
-              <TouchableOpacity
+              <Card
                 key={deliveryItem.id}
-                style={[styles.deliveryCard, updatingStatusDeliveryId === deliveryItem.id && styles.deliveryCardUpdating]}
+                style={StyleSheet.flatten([
+                  styles.deliveryCard,
+                  isUpdating ? styles.deliveryCardUpdating : null
+                ])}
                 onPress={() => navigateToDeliveryItemDetails(deliveryItem.id)}
-                onLongPress={() => showDeliveryItemStatusUpdateOptions(deliveryItem)}
-                disabled={updatingStatusDeliveryId === deliveryItem.id}
               >
-                <View style={styles.deliveryHeaderCard}>
-                  <View style={[styles.deliveryNumber, {backgroundColor: itemStatusConfig.color || '#757575'}]}>
-                    <Text style={styles.deliveryNumberText}>{index + 1}</Text>
-                  </View>
-                  <View style={styles.deliveryInfo}>
-                    <Text style={styles.customerNameText}>{itemStatusConfig.icon} {deliveryItem.customerName}</Text>
-                    <Text style={styles.deliveryAddress} numberOfLines={1}>📍 {deliveryItem.address}</Text>
-                  </View>
-                  <View style={styles.deliveryValue}>
-                    <Text style={styles.valueText}>R$ {deliveryItem.value.toFixed(2)}</Text>
-                    <View style={[styles.statusIndicator, {backgroundColor: itemStatusConfig.color || '#757575'}]}>
-                      <Text style={styles.statusIndicatorText}>{itemStatusConfig.text}</Text>
+                <TouchableOpacity
+                  style={styles.deliveryCardContent}
+                  onLongPress={() => showDeliveryItemStatusUpdateOptions(deliveryItem)}
+                  disabled={isUpdating}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.deliveryHeader}>
+                    <View style={[
+                      styles.deliveryNumber, 
+                      { backgroundColor: itemStatusConfig.color || Theme.colors.gray[500] }
+                    ]}>
+                      <Text style={styles.deliveryNumberText}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.deliveryInfo}>
+                      <Text style={[CommonStyles.body, styles.customerName]}>
+                        {itemStatusConfig.icon} {deliveryItem.customerName}
+                      </Text>
+                      <Text style={[CommonStyles.bodySmall, styles.deliveryAddress]} numberOfLines={2}>
+                        📍 {deliveryItem.address}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.deliveryMeta}>
+                      <Text style={[CommonStyles.body, styles.deliveryValue]}>
+                        {formatCurrency(deliveryItem.value)}
+                      </Text>
+                      <StatusBadge
+                        text={itemStatusConfig.text}
+                        variant={getOrderStatusVariant(deliveryItem.status)}
+                        size="small"
+                      />
                     </View>
                   </View>
-                </View>
-                {updatingStatusDeliveryId === deliveryItem.id && (
-                  <View style={styles.updatingOverlay}><ActivityIndicator color="#007AFF" /><Text style={styles.updatingText}> Atualizando...</Text></View>
-                )}
-              </TouchableOpacity>
+                  
+                  {isUpdating && (
+                    <View style={styles.updatingOverlay}>
+                      <ActivityIndicator color={Theme.colors.primary.contrastText} size="small" />
+                      <Text style={[CommonStyles.bodySmall, styles.updatingText]}>
+                        Atualizando...
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </Card>
             );
           })}
         </View>
 
-        <View style={styles.actionsFooter}>
-          {router.canGoBack() && 
-            <TouchableOpacity style={styles.backToRoutesButton} onPress={() => router.back()}>
-              <Text style={styles.backToRoutesText}>← Voltar</Text>
-            </TouchableOpacity>
-          }
+        {/* Rodapé */}
+        <View style={styles.footer}>
+          {router.canGoBack() && (
+            <Button
+              title="← Voltar aos Roteiros"
+              onPress={() => router.back()}
+              variant="outline"
+              fullWidth
+              size="large"
+            />
+          )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F2F5' },
-  scrollView: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F2F5' },
-  loadingText: { fontSize: 16, color: '#555', marginTop: 12 },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#F0F2F5' },
-  errorEmoji: { fontSize: 56, marginBottom: 16 },
-  errorTitle: { fontSize: 20, fontWeight: 'bold', color: '#D32F2F', marginBottom: 8 },
-  errorText: { fontSize: 15, color: '#424242', textAlign: 'center', marginBottom: 24 },
-  retryButton: { backgroundColor: '#00695c', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, elevation: 2, marginBottom: 10 },
-  retryButtonText: { color: 'white', fontWeight: '600', fontSize: 15 },
-  backButton: { backgroundColor: '#757575', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, elevation: 2 },
-  backButtonText: { color: 'white', fontWeight: '600', fontSize: 15 },
-
-  routeHeader: { paddingHorizontal: 16, paddingVertical: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', },
-  routeTitle: { fontSize: 20, fontWeight: 'bold', color: 'white', flexShrink: 1 },
-  statusBadgeAlt: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth:1, borderColor:'rgba(255,255,255,0.5)'},
-  statusTextAlt: { color: 'white', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase' },
-
-  routeSummary: { backgroundColor: '#FFFFFF', padding: 16, flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
-  summaryItem: { alignItems: 'center', flex:1 },
-  summaryLabel: { fontSize: 12, color: '#757575', marginBottom: 2, textTransform:'uppercase' },
-  summaryValue: { fontSize: 17, fontWeight: 'bold', color: '#212121' },
+  scrollView: {
+    flex: 1,
+  },
   
-  progressContainer: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
-  progressLabel: { fontSize: 13, color: '#424242', marginBottom: 6, textAlign: 'center' },
-  progressBar: { height: 10, backgroundColor: '#E0E0E0', borderRadius: 5, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#4CAF50', borderRadius: 5 },
+  scrollContent: {
+    paddingBottom: Theme.spacing['2xl'],
+  },
   
-  deliveriesSection: { paddingHorizontal: 12, paddingTop: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 12, paddingHorizontal: 4 },
+  loadingText: {
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
+  },
   
-  deliveryCard: { backgroundColor: 'white', borderRadius: 10, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2.5, elevation: 3, overflow:'hidden' },
-  deliveryCardUpdating: { opacity: 0.7 },
-  deliveryHeaderCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth:1, borderBottomColor: '#F0F0F0' },
-  deliveryNumber: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  deliveryNumberText: { color: 'white', fontSize: 14, fontWeight: 'bold' },
-  deliveryInfo: { flex: 1, marginRight: 8 },
-  customerNameText: { fontSize: 15, fontWeight: '600', color: '#263238', marginBottom: 2 },
-  deliveryAddress: { fontSize: 13, color: '#546E7A' },
-  deliveryValue: { alignItems: 'flex-end', minWidth: 70 },
-  valueText: { fontSize: 15, fontWeight: 'bold', color: '#388E3C', marginBottom: 3 },
-  statusIndicator: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, alignItems: 'center' },
-  statusIndicatorText: { color: 'white', fontSize: 9, fontWeight: 'bold', textTransform:'uppercase' },
+  errorEmoji: {
+    fontSize: 64,
+    marginBottom: Theme.spacing.lg,
+  },
   
-  updatingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', flexDirection:'row', borderRadius: 10 },
-  updatingText: { fontSize: 14, color: '#FFFFFF', fontWeight: 'bold', marginLeft: 8 },
+  errorTitle: {
+    color: Theme.colors.status.error,
+    marginBottom: Theme.spacing.sm,
+    textAlign: 'center',
+  },
   
-  actionsFooter: { padding: 16, borderTopWidth:1, borderTopColor:'#E0E0E0', backgroundColor:'#FFFFFF', marginTop:10 },
-  backToRoutesButton: { backgroundColor: '#757575', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  backToRoutesText: { color: 'white', fontSize: 15, fontWeight: 'bold' },
+  errorText: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing.xl,
+  },
+  
+  retryButton: {
+    marginBottom: Theme.spacing.md,
+  },
+  
+  backButton: {
+    minWidth: 200,
+  },
+  
+  routeHeader: {
+    margin: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+  },
+  
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  
+  headerInfo: {
+    flex: 1,
+    marginRight: Theme.spacing.md,
+  },
+  
+  routeTitle: {
+    color: Theme.colors.primary.contrastText,
+    marginBottom: Theme.spacing.xs,
+  },
+  
+  routeValue: {
+    color: Theme.colors.secondary.light,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  
+  statusBadgeHeader: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  
+  summaryCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+  },
+  
+  summaryGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  
+  summaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  
+  summaryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: Theme.borderRadius.lg,
+    backgroundColor: Theme.colors.gray[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  summaryIconText: {
+    fontSize: 20,
+  },
+  
+  summaryNumber: {
+    color: Theme.colors.text.primary,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginBottom: Theme.spacing.xs,
+  },
+  
+  successNumber: {
+    color: Theme.colors.status.success,
+  },
+  
+  valueNumber: {
+    fontSize: Theme.typography.fontSize.lg,
+    color: Theme.colors.primary.main,
+  },
+  
+  summaryLabel: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+  
+  progressCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+  },
+  
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  progressLabel: {
+    color: Theme.colors.text.primary,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+  },
+  
+  progressPercentage: {
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  
+  progressBarContainer: {
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  progressBar: {
+    height: 8,
+    backgroundColor: Theme.colors.gray[200],
+    borderRadius: Theme.borderRadius.sm,
+    overflow: 'hidden',
+  },
+  
+  progressFill: {
+    height: '100%',
+    backgroundColor: Theme.colors.status.success,
+    borderRadius: Theme.borderRadius.sm,
+  },
+  
+  progressText: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+  
+  deliveriesSection: {
+    paddingHorizontal: Theme.spacing.lg,
+  },
+  
+  sectionTitle: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.lg,
+  },
+  
+  deliveryCard: {
+    marginBottom: Theme.spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: Theme.colors.primary.main,
+  },
+  
+  deliveryCardUpdating: {
+    opacity: 0.7,
+  },
+  
+  deliveryCardContent: {
+    position: 'relative',
+  },
+  
+  deliveryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  deliveryNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: Theme.borderRadius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Theme.spacing.md,
+  },
+  
+  deliveryNumberText: {
+    color: Theme.colors.primary.contrastText,
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  
+  deliveryInfo: {
+    flex: 1,
+    marginRight: Theme.spacing.md,
+  },
+  
+  customerName: {
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.xs / 2,
+  },
+  
+  deliveryAddress: {
+    color: Theme.colors.text.secondary,
+    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.normal,
+  },
+  
+  deliveryMeta: {
+    alignItems: 'flex-end',
+    minWidth: 100,
+  },
+  
+  deliveryValue: {
+    color: Theme.colors.status.success,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginBottom: Theme.spacing.xs,
+  },
+  
+  updatingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Theme.colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    borderRadius: Theme.borderRadius.lg,
+  },
+  
+  updatingText: {
+    color: Theme.colors.primary.contrastText,
+    fontWeight: Theme.typography.fontWeight.bold,
+    marginLeft: Theme.spacing.sm,
+  },
+  
+  footer: {
+    paddingHorizontal: Theme.spacing.lg,
+    paddingTop: Theme.spacing.lg,
+  },
 });

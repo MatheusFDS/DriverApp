@@ -4,14 +4,15 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { getRouteMobileStatusConfig,  RouteMobile as Route } from '../../types';
+import { getRouteMobileStatusConfig, RouteMobile as Route } from '../../types';
 import { api } from '../../services/api';
+import { Button, Card, StatusBadge, Theme, CommonStyles, getRouteStatusVariant } from '../../components/ui';
 
 export default function RoutesScreen() {
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -33,10 +34,8 @@ export default function RoutesScreen() {
       
       if (response.success && response.data) {
         setRoutes(response.data);
-        // CORREÇÃO: Status para rota ativa agora é 'INICIADO' (UPPER_CASE)
         const active = response.data.find(route => route.status === 'INICIADO'); 
         setActiveRoute(active);
-        
       } else {
         setError(response.message || 'Erro ao carregar roteiros');
       }
@@ -59,325 +58,363 @@ export default function RoutesScreen() {
     router.push(`/route/${routeId}`);
   };
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { 
+      style: 'currency', 
+      currency: 'BRL' 
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('pt-BR');
+  };
+
   if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-          <Text style={styles.loadingText}>⏳ Carregando roteiros...</Text>
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.loadingState}>
+        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          ⏳ Carregando roteiros...
+        </Text>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>❌</Text>
-          <Text style={styles.errorTitle}>Erro ao carregar</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadRoutes}>
-            <Text style={styles.retryButtonText}>🔄 Tentar novamente</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Text style={styles.errorEmoji}>⚠️</Text>
+        <Text style={[CommonStyles.heading3, styles.errorTitle]}>
+          Erro ao carregar
+        </Text>
+        <Text style={[CommonStyles.body, styles.errorText]}>
+          {error}
+        </Text>
+        <Button
+          title="🔄 Tentar novamente"
+          onPress={loadRoutes}
+          style={styles.retryButton}
+        />
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={CommonStyles.container}>
       <ScrollView 
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#007AFF"]} tintColor={"#007AFF"} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            colors={[Theme.colors.primary.main]} 
+            tintColor={Theme.colors.primary.main}
+          />
         }
+        showsVerticalScrollIndicator={false}
       >
+        {/* Roteiro Ativo em Destaque */}
         {activeRoute && (
           <View style={styles.activeSection}>
-            <Text style={styles.sectionTitle}>🚛 Roteiro Ativo</Text>
-            <TouchableOpacity
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              🚛 Roteiro Ativo
+            </Text>
+            
+            <Card 
               style={styles.activeRouteCard}
               onPress={() => navigateToRoute(activeRoute.id)}
             >
               <View style={styles.activeRouteHeader}>
-                <Text style={styles.activeRouteTitle}>
-                  Roteiro {new Date(activeRoute.date).toLocaleDateString('pt-BR')}
-                </Text>
-                <View style={[styles.statusBadge, { backgroundColor: getRouteMobileStatusConfig(activeRoute.status).color }]}>
-                  <Text style={styles.statusText}>
-                    {getRouteMobileStatusConfig(activeRoute.status).icon} {getRouteMobileStatusConfig(activeRoute.status).text}
+                <View style={styles.activeRouteInfo}>
+                  <Text style={[CommonStyles.heading3, styles.activeRouteTitle]}>
+                    📅 {formatDate(activeRoute.date)}
+                  </Text>
+                  <Text style={[CommonStyles.bodyLarge, styles.activeRouteValue]}>
+                    💰 {formatCurrency(activeRoute.totalValue)}
                   </Text>
                 </View>
+                
+                <StatusBadge
+                  text="EM ANDAMENTO"
+                  icon="🔥"
+                  variant="primary"
+                  size="medium"
+                />
               </View>
               
               <View style={styles.activeRouteDetails}>
-                <Text style={styles.activeRouteValue}>
-                  💰 R$ {activeRoute.totalValue.toFixed(2)}
-                </Text>
-                <Text style={styles.activeRouteDeliveries}>
-                  📦 {activeRoute.deliveries.length} entregas
-                </Text>
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailIcon}>📦</Text>
+                  <Text style={[CommonStyles.body, styles.detailText]}>
+                    {activeRoute.deliveries.length} entregas
+                  </Text>
+                </View>
+                
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailIcon}>✅</Text>
+                  <Text style={[CommonStyles.body, styles.detailText]}>
+                    {activeRoute.deliveries.filter(d => d.status === 'ENTREGUE').length} concluídas
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.continueButtonContainer}>
-                <Text style={styles.continueButtonText}>
+              <View style={styles.continueButton}>
+                <Text style={[CommonStyles.bodySmall, styles.continueButtonText]}>
                   👆 Toque para continuar o roteiro
                 </Text>
               </View>
-            </TouchableOpacity>
+            </Card>
           </View>
         )}
 
+        {/* Lista de Todos os Roteiros */}
         <View style={styles.allRoutesSection}>
-          <Text style={styles.sectionTitle}>📋 Todos os Roteiros</Text>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            📋 Todos os Roteiros ({routes.length})
+          </Text>
           
-          {routes.map((route) => {
-            const statusConfig = getRouteMobileStatusConfig(route.status);
-            return (
-              <TouchableOpacity
-                key={route.id}
-                style={[
-                  styles.routeCard,
-                  // CORREÇÃO: Usando 'INICIADO' para o status ativo
-                  route.status === 'INICIADO' && styles.activeRouteCardBorder 
-                ]}
-                onPress={() => navigateToRoute(route.id)}
-              >
-                <View style={styles.routeHeader}>
-                  <View>
-                    <Text style={styles.routeDate}>📅 {new Date(route.date).toLocaleDateString('pt-BR')}</Text>
-                    <Text style={styles.routeValue}>
-                      💰 R$ {route.totalValue.toFixed(2)}
-                    </Text>
+          {routes.length === 0 ? (
+            <Card style={styles.emptyState}>
+              <Text style={styles.emptyStateEmoji}>🔭</Text>
+              <Text style={[CommonStyles.heading3, styles.emptyStateTitle]}>
+                Nenhum roteiro encontrado
+              </Text>
+              <Text style={[CommonStyles.body, styles.emptyStateSubtitle]}>
+                Novos roteiros aparecerão aqui quando disponíveis
+              </Text>
+            </Card>
+          ) : (
+            routes.map((route) => {
+              const statusConfig = getRouteMobileStatusConfig(route.status);
+              const isActive = route.status === 'INICIADO';
+              
+              return (
+                <Card
+                  key={route.id}
+                  style={StyleSheet.flatten([
+                    styles.routeCard,
+                    isActive && styles.activeRouteCardBorder
+                  ])}
+                  onPress={() => navigateToRoute(route.id)}
+                >
+                  <View style={styles.routeHeader}>
+                    <View style={styles.routeMainInfo}>
+                      <Text style={[CommonStyles.body, styles.routeDate]}>
+                        📅 {formatDate(route.date)}
+                      </Text>
+                      <Text style={[CommonStyles.bodyLarge, styles.routeValue]}>
+                        💰 {formatCurrency(route.totalValue)}
+                      </Text>
+                    </View>
+                    
+                    <StatusBadge
+                      text={statusConfig.text}
+                      icon={statusConfig.icon}
+                      variant={getRouteStatusVariant(route.status)}
+                      size="small"
+                    />
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
-                    <Text style={styles.statusText}>
-                      {statusConfig.icon} {statusConfig.text}
+                  
+                  <View style={styles.routeDetails}>
+                    <Text style={[CommonStyles.bodySmall, styles.deliveryCount]}>
+                      📦 {route.deliveries.length} entregas
                     </Text>
+                    
+                    {isActive && (
+                      <Text style={[CommonStyles.bodySmall, styles.activeIndicator]}>
+                        🔥 Em andamento
+                      </Text>
+                    )}
                   </View>
-                </View>
-                
-                <Text style={styles.deliveryCount}>
-                  📦 {route.deliveries.length} entregas
-                </Text>
-                
-                {route.status === 'INICIADO' && (
-                  <Text style={styles.activeIndicator}>
-                    🔥 Roteiro em andamento
-                  </Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+                </Card>
+              );
+            })
+          )}
         </View>
-
-        {routes.length === 0 && !loading && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateEmoji}>📭</Text>
-            <Text style={styles.emptyStateTitle}>Nenhum roteiro encontrado</Text>
-            <Text style={styles.emptyStateSubtitle}>
-              Novos roteiros aparecerão aqui quando disponíveis
-            </Text>
-          </View>
-        )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
   scrollView: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  
+  scrollContent: {
+    paddingBottom: Theme.spacing['2xl'],
   },
+  
   loadingText: {
-    fontSize: 16,
-    color: '#666',
-    marginTop: 8,
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
+  
   errorEmoji: {
     fontSize: 64,
-    marginBottom: 16,
+    marginBottom: Theme.spacing.lg,
   },
+  
   errorTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#666',
+    color: Theme.colors.status.error,
+    marginBottom: Theme.spacing.sm,
     textAlign: 'center',
-    marginBottom: 20,
   },
+  
+  errorText: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing.xl,
+  },
+  
   retryButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    minWidth: 200,
   },
-  retryButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
+  
   activeSection: {
-    padding: 16,
+    padding: Theme.spacing.lg,
   },
+  
   allRoutesSection: {
-    padding: 16,
-    paddingTop: 0,
+    paddingHorizontal: Theme.spacing.lg,
   },
+  
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.lg,
   },
+  
   activeRouteCard: {
-    backgroundColor: '#e3f2fd', // Azul claro para destaque
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: '#2196F3', // Cor primária
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
   },
+  
   activeRouteHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: Theme.spacing.md,
   },
+  
+  activeRouteInfo: {
+    flex: 1,
+    marginRight: Theme.spacing.md,
+  },
+  
   activeRouteTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#00695c', // Tom de azul mais escuro
+    color: Theme.colors.primary.dark,
+    marginBottom: Theme.spacing.xs,
   },
+  
+  activeRouteValue: {
+    color: Theme.colors.status.success,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  
   activeRouteDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: Theme.spacing.lg,
   },
-  activeRouteValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#388E3C', // Verde para valor
-  },
-  activeRouteDeliveries: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#555',
-  },
-  continueButtonContainer: {
-    backgroundColor: 'rgba(33, 150, 243, 0.1)',
-    borderRadius: 8,
-    padding: 12,
+  
+  detailItem: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
+  
+  detailIcon: {
+    fontSize: Theme.typography.fontSize.base,
+    marginRight: Theme.spacing.xs,
+  },
+  
+  detailText: {
+    color: Theme.colors.text.primary,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  
+  continueButton: {
+    backgroundColor: `${Theme.colors.primary.main}15`, // 15% opacity
+    borderRadius: Theme.borderRadius.base,
+    padding: Theme.spacing.md,
+    alignItems: 'center',
+  },
+  
   continueButtonText: {
-    color: '#00695c',
-    fontWeight: '600',
-    fontSize: 14,
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.semiBold,
   },
+  
   routeCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    marginBottom: Theme.spacing.md,
+    borderLeftWidth: 1,
+    borderLeftColor: Theme.colors.divider,
   },
-  activeRouteCardBorder: { // Usado para roteiros 'INICIADO' na lista geral
-    borderColor: '#4CAF50', // Verde para indicar ativo
+  
+  activeRouteCardBorder: {
     borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.status.success,
   },
+  
   routeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: Theme.spacing.sm,
   },
+  
+  routeMainInfo: {
+    flex: 1,
+    marginRight: Theme.spacing.md,
+  },
+  
   routeDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    color: Theme.colors.text.primary,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    marginBottom: Theme.spacing.xs,
   },
+  
   routeValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#388E3C',
+    color: Theme.colors.status.success,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
+  
+  routeDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
   deliveryCount: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+    color: Theme.colors.text.secondary,
   },
+  
   activeIndicator: {
-    fontSize: 12,
-    color: '#E65100', // Laranja para "em andamento"
-    fontWeight: '600',
+    color: Theme.colors.secondary.main,
+    fontWeight: Theme.typography.fontWeight.semiBold,
     fontStyle: 'italic',
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16, // Mais arredondado para o badge
-    minWidth: 90,
-    alignItems: 'center',
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 10, // Um pouco menor
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
+  
   emptyState: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-    marginTop: 40, // Ajustado para não ficar tão no topo se a lista for pequena
+    paddingVertical: Theme.spacing['4xl'],
   },
+  
   emptyStateEmoji: {
-    fontSize: 56, // Um pouco menor
-    marginBottom: 16,
+    fontSize: 56,
+    marginBottom: Theme.spacing.lg,
   },
+  
   emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.sm,
     textAlign: 'center',
   },
+  
   emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#666',
+    color: Theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.relaxed,
   },
 });

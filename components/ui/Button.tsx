@@ -1,17 +1,19 @@
 // components/ui/Button.tsx
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
+import { Theme } from '../../constants/Theme';
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger' | 'success';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: string;
+  fullWidth?: boolean;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -24,96 +26,151 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
   icon,
+  fullWidth = false,
 }) => {
+  const isDisabled = disabled || loading;
+
+  const buttonStyle = [
+    styles.button,
+    styles[variant],
+    styles[`${size}Size`],
+    fullWidth && styles.fullWidth,
+    isDisabled && styles.disabled,
+    style,
+  ];
+
+  const buttonTextStyle = [
+    styles.text,
+    styles[`${variant}Text`],
+    styles[`${size}Text`],
+    isDisabled && styles.disabledText,
+    textStyle,
+  ];
+
+  const getLoadingColor = () => {
+    if (variant === 'outline' || variant === 'ghost') {
+      return Theme.colors.primary.main;
+    }
+    return '#ffffff';
+  };
+
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        styles[variant],
-        styles[`${size}Size`],
-        disabled && styles.disabled,
-        style,
-      ]}
+      style={buttonStyle}
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={isDisabled}
+      activeOpacity={isDisabled ? 1 : 0.7}
     >
-      <Text style={[
-        styles.text, 
-        styles[`${variant}Text`], 
-        styles[`${size}Text`], 
-        textStyle
-      ]}>
-        {icon && `${icon} `}{loading ? 'Carregando...' : title}
-      </Text>
+      {loading ? (
+        <ActivityIndicator 
+          color={getLoadingColor()} 
+          size={size === 'small' ? 'small' : 'small'}
+        />
+      ) : (
+        <Text style={buttonTextStyle}>
+          {icon && `${icon} `}{title}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: Theme.borderRadius.base,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    ...Theme.shadows.sm,
   },
+  
   text: {
-    fontWeight: 'bold',
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    textAlign: 'center',
+  },
+  
+  fullWidth: {
+    width: '100%',
   },
   
   // Variants
   primary: {
-    backgroundColor: '#2196F3',
+    backgroundColor: Theme.colors.primary.main,
   },
   secondary: {
-    backgroundColor: '#6c757d',
+    backgroundColor: Theme.colors.secondary.main,
+  },
+  outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Theme.colors.primary.main,
+  },
+  ghost: {
+    backgroundColor: 'transparent',
   },
   danger: {
-    backgroundColor: '#f44336',
+    backgroundColor: Theme.colors.status.error,
   },
   success: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Theme.colors.status.success,
   },
+  
   disabled: {
-    backgroundColor: '#ccc',
-    opacity: 0.6,
+    backgroundColor: Theme.colors.gray[300],
+    shadowOpacity: 0,
+    elevation: 0,
   },
   
   // Text colors
   primaryText: {
-    color: 'white',
+    color: Theme.colors.primary.contrastText,
   },
   secondaryText: {
-    color: 'white',
+    color: Theme.colors.secondary.contrastText,
+  },
+  outlineText: {
+    color: Theme.colors.primary.main,
+  },
+  ghostText: {
+    color: Theme.colors.primary.main,
   },
   dangerText: {
-    color: 'white',
+    color: '#ffffff',
   },
   successText: {
-    color: 'white',
+    color: '#ffffff',
+  },
+  
+  disabledText: {
+    color: Theme.colors.text.disabled,
   },
   
   // Sizes
   smallSize: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.md,
+    minHeight: 36,
   },
   mediumSize: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.lg,
+    minHeight: 44,
   },
   largeSize: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: Theme.spacing.lg,
+    paddingHorizontal: Theme.spacing.xl,
+    minHeight: 52,
   },
   
   // Text sizes
   smallText: {
-    fontSize: 12,
+    fontSize: Theme.typography.fontSize.sm,
   },
   mediumText: {
-    fontSize: 14,
+    fontSize: Theme.typography.fontSize.base,
   },
   largeText: {
-    fontSize: 16,
+    fontSize: Theme.typography.fontSize.lg,
   },
 });
 

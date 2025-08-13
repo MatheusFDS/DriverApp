@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mathex.appmobile",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +23,8 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.mathex.appmobile",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "bundler": "metro",
@@ -48,6 +52,9 @@
       "eas": {
         "projectId": "1e2512e0-66ac-4bad-bfbe-65d7a30bdfbb"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1e2512e0-66ac-4bad-bfbe-65d7a30bdfbb"
     }
   }
 }
