@@ -10,10 +10,12 @@ import {
   ScrollView,
   ActivityIndicator,
   SafeAreaView,
+  TouchableOpacity, // Importado para o link
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { Button, Card, Theme, CommonStyles } from '../components/ui';
+import { api } from '../services/api'; // Importar o serviço de API
 
 export default function LoginScreen() {
   const { login, isLoading: authIsLoading, user } = useAuth();
@@ -47,6 +49,33 @@ export default function LoginScreen() {
     }
   };
   
+  // --- NOVA FUNÇÃO PARA O ESQUECI SENHA ---
+  const handleForgotPassword = () => {
+    Alert.prompt(
+      'Redefinir Senha',
+      'Digite o e-mail associado à sua conta para receber o link de redefinição.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Enviar',
+          onPress: async (promptEmail) => {
+            if (promptEmail) {
+              try {
+                const response = await api.forgotPassword(promptEmail);
+                Alert.alert('Verifique seu E-mail', response.message || 'Link de redefinição enviado.');
+              } catch (error: any) {
+                Alert.alert('Erro', error.message || 'Não foi possível enviar o e-mail de redefinição.');
+              }
+            }
+          },
+        },
+      ],
+      'plain-text', // tipo de input
+      email, // valor inicial
+      'email-address' // tipo de teclado
+    );
+  };
+
   if (authIsLoading) {
     return (
       <SafeAreaView style={CommonStyles.centeredContainer}>
@@ -68,7 +97,6 @@ export default function LoginScreen() {
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header com Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logoIcon}>
               <Text style={styles.logoEmoji}>🚚</Text>
@@ -81,7 +109,6 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* Form Card */}
           <Card style={styles.formCard}>
             <View style={styles.inputContainer}>
               <Text style={[CommonStyles.body, styles.inputLabel]}>
@@ -116,6 +143,12 @@ export default function LoginScreen() {
                 autoComplete="password"
               />
             </View>
+            
+            <TouchableOpacity onPress={handleForgotPassword} disabled={isSubmitting}>
+              <Text style={styles.forgotPasswordText}>
+                Esqueceu a senha?
+              </Text>
+            </TouchableOpacity>
 
             <Button
               title={isSubmitting ? "Entrando..." : "🚀 Entrar"}
@@ -127,8 +160,7 @@ export default function LoginScreen() {
               style={styles.loginButton}
             />
           </Card>
-
-          {/* Info Card */}
+          
           <Card variant="outlined" style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Text style={styles.infoIcon}>ℹ️</Text>
@@ -202,6 +234,13 @@ const styles = StyleSheet.create({
   input: {
     fontSize: Theme.typography.fontSize.lg,
     paddingVertical: Theme.spacing.lg,
+  },
+
+  forgotPasswordText: {
+    color: Theme.colors.primary.main,
+    textAlign: 'right',
+    marginBottom: Theme.spacing.xl,
+    fontWeight: Theme.typography.fontWeight.medium,
   },
   
   loginButton: {

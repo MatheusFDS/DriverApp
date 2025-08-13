@@ -112,6 +112,14 @@ class ApiService {
       };
     }
   }
+  
+  // --- NOVO MÉTODO ---
+  async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/users/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    });
+  }
 
   async login(credentials: LoginCredentials): Promise<ApiResponse<{ user: User; token: string }>> {
     const response = await this.request<{ access_token: string, user?: User }>('/auth/login', {
