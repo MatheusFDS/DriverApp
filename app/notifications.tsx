@@ -88,22 +88,22 @@ export default function NotificationsScreen() {
     }
   };
 
-  const getNotificationIcon = (type: string): string => {
+  const getNotificationTypeText = (type: string): string => {
     switch (type) {
       case 'delivery-approved-for-driver':
-        return '✅';
+        return 'Entrega Aprovada';
       case 'delivery-needs-approval':
-        return '⏳';
+        return 'Aguardando Aprovação';
       case 'delivery-completed':
-        return '🎉';
+        return 'Entrega Concluída';
       case 'delivery-rejected':
-        return '⚠️';
+        return 'Entrega Rejeitada';
       case 'payment-received':
-        return '💰';
+        return 'Pagamento Recebido';
       case 'order-status-changed':
-        return '📦';
+        return 'Status Alterado';
       default:
-        return '🔔';
+        return 'Notificação';
     }
   };
 
@@ -116,19 +116,22 @@ export default function NotificationsScreen() {
       onPress={() => handleNotificationPress(item)}
     >
       <View style={styles.notificationContent}>
-        <View style={styles.iconContainer}>
+        <View style={styles.statusContainer}>
           <View style={[
-            styles.iconWrapper,
-            !item.isRead && styles.unreadIconWrapper
-          ]}>
-            <Text style={styles.notificationIcon}>
-              {getNotificationIcon(item.type)}
-            </Text>
-          </View>
+            styles.statusIndicator,
+            !item.isRead && styles.unreadIndicator
+          ]} />
           {!item.isRead && <View style={styles.unreadDot} />}
         </View>
         
         <View style={styles.textContainer}>
+          <Text style={[
+            CommonStyles.bodySmall,
+            styles.typeText,
+            !item.isRead && styles.unreadTypeText
+          ]}>
+            {getNotificationTypeText(item.type)}
+          </Text>
           <Text style={[
             CommonStyles.body,
             styles.message,
@@ -159,7 +162,7 @@ export default function NotificationsScreen() {
           { backgroundColor: isConnected ? Theme.colors.status.success : Theme.colors.status.error }
         ]}>
           <Text style={styles.connectionText}>
-            {isConnected ? '🟢 Online' : '🔴 Offline'}
+            {isConnected ? 'Online' : 'Offline'}
           </Text>
         </View>
       </View>
@@ -179,7 +182,6 @@ export default function NotificationsScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyStateContainer}>
       <Card style={styles.emptyState}>
-        <Text style={styles.emptyStateIcon}>🔭</Text>
         <Text style={[CommonStyles.heading3, styles.emptyStateTitle]}>
           Nenhuma notificação
         </Text>
@@ -284,7 +286,7 @@ const styles = StyleSheet.create({
   },
   
   unreadCard: {
-    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    backgroundColor: Theme.colors.primary.light + '15', // 15% opacity
     borderLeftWidth: 4,
     borderLeftColor: Theme.colors.primary.main,
   },
@@ -294,26 +296,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   
-  iconContainer: {
+  statusContainer: {
     position: 'relative',
     marginRight: Theme.spacing.md,
   },
   
-  iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: Theme.borderRadius.lg,
-    backgroundColor: Theme.colors.gray[100],
+  statusIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: Theme.colors.gray[200],
     justifyContent: 'center',
     alignItems: 'center',
   },
   
-  unreadIconWrapper: {
-    backgroundColor: `${Theme.colors.primary.main}15`, // 15% opacity
-  },
-  
-  notificationIcon: {
-    fontSize: 20,
+  unreadIndicator: {
+    backgroundColor: Theme.colors.primary.light + '30', // 30% opacity
   },
   
   unreadDot: {
@@ -329,6 +327,17 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
     marginRight: Theme.spacing.sm,
+  },
+  
+  typeText: {
+    color: Theme.colors.text.secondary,
+    fontWeight: Theme.typography.fontWeight.medium,
+    marginBottom: Theme.spacing.xs / 2,
+  },
+  
+  unreadTypeText: {
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.semiBold,
   },
   
   message: {
@@ -363,11 +372,6 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: Theme.spacing['5xl'],
-  },
-  
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: Theme.spacing.lg,
   },
   
   emptyStateTitle: {

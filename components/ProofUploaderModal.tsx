@@ -125,7 +125,7 @@ export default function ProofUploaderModal({
             style={styles.closeButton}
             disabled={uploading}
           >
-            <Text style={styles.closeButtonText}>✕</Text>
+            <Text style={styles.closeButtonText}>×</Text>
           </TouchableOpacity>
         </View>
 
@@ -156,7 +156,7 @@ export default function ProofUploaderModal({
               </View>
             ) : (
               <View style={styles.placeholder}>
-                <Text style={styles.placeholderIcon}>📷</Text>
+                <View style={styles.placeholderIcon} />
                 <Text style={[CommonStyles.body, styles.placeholderText]}>
                   Nenhuma imagem selecionada
                 </Text>
@@ -172,7 +172,7 @@ export default function ProofUploaderModal({
         <View style={styles.actions}>
           <View style={styles.actionButtons}>
             <Button
-              title="📷 Tirar Foto"
+              title="Tirar Foto"
               onPress={() => pickImage('camera')}
               variant="outline"
               disabled={uploading}
@@ -180,7 +180,7 @@ export default function ProofUploaderModal({
             />
             
             <Button
-              title="🖼️ Galeria"
+              title="Galeria"
               onPress={() => pickImage('gallery')}
               variant="outline"
               disabled={uploading}
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   },
   
   closeButtonText: {
-    fontSize: Theme.typography.fontSize.lg,
+    fontSize: Theme.typography.fontSize.xl,
     fontWeight: Theme.typography.fontWeight.bold,
     color: Theme.colors.text.secondary,
   },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   
   instructionsCard: {
     marginBottom: Theme.spacing.lg,
-    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    backgroundColor: Theme.colors.primary.light + '15', // 15% opacity
     borderLeftWidth: 4,
     borderLeftColor: Theme.colors.primary.main,
   },
@@ -300,9 +300,11 @@ const styles = StyleSheet.create({
   },
   
   placeholderIcon: {
-    fontSize: 64,
+    width: 48,
+    height: 48,
+    backgroundColor: Theme.colors.gray[300],
+    borderRadius: Theme.borderRadius.base,
     marginBottom: Theme.spacing.lg,
-    opacity: 0.5,
   },
   
   placeholderText: {

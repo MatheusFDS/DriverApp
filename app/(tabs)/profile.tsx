@@ -51,14 +51,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const openPrivacyPolicy = () => {
-    Alert.alert("Política de Privacidade", "Link para a política aqui.");
-  };
-
-  const openTermsOfUse = () => {
-    Alert.alert("Termos de Uso", "Link para os termos aqui.");
-  };
-
   const openEditProfile = () => {
     Alert.alert("Editar Perfil", "Funcionalidade a ser implementada.");
   };
@@ -92,33 +84,10 @@ export default function ProfileScreen() {
   };
 
   const notificationSettings = [
-    { key: 'newRoutes', label: 'Novos Roteiros', icon: '🚛' },
-    { key: 'deliveryReminders', label: 'Lembretes de Entrega', icon: '⏰' },
-    { key: 'paymentUpdates', label: 'Atualizações de Pagamento', icon: '💰' },
-    { key: 'systemMessages', label: 'Mensagens do Sistema', icon: '📢' },
-  ];
-
-  const actionItems = [
-    { 
-      key: 'support', 
-      label: 'Suporte', 
-      description: 'Entre em contato conosco',
-      icon: '🎧',
-      onPress: openSupport 
-    },
-    { 
-      key: 'editProfile', 
-      label: 'Editar Perfil', 
-      description: 'Alterar dados pessoais',
-      icon: '✏️',
-      onPress: openEditProfile 
-    },
-  ];
-
-  const infoItems = [
-    { label: 'Versão do App', value: '1.0.1' },
-    { label: 'Política de Privacidade', value: null, onPress: openPrivacyPolicy },
-    { label: 'Termos de Uso', value: null, onPress: openTermsOfUse },
+    { key: 'newRoutes', label: 'Novos Roteiros' },
+    { key: 'deliveryReminders', label: 'Lembretes de Entrega' },
+    { key: 'paymentUpdates', label: 'Atualizações de Pagamento' },
+    { key: 'systemMessages', label: 'Mensagens do Sistema' },
   ];
 
   return (
@@ -138,7 +107,7 @@ export default function ProfileScreen() {
             </View>
             
             <View style={styles.userInfo}>
-              <Text style={[CommonStyles.heading3, styles.userName]}>
+              <Text style={[CommonStyles.heading2, styles.userName]}>
                 {user.name || 'Nome não disponível'}
               </Text>
               <Text style={[CommonStyles.body, styles.userEmail]}>
@@ -146,7 +115,7 @@ export default function ProfileScreen() {
               </Text>
               {user.phone && (
                 <Text style={[CommonStyles.body, styles.userPhone]}>
-                  📞 {user.phone}
+                  {user.phone}
                 </Text>
               )}
             </View>
@@ -156,7 +125,7 @@ export default function ProfileScreen() {
         {/* Card do Veículo */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            🚗 Veículo
+            Veículo
           </Text>
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
@@ -178,7 +147,7 @@ export default function ProfileScreen() {
         {user.companyName && (
           <Card style={styles.sectionCard}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              🏢 Empresa
+              Empresa
             </Text>
             <View style={styles.infoList}>
               <View style={styles.infoRow}>
@@ -200,29 +169,24 @@ export default function ProfileScreen() {
         {/* Card de Notificações */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            🔔 Notificações
+            Notificações
           </Text>
           <View style={styles.settingsList}>
             {notificationSettings.map((setting) => (
               <View key={setting.key} style={styles.settingItem}>
-                <View style={styles.settingInfo}>
-                  <View style={styles.settingIcon}>
-                    <Text style={styles.settingIconText}>{setting.icon}</Text>
-                  </View>
-                  <Text style={[CommonStyles.body, styles.settingLabel]}>
-                    {setting.label}
-                  </Text>
-                </View>
+                <Text style={[CommonStyles.body, styles.settingLabel]}>
+                  {setting.label}
+                </Text>
                 <Switch
                   value={notifications[setting.key as keyof typeof notifications]}
                   onValueChange={(value) => updateNotificationSetting(setting.key as keyof typeof notifications, value)}
                   trackColor={{ 
                     false: Theme.colors.gray[300], 
-                    true: `${Theme.colors.status.success}50` // 50% opacity
+                    true: Theme.colors.primary.light 
                   }}
                   thumbColor={
                     notifications[setting.key as keyof typeof notifications] 
-                      ? Theme.colors.status.success 
+                      ? Theme.colors.primary.main 
                       : Theme.colors.gray[400]
                   }
                 />
@@ -234,68 +198,58 @@ export default function ProfileScreen() {
         {/* Card de Configurações */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            ⚙️ Configurações
+            Configurações
           </Text>
           <View style={styles.actionsList}>
-            {actionItems.map((action) => (
-              <TouchableOpacity 
-                key={action.key} 
-                style={styles.actionItem} 
-                onPress={action.onPress}
-                activeOpacity={0.7}
-              >
-                <View style={styles.actionIcon}>
-                  <Text style={styles.actionIconText}>{action.icon}</Text>
-                </View>
-                <View style={styles.actionInfo}>
-                  <Text style={[CommonStyles.body, styles.actionLabel]}>
-                    {action.label}
-                  </Text>
-                  <Text style={[CommonStyles.bodySmall, styles.actionDescription]}>
-                    {action.description}
-                  </Text>
-                </View>
-                <Text style={styles.actionChevron}>›</Text>
-              </TouchableOpacity>
-            ))}
+            <TouchableOpacity 
+              style={styles.actionItem} 
+              onPress={openEditProfile}
+              activeOpacity={0.7}
+            >
+              <Text style={[CommonStyles.body, styles.actionLabel]}>
+                Editar Perfil
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.actionDescription]}>
+                Alterar dados pessoais
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionItem} 
+              onPress={openSupport}
+              activeOpacity={0.7}
+            >
+              <Text style={[CommonStyles.body, styles.actionLabel]}>
+                Suporte
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.actionDescription]}>
+                Entre em contato conosco
+              </Text>
+            </TouchableOpacity>
           </View>
         </Card>
 
         {/* Card de Informações do App */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📱 Informações do App
+            Informações do App
           </Text>
           <View style={styles.infoList}>
-            {infoItems.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.infoRow}
-                onPress={item.onPress}
-                disabled={!item.onPress}
-                activeOpacity={item.onPress ? 0.7 : 1}
-              >
-                <Text style={[CommonStyles.body, styles.infoLabel]}>
-                  {item.label}
-                </Text>
-                <View style={styles.infoValueContainer}>
-                  {item.value ? (
-                    <Text style={[CommonStyles.body, styles.infoValue]}>
-                      {item.value}
-                    </Text>
-                  ) : (
-                    <Text style={styles.actionChevron}>›</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
+            <View style={styles.infoRow}>
+              <Text style={[CommonStyles.body, styles.infoLabel]}>
+                Versão do App
+              </Text>
+              <Text style={[CommonStyles.body, styles.infoValue]}>
+                1.0.1
+              </Text>
+            </View>
           </View>
         </Card>
 
         {/* Botão de Logout */}
         <View style={styles.logoutSection}>
           <Button
-            title="🚪 Sair do App"
+            title="Sair do App"
             onPress={handleLogout}
             variant="danger"
             fullWidth
@@ -323,7 +277,9 @@ const styles = StyleSheet.create({
   
   userCard: {
     margin: Theme.spacing.lg,
-    backgroundColor: Theme.colors.primary.main,
+    backgroundColor: Theme.colors.background.paper,
+    borderWidth: 1,
+    borderColor: Theme.colors.gray[200],
   },
   
   userHeader: {
@@ -332,10 +288,10 @@ const styles = StyleSheet.create({
   },
   
   userAvatar: {
-    width: 80,
-    height: 80,
+    width: 70,
+    height: 70,
     borderRadius: Theme.borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: Theme.colors.primary.main,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Theme.spacing.lg,
@@ -343,7 +299,7 @@ const styles = StyleSheet.create({
   
   userAvatarText: {
     color: Theme.colors.primary.contrastText,
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: Theme.typography.fontWeight.bold,
   },
   
@@ -352,18 +308,17 @@ const styles = StyleSheet.create({
   },
   
   userName: {
-    color: Theme.colors.primary.contrastText,
+    color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.xs,
   },
   
   userEmail: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: Theme.colors.text.secondary,
     marginBottom: Theme.spacing.xs,
   },
   
   userPhone: {
-    color: Theme.colors.secondary.light,
-    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.secondary,
   },
   
   sectionCard: {
@@ -401,11 +356,6 @@ const styles = StyleSheet.create({
     marginLeft: Theme.spacing.md,
   },
   
-  infoValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
   settingsList: {
     gap: Theme.spacing.md,
   },
@@ -417,30 +367,10 @@ const styles = StyleSheet.create({
     paddingVertical: Theme.spacing.sm,
   },
   
-  settingInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: Theme.spacing.md,
-  },
-  
-  settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: Theme.borderRadius.lg,
-    backgroundColor: Theme.colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Theme.spacing.md,
-  },
-  
-  settingIconText: {
-    fontSize: Theme.typography.fontSize.lg,
-  },
-  
   settingLabel: {
     fontWeight: Theme.typography.fontWeight.medium,
     color: Theme.colors.text.primary,
+    flex: 1,
   },
   
   actionsList: {
@@ -448,29 +378,9 @@ const styles = StyleSheet.create({
   },
   
   actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingVertical: Theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.gray[100],
-  },
-  
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Theme.borderRadius.lg,
-    backgroundColor: Theme.colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Theme.spacing.md,
-  },
-  
-  actionIconText: {
-    fontSize: Theme.typography.fontSize.lg,
-  },
-  
-  actionInfo: {
-    flex: 1,
   },
   
   actionLabel: {
@@ -481,12 +391,6 @@ const styles = StyleSheet.create({
   
   actionDescription: {
     color: Theme.colors.text.secondary,
-  },
-  
-  actionChevron: {
-    fontSize: 18,
-    color: Theme.colors.text.hint,
-    fontWeight: Theme.typography.fontWeight.medium,
   },
   
   logoutSection: {

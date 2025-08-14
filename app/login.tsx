@@ -142,7 +142,7 @@ export default function LoginScreen() {
           {/* Logo minimalista */}
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
-              <Text style={styles.logoEmoji}>🚚</Text>
+              <View style={styles.logoIcon} />
             </View>
             <Text style={styles.appName}>DeliveryApp</Text>
           </View>
@@ -345,9 +345,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   
-  logoEmoji: {
-    fontSize: 28,
-    color: '#ffffff',
+  logoIcon: {
+    width: 24,
+    height: 24,
+    backgroundColor: Colors.background,
+    borderRadius: 4,
   },
   
   appName: {

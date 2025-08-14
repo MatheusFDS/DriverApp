@@ -41,7 +41,6 @@ export default function RoutesScreen() {
       }
     } catch (err) {
       const e = err as Error;
-      console.error('📱 [ROUTES] Erro:', e);
       setError(`Erro de conexão: ${e.message}`);
     } finally {
       setLoading(false);
@@ -74,7 +73,7 @@ export default function RoutesScreen() {
       <SafeAreaView style={CommonStyles.loadingState}>
         <ActivityIndicator size="large" color={Theme.colors.primary.main} />
         <Text style={[CommonStyles.body, styles.loadingText]}>
-          ⏳ Carregando roteiros...
+          Carregando roteiros...
         </Text>
       </SafeAreaView>
     );
@@ -83,7 +82,6 @@ export default function RoutesScreen() {
   if (error) {
     return (
       <SafeAreaView style={CommonStyles.errorState}>
-        <Text style={styles.errorEmoji}>⚠️</Text>
         <Text style={[CommonStyles.heading3, styles.errorTitle]}>
           Erro ao carregar
         </Text>
@@ -91,7 +89,7 @@ export default function RoutesScreen() {
           {error}
         </Text>
         <Button
-          title="🔄 Tentar novamente"
+          title="Tentar novamente"
           onPress={loadRoutes}
           style={styles.retryButton}
         />
@@ -114,11 +112,11 @@ export default function RoutesScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Roteiro Ativo em Destaque */}
+        {/* Roteiro Ativo */}
         {activeRoute && (
           <View style={styles.activeSection}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              🚛 Roteiro Ativo
+              Roteiro Ativo
             </Text>
             
             <Card 
@@ -127,56 +125,48 @@ export default function RoutesScreen() {
             >
               <View style={styles.activeRouteHeader}>
                 <View style={styles.activeRouteInfo}>
-                  <Text style={[CommonStyles.heading3, styles.activeRouteTitle]}>
-                    📅 {formatDate(activeRoute.date)}
+                  <Text style={[CommonStyles.bodyLarge, styles.activeRouteDate]}>
+                    {formatDate(activeRoute.date)}
                   </Text>
-                  <Text style={[CommonStyles.bodyLarge, styles.activeRouteValue]}>
-                    💰 {formatCurrency(activeRoute.totalValue)}
+                  <Text style={[CommonStyles.heading2, styles.activeRouteValue]}>
+                    {formatCurrency(activeRoute.totalValue)}
                   </Text>
                 </View>
                 
                 <StatusBadge
                   text="EM ANDAMENTO"
-                  icon="🔥"
                   variant="primary"
                   size="medium"
                 />
               </View>
               
               <View style={styles.activeRouteDetails}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailIcon}>📦</Text>
-                  <Text style={[CommonStyles.body, styles.detailText]}>
-                    {activeRoute.deliveries.length} entregas
-                  </Text>
-                </View>
+                <Text style={[CommonStyles.body, styles.detailText]}>
+                  {activeRoute.deliveries.length} entregas
+                </Text>
                 
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailIcon}>✅</Text>
-                  <Text style={[CommonStyles.body, styles.detailText]}>
-                    {activeRoute.deliveries.filter(d => d.status === 'ENTREGUE').length} concluídas
-                  </Text>
-                </View>
+                <Text style={[CommonStyles.body, styles.detailText]}>
+                  {activeRoute.deliveries.filter(d => d.status === 'ENTREGUE').length} concluídas
+                </Text>
               </View>
 
               <View style={styles.continueButton}>
-                <Text style={[CommonStyles.bodySmall, styles.continueButtonText]}>
-                  👆 Toque para continuar o roteiro
+                <Text style={[CommonStyles.body, styles.continueButtonText]}>
+                  Toque para continuar
                 </Text>
               </View>
             </Card>
           </View>
         )}
 
-        {/* Lista de Todos os Roteiros */}
+        {/* Lista de Roteiros */}
         <View style={styles.allRoutesSection}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📋 Todos os Roteiros ({routes.length})
+            Todos os Roteiros ({routes.length})
           </Text>
           
           {routes.length === 0 ? (
             <Card style={styles.emptyState}>
-              <Text style={styles.emptyStateEmoji}>🔭</Text>
               <Text style={[CommonStyles.heading3, styles.emptyStateTitle]}>
                 Nenhum roteiro encontrado
               </Text>
@@ -200,30 +190,29 @@ export default function RoutesScreen() {
                 >
                   <View style={styles.routeHeader}>
                     <View style={styles.routeMainInfo}>
-                      <Text style={[CommonStyles.body, styles.routeDate]}>
-                        📅 {formatDate(route.date)}
+                      <Text style={[CommonStyles.bodyLarge, styles.routeDate]}>
+                        {formatDate(route.date)}
                       </Text>
-                      <Text style={[CommonStyles.bodyLarge, styles.routeValue]}>
-                        💰 {formatCurrency(route.totalValue)}
+                      <Text style={[CommonStyles.heading3, styles.routeValue]}>
+                        {formatCurrency(route.totalValue)}
                       </Text>
                     </View>
                     
                     <StatusBadge
                       text={statusConfig.text}
-                      icon={statusConfig.icon}
                       variant={getRouteStatusVariant(route.status)}
                       size="small"
                     />
                   </View>
                   
                   <View style={styles.routeDetails}>
-                    <Text style={[CommonStyles.bodySmall, styles.deliveryCount]}>
-                      📦 {route.deliveries.length} entregas
+                    <Text style={[CommonStyles.body, styles.deliveryCount]}>
+                      {route.deliveries.length} entregas
                     </Text>
                     
                     {isActive && (
-                      <Text style={[CommonStyles.bodySmall, styles.activeIndicator]}>
-                        🔥 Em andamento
+                      <Text style={[CommonStyles.body, styles.activeIndicator]}>
+                        Em andamento
                       </Text>
                     )}
                   </View>
@@ -249,11 +238,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: Theme.spacing.md,
     color: Theme.colors.text.secondary,
-  },
-  
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: Theme.spacing.lg,
   },
   
   errorTitle: {
@@ -286,7 +270,7 @@ const styles = StyleSheet.create({
   },
   
   activeRouteCard: {
-    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    backgroundColor: Theme.colors.primary.light + '15', // 15% opacity
     borderLeftWidth: 4,
     borderLeftColor: Theme.colors.primary.main,
   },
@@ -303,8 +287,8 @@ const styles = StyleSheet.create({
     marginRight: Theme.spacing.md,
   },
   
-  activeRouteTitle: {
-    color: Theme.colors.primary.dark,
+  activeRouteDate: {
+    color: Theme.colors.text.secondary,
     marginBottom: Theme.spacing.xs,
   },
   
@@ -319,23 +303,13 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.lg,
   },
   
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  
-  detailIcon: {
-    fontSize: Theme.typography.fontSize.base,
-    marginRight: Theme.spacing.xs,
-  },
-  
   detailText: {
     color: Theme.colors.text.primary,
     fontWeight: Theme.typography.fontWeight.medium,
   },
   
   continueButton: {
-    backgroundColor: `${Theme.colors.primary.main}15`, // 15% opacity
+    backgroundColor: Theme.colors.primary.main + '20', // 20% opacity
     borderRadius: Theme.borderRadius.base,
     padding: Theme.spacing.md,
     alignItems: 'center',
@@ -349,7 +323,7 @@ const styles = StyleSheet.create({
   routeCard: {
     marginBottom: Theme.spacing.md,
     borderLeftWidth: 1,
-    borderLeftColor: Theme.colors.divider,
+    borderLeftColor: Theme.colors.gray[300],
   },
   
   activeRouteCardBorder: {
@@ -370,8 +344,7 @@ const styles = StyleSheet.create({
   },
   
   routeDate: {
-    color: Theme.colors.text.primary,
-    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.secondary,
     marginBottom: Theme.spacing.xs,
   },
   
@@ -391,19 +364,13 @@ const styles = StyleSheet.create({
   },
   
   activeIndicator: {
-    color: Theme.colors.secondary.main,
+    color: Theme.colors.primary.main,
     fontWeight: Theme.typography.fontWeight.semiBold,
-    fontStyle: 'italic',
   },
   
   emptyState: {
     alignItems: 'center',
     paddingVertical: Theme.spacing['4xl'],
-  },
-  
-  emptyStateEmoji: {
-    fontSize: 56,
-    marginBottom: Theme.spacing.lg,
   },
   
   emptyStateTitle: {
@@ -415,6 +382,5 @@ const styles = StyleSheet.create({
   emptyStateSubtitle: {
     color: Theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.relaxed,
   },
 });

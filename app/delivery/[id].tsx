@@ -167,7 +167,7 @@ export default function DeliveryDetailsScreen() {
       <SafeAreaView style={CommonStyles.loadingState}>
         <ActivityIndicator size="large" color={Theme.colors.primary.main} />
         <Text style={[CommonStyles.body, styles.loadingText]}>
-          📦 Carregando detalhes da entrega...
+          Carregando detalhes da entrega...
         </Text>
       </SafeAreaView>
     );
@@ -176,7 +176,6 @@ export default function DeliveryDetailsScreen() {
   if (error && !deliveryItem) {
     return (
       <SafeAreaView style={CommonStyles.errorState}>
-        <Text style={styles.errorEmoji}>⚠️</Text>
         <Text style={[CommonStyles.heading3, styles.errorTitle]}>
           Erro ao carregar
         </Text>
@@ -184,13 +183,13 @@ export default function DeliveryDetailsScreen() {
           {error}
         </Text>
         <Button
-          title="🔄 Tentar novamente"
+          title="Tentar novamente"
           onPress={loadDeliveryDetails}
           style={styles.retryButton}
         />
         {router.canGoBack() && (
           <Button
-            title="← Voltar"
+            title="Voltar"
             onPress={() => router.back()}
             variant="outline"
             style={styles.backButton}
@@ -203,13 +202,12 @@ export default function DeliveryDetailsScreen() {
   if (!deliveryItem) {
     return (
       <SafeAreaView style={CommonStyles.errorState}>
-        <Text style={styles.errorEmoji}>🔭</Text>
         <Text style={[CommonStyles.heading3, styles.errorTitle]}>
           Entrega não encontrada
         </Text>
         {router.canGoBack() && (
           <Button
-            title="← Voltar"
+            title="Voltar"
             onPress={() => router.back()}
             variant="outline"
           />
@@ -243,13 +241,12 @@ export default function DeliveryDetailsScreen() {
               <Text style={[CommonStyles.bodySmall, styles.orderNumber]}>
                 Pedido Nº: {deliveryItem.numeroPedido}
               </Text>
-              <Text style={[CommonStyles.heading3, styles.customerName]}>
+              <Text style={[CommonStyles.heading2, styles.customerName]}>
                 {deliveryItem.customerName}
               </Text>
             </View>
             <StatusBadge
               text={statusConfig.text}
-              icon={statusConfig.icon}
               variant={getOrderStatusVariant(deliveryItem.status)}
               size="medium"
             />
@@ -258,7 +255,7 @@ export default function DeliveryDetailsScreen() {
 
         {/* Descrição do Status */}
         <Card variant="outlined" style={styles.statusDescription}>
-          <Text style={[CommonStyles.bodySmall, styles.statusDescriptionText]}>
+          <Text style={[CommonStyles.body, styles.statusDescriptionText]}>
             {statusConfig.description}
           </Text>
         </Card>
@@ -266,7 +263,7 @@ export default function DeliveryDetailsScreen() {
         {/* Informações do Cliente */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            👤 Informações do Cliente
+            Informações do Cliente
           </Text>
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
@@ -283,7 +280,7 @@ export default function DeliveryDetailsScreen() {
               >
                 <Text style={[CommonStyles.body, styles.infoLabel]}>Telefone:</Text>
                 <Text style={[CommonStyles.body, styles.infoValue, styles.linkText]}>
-                  📞 {deliveryItem.phone}
+                  {deliveryItem.phone}
                 </Text>
               </TouchableOpacity>
             )}
@@ -301,13 +298,13 @@ export default function DeliveryDetailsScreen() {
         {/* Endereço de Entrega */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📍 Endereço de Entrega
+            Endereço de Entrega
           </Text>
           <Text style={[CommonStyles.body, styles.addressText]}>
             {deliveryItem.address}
           </Text>
           <Button
-            title="🗺️ Abrir no Mapa"
+            title="Abrir no Mapa"
             onPress={openMaps}
             variant="outline"
             fullWidth
@@ -318,7 +315,7 @@ export default function DeliveryDetailsScreen() {
         {/* Detalhes do Pedido */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📋 Detalhes do Pedido
+            Detalhes do Pedido
           </Text>
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
@@ -337,7 +334,7 @@ export default function DeliveryDetailsScreen() {
               <Text style={[CommonStyles.body, styles.infoLabel]}>Itens:</Text>
               <View style={styles.itemsList}>
                 {deliveryItem.items.map((item: string, index: number) => (
-                  <Text key={index} style={[CommonStyles.bodySmall, styles.itemText]}>
+                  <Text key={index} style={[CommonStyles.body, styles.itemText]}>
                     • {item}
                   </Text>
                 ))}
@@ -350,7 +347,7 @@ export default function DeliveryDetailsScreen() {
         {deliveryItem.notes && (
           <Card style={styles.notesCard}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              💬 Instruções Especiais
+              Instruções Especiais
             </Text>
             <Text style={[CommonStyles.body, styles.notesText]}>
               {deliveryItem.notes}
@@ -362,7 +359,7 @@ export default function DeliveryDetailsScreen() {
         {deliveryItem.proofs && deliveryItem.proofs.length > 0 && (
           <Card style={styles.sectionCard}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              📸 Comprovantes de Entrega ({deliveryItem.proofCount})
+              Comprovantes de Entrega ({deliveryItem.proofCount})
             </Text>
             <View style={styles.proofsContainer}>
               {deliveryItem.proofs.map((proof: DeliveryProof) => {
@@ -399,26 +396,26 @@ export default function DeliveryDetailsScreen() {
         {/* Ações Rápidas */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            ⚡ Ações Rápidas
+            Ações Rápidas
           </Text>
           <View style={styles.quickActionsGrid}>
             {deliveryItem.phone && (
               <Button
-                title="📞 Ligar"
+                title="Ligar"
                 onPress={callCustomer}
                 variant="outline"
                 style={styles.quickActionButton}
               />
             )}
             <Button
-              title="🗺️ Navegar"
+              title="Navegar"
               onPress={openMaps}
               variant="outline"
               style={styles.quickActionButton}
             />
             {(deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE') && (
               <Button
-                title="📷 Comprovante"
+                title="Comprovante"
                 onPress={() => setShowProofCamera(true)}
                 variant="outline"
                 style={styles.quickActionButton}
@@ -431,7 +428,7 @@ export default function DeliveryDetailsScreen() {
         {availableActions.length > 0 && (
           <Card style={styles.sectionCard}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              🎯 Atualizar Situação da Entrega
+              Atualizar Situação da Entrega
             </Text>
             <View style={styles.statusActionsContainer}>
               {availableActions.map((action) => (
@@ -471,7 +468,7 @@ export default function DeliveryDetailsScreen() {
         <View style={styles.footer}>
           {router.canGoBack() && (
             <Button
-              title="← Voltar ao Roteiro"
+              title="Voltar ao Roteiro"
               onPress={() => router.back()}
               variant="outline"
               fullWidth
@@ -510,7 +507,7 @@ export default function DeliveryDetailsScreen() {
               style={styles.closeImageViewer} 
               onPress={() => setViewingProof(null)}
             >
-              <Text style={styles.closeImageViewerText}>✕</Text>
+              <Text style={styles.closeImageViewerText}>×</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </View>
@@ -531,11 +528,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: Theme.spacing.md,
     color: Theme.colors.text.secondary,
-  },
-  
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: Theme.spacing.lg,
   },
   
   errorTitle: {
@@ -578,7 +570,7 @@ const styles = StyleSheet.create({
   
   orderNumber: {
     color: Theme.colors.text.secondary,
-    marginBottom: Theme.spacing.xs / 2,
+    marginBottom: Theme.spacing.xs,
   },
   
   customerName: {
@@ -588,14 +580,13 @@ const styles = StyleSheet.create({
   statusDescription: {
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
-    borderColor: `${Theme.colors.primary.main}20`, // 20% opacity
+    backgroundColor: Theme.colors.primary.light + '15', // 15% opacity
+    borderColor: Theme.colors.primary.main + '30', // 30% opacity
   },
   
   statusDescriptionText: {
     color: Theme.colors.primary.main,
     textAlign: 'center',
-    fontStyle: 'italic',
   },
   
   sectionCard: {
@@ -657,7 +648,6 @@ const styles = StyleSheet.create({
   
   itemText: {
     color: Theme.colors.text.primary,
-    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.normal,
   },
   
   addressText: {
@@ -673,7 +663,7 @@ const styles = StyleSheet.create({
   notesCard: {
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    backgroundColor: `${Theme.colors.secondary.main}08`, // 8% opacity
+    backgroundColor: Theme.colors.secondary.light + '15', // 15% opacity
     borderLeftWidth: 4,
     borderLeftColor: Theme.colors.secondary.main,
   },

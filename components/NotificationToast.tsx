@@ -105,25 +105,21 @@ export default function NotificationToast({
       case 'success':
         return {
           backgroundColor: '#4CAF50',
-          icon: '✅',
           shadowColor: '#4CAF50',
         };
       case 'error':
         return {
           backgroundColor: '#F44336',
-          icon: '❌',
           shadowColor: '#F44336',
         };
       case 'warning':
         return {
           backgroundColor: '#FF9800',
-          icon: '⚠️',
           shadowColor: '#FF9800',
         };
       default:
         return {
           backgroundColor: '#2196F3',
-          icon: '🔔',
           shadowColor: '#2196F3',
         };
     }
@@ -155,7 +151,7 @@ export default function NotificationToast({
         >
           <View style={styles.content}>
             <View style={styles.iconContainer}>
-              <Text style={styles.icon}>{typeConfig.icon}</Text>
+              <View style={[styles.statusIcon, { backgroundColor: 'rgba(255, 255, 255, 0.3)' }]} />
             </View>
             
             <View style={styles.textContainer}>
@@ -171,7 +167,7 @@ export default function NotificationToast({
               style={styles.closeButton}
               onPress={hideToast}
             >
-              <Text style={styles.closeIcon}>✕</Text>
+              <Text style={styles.closeIcon}>×</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -209,8 +205,10 @@ const styles = StyleSheet.create({
   iconContainer: {
     marginRight: 12,
   },
-  icon: {
-    fontSize: 24,
+  statusIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
   },
   textContainer: {
     flex: 1,
@@ -232,7 +230,7 @@ const styles = StyleSheet.create({
   },
   closeIcon: {
     color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
   },
 });

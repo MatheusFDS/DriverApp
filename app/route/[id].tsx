@@ -173,7 +173,7 @@ export default function RouteDetailsScreen() {
       <SafeAreaView style={CommonStyles.loadingState}>
         <ActivityIndicator size="large" color={Theme.colors.primary.main} />
         <Text style={[CommonStyles.body, styles.loadingText]}>
-          ⏳ Carregando detalhes do roteiro...
+          Carregando detalhes do roteiro...
         </Text>
       </SafeAreaView>
     );
@@ -182,7 +182,6 @@ export default function RouteDetailsScreen() {
   if (error && !route) {
     return (
       <SafeAreaView style={CommonStyles.errorState}>
-        <Text style={styles.errorEmoji}>⚠️</Text>
         <Text style={[CommonStyles.heading3, styles.errorTitle]}>
           Erro ao carregar
         </Text>
@@ -190,13 +189,13 @@ export default function RouteDetailsScreen() {
           {error}
         </Text>
         <Button
-          title="🔄 Tentar novamente"
+          title="Tentar novamente"
           onPress={loadRouteDetails}
           style={styles.retryButton}
         />
         {router.canGoBack() && (
           <Button
-            title="← Voltar"
+            title="Voltar"
             onPress={() => router.back()}
             variant="outline"
             style={styles.backButton}
@@ -209,13 +208,12 @@ export default function RouteDetailsScreen() {
   if (!route) {
     return (
       <SafeAreaView style={CommonStyles.errorState}>
-        <Text style={styles.errorEmoji}>🔭</Text>
         <Text style={[CommonStyles.heading3, styles.errorTitle]}>
           Roteiro não encontrado
         </Text>
         {router.canGoBack() && (
           <Button
-            title="← Voltar"
+            title="Voltar"
             onPress={() => router.back()}
             variant="outline"
           />
@@ -243,23 +241,21 @@ export default function RouteDetailsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header do Roteiro */}
-        <Card style={StyleSheet.flatten([styles.routeHeader, { backgroundColor: currentRouteStatusConfig.color || Theme.colors.primary.main }])}>
+        <Card style={styles.routeHeader}>
           <View style={styles.headerContent}>
             <View style={styles.headerInfo}>
-              <Text style={[CommonStyles.heading3, styles.routeTitle]}>
-                🚛 Roteiro {formatDate(route.date)}
+              <Text style={[CommonStyles.heading2, styles.routeTitle]}>
+                Roteiro {formatDate(route.date)}
               </Text>
-              <Text style={[CommonStyles.bodyLarge, styles.routeValue]}>
-                💰 {formatCurrency(route.totalValue)}
+              <Text style={[CommonStyles.heading3, styles.routeValue]}>
+                {formatCurrency(route.totalValue)}
               </Text>
             </View>
             
             <StatusBadge
               text={currentRouteStatusConfig.text}
-              icon={currentRouteStatusConfig.icon}
               variant={getRouteStatusVariant(route.status)}
               size="medium"
-              style={styles.statusBadgeHeader}
             />
           </View>
         </Card>
@@ -268,37 +264,28 @@ export default function RouteDetailsScreen() {
         <Card style={styles.summaryCard}>
           <View style={styles.summaryGrid}>
             <View style={styles.summaryItem}>
-              <View style={styles.summaryIcon}>
-                <Text style={styles.summaryIconText}>📦</Text>
-              </View>
-              <Text style={[CommonStyles.heading2, styles.summaryNumber]}>
+              <Text style={[CommonStyles.heading1, styles.summaryNumber]}>
                 {route.deliveries.length}
               </Text>
-              <Text style={[CommonStyles.bodySmall, styles.summaryLabel]}>
+              <Text style={[CommonStyles.body, styles.summaryLabel]}>
                 Total de Entregas
               </Text>
             </View>
             
             <View style={styles.summaryItem}>
-              <View style={styles.summaryIcon}>
-                <Text style={styles.summaryIconText}>✅</Text>
-              </View>
-              <Text style={[CommonStyles.heading2, styles.summaryNumber, styles.successNumber]}>
+              <Text style={[CommonStyles.heading1, styles.summaryNumber, styles.successNumber]}>
                 {completedCount}
               </Text>
-              <Text style={[CommonStyles.bodySmall, styles.summaryLabel]}>
+              <Text style={[CommonStyles.body, styles.summaryLabel]}>
                 Concluídas
               </Text>
             </View>
             
             <View style={styles.summaryItem}>
-              <View style={styles.summaryIcon}>
-                <Text style={styles.summaryIconText}>💰</Text>
-              </View>
-              <Text style={[CommonStyles.heading2, styles.summaryNumber, styles.valueNumber]}>
+              <Text style={[CommonStyles.bodyLarge, styles.summaryNumber, styles.valueNumber]}>
                 {formatCurrency(route.totalValue)}
               </Text>
-              <Text style={[CommonStyles.bodySmall, styles.summaryLabel]}>
+              <Text style={[CommonStyles.body, styles.summaryLabel]}>
                 Valor Total
               </Text>
             </View>
@@ -309,10 +296,10 @@ export default function RouteDetailsScreen() {
         {route.status === 'INICIADO' && (
           <Card style={styles.progressCard}>
             <View style={styles.progressHeader}>
-              <Text style={[CommonStyles.body, styles.progressLabel]}>
+              <Text style={[CommonStyles.bodyLarge, styles.progressLabel]}>
                 Progresso do Roteiro
               </Text>
-              <Text style={[CommonStyles.bodySmall, styles.progressPercentage]}>
+              <Text style={[CommonStyles.body, styles.progressPercentage]}>
                 {progress.toFixed(0)}%
               </Text>
             </View>
@@ -321,7 +308,7 @@ export default function RouteDetailsScreen() {
                 <View style={[styles.progressFill, { width: `${progress}%` }]} />
               </View>
             </View>
-            <Text style={[CommonStyles.bodySmall, styles.progressText]}>
+            <Text style={[CommonStyles.body, styles.progressText]}>
               {completedCount} de {route.deliveries.length} entregas concluídas
             </Text>
           </Card>
@@ -330,7 +317,7 @@ export default function RouteDetailsScreen() {
         {/* Lista de Entregas */}
         <View style={styles.deliveriesSection}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📋 Itens de Entrega ({route.deliveries.length})
+            Itens de Entrega ({route.deliveries.length})
           </Text>
           
           {route.deliveries.map((deliveryItem, index) => {
@@ -353,26 +340,23 @@ export default function RouteDetailsScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.deliveryHeader}>
-                    <View style={[
-                      styles.deliveryNumber, 
-                      { backgroundColor: itemStatusConfig.color || Theme.colors.gray[500] }
-                    ]}>
+                    <View style={styles.deliveryNumber}>
                       <Text style={styles.deliveryNumberText}>
                         {index + 1}
                       </Text>
                     </View>
                     
                     <View style={styles.deliveryInfo}>
-                      <Text style={[CommonStyles.body, styles.customerName]}>
-                        {itemStatusConfig.icon} {deliveryItem.customerName}
+                      <Text style={[CommonStyles.bodyLarge, styles.customerName]}>
+                        {deliveryItem.customerName}
                       </Text>
-                      <Text style={[CommonStyles.bodySmall, styles.deliveryAddress]} numberOfLines={2}>
-                        📍 {deliveryItem.address}
+                      <Text style={[CommonStyles.body, styles.deliveryAddress]} numberOfLines={2}>
+                        {deliveryItem.address}
                       </Text>
                     </View>
                     
                     <View style={styles.deliveryMeta}>
-                      <Text style={[CommonStyles.body, styles.deliveryValue]}>
+                      <Text style={[CommonStyles.bodyLarge, styles.deliveryValue]}>
                         {formatCurrency(deliveryItem.value)}
                       </Text>
                       <StatusBadge
@@ -386,7 +370,7 @@ export default function RouteDetailsScreen() {
                   {isUpdating && (
                     <View style={styles.updatingOverlay}>
                       <ActivityIndicator color={Theme.colors.primary.contrastText} size="small" />
-                      <Text style={[CommonStyles.bodySmall, styles.updatingText]}>
+                      <Text style={[CommonStyles.body, styles.updatingText]}>
                         Atualizando...
                       </Text>
                     </View>
@@ -401,7 +385,7 @@ export default function RouteDetailsScreen() {
         <View style={styles.footer}>
           {router.canGoBack() && (
             <Button
-              title="← Voltar aos Roteiros"
+              title="Voltar aos Roteiros"
               onPress={() => router.back()}
               variant="outline"
               fullWidth
@@ -428,11 +412,6 @@ const styles = StyleSheet.create({
     color: Theme.colors.text.secondary,
   },
   
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: Theme.spacing.lg,
-  },
-  
   errorTitle: {
     color: Theme.colors.status.error,
     marginBottom: Theme.spacing.sm,
@@ -456,6 +435,9 @@ const styles = StyleSheet.create({
   routeHeader: {
     margin: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.primary.light + '15', // 15% opacity
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
   },
   
   headerContent: {
@@ -470,19 +452,13 @@ const styles = StyleSheet.create({
   },
   
   routeTitle: {
-    color: Theme.colors.primary.contrastText,
+    color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.xs,
   },
   
   routeValue: {
-    color: Theme.colors.secondary.light,
+    color: Theme.colors.status.success,
     fontWeight: Theme.typography.fontWeight.bold,
-  },
-  
-  statusBadgeHeader: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   
   summaryCard: {
@@ -500,20 +476,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  summaryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: Theme.borderRadius.lg,
-    backgroundColor: Theme.colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.sm,
-  },
-  
-  summaryIconText: {
-    fontSize: 20,
-  },
-  
   summaryNumber: {
     color: Theme.colors.text.primary,
     fontWeight: Theme.typography.fontWeight.bold,
@@ -525,7 +487,6 @@ const styles = StyleSheet.create({
   },
   
   valueNumber: {
-    fontSize: Theme.typography.fontSize.lg,
     color: Theme.colors.primary.main,
   },
   
@@ -537,7 +498,7 @@ const styles = StyleSheet.create({
   progressCard: {
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    backgroundColor: Theme.colors.primary.light + '15', // 15% opacity
   },
   
   progressHeader: {
@@ -608,16 +569,17 @@ const styles = StyleSheet.create({
   },
   
   deliveryNumber: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: Theme.borderRadius.full,
+    backgroundColor: Theme.colors.gray[200],
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Theme.spacing.md,
   },
   
   deliveryNumberText: {
-    color: Theme.colors.primary.contrastText,
+    color: Theme.colors.text.primary,
     fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.bold,
   },
@@ -630,12 +592,11 @@ const styles = StyleSheet.create({
   customerName: {
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.xs / 2,
+    marginBottom: Theme.spacing.xs,
   },
   
   deliveryAddress: {
     color: Theme.colors.text.secondary,
-    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.normal,
   },
   
   deliveryMeta: {
