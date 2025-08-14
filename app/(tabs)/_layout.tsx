@@ -1,6 +1,6 @@
 // app/(tabs)/_layout.tsx
 import { Tabs, Redirect } from 'expo-router';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import NotificationBadge from '../../components/NotificationBadge';
 import { Theme } from '../../components/ui';
@@ -27,23 +27,18 @@ export default function TabLayout() {
           borderTopColor: Theme.colors.divider,
           paddingBottom: Theme.spacing.sm,
           paddingTop: Theme.spacing.sm,
-          height: 60,
+          height: 65,
         },
         tabBarLabelStyle: {
           fontSize: Theme.typography.fontSize.sm,
-          fontWeight: Theme.typography.fontWeight.medium,
+          fontWeight: Theme.typography.fontWeight.semiBold,
         },
         headerStyle: {
-          backgroundColor: Theme.colors.background.paper,
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.1,
-          shadowRadius: 2,
-          elevation: 2,
+          backgroundColor: Theme.colors.primary.main,
         },
-        headerTintColor: Theme.colors.text.primary,
+        headerTintColor: Theme.colors.primary.contrastText,
         headerTitleStyle: {
-          fontWeight: Theme.typography.fontWeight.semiBold,
-          fontSize: Theme.typography.fontSize.lg,
+          fontWeight: Theme.typography.fontWeight.bold,
         },
       }}
     >
@@ -51,6 +46,9 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Roteiros',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="🚚" color={color} size={size} />
+          ),
           headerTitle: 'Meus Roteiros',
           headerRight: () => (
             <View style={{ marginRight: 15 }}>
@@ -63,6 +61,9 @@ export default function TabLayout() {
         name="history"
         options={{
           title: 'Histórico',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="📊" color={color} size={size} />
+          ),
           headerTitle: 'Histórico de Entregas',
           headerRight: () => (
             <View style={{ marginRight: 15 }}>
@@ -75,6 +76,9 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Perfil',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="👤" color={color} size={size} />
+          ),
           headerTitle: 'Meu Perfil',
           headerRight: () => (
             <View style={{ marginRight: 15 }}>
@@ -84,5 +88,19 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+  );
+}
+
+function TabBarIcon({ name, color, size }: { name: string; color: string; size: number }) {
+  return (
+    <Text 
+      style={{ 
+        fontSize: size, 
+        color: color,
+        textAlign: 'center',
+      }}
+    >
+      {name}
+    </Text>
   );
 }
