@@ -3,6 +3,7 @@ import { Tabs, Redirect } from 'expo-router';
 import { Text, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import NotificationBadge from '../../components/NotificationBadge';
+import { Theme } from '../../components/ui';
 
 export default function TabLayout() {
   const { user, isLoading } = useAuth();
@@ -18,26 +19,26 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: Theme.colors.primary.main,
+        tabBarInactiveTintColor: Theme.colors.text.secondary,
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: Theme.colors.background.paper,
           borderTopWidth: 1,
-          borderTopColor: '#e1e5e9',
-          paddingBottom: 8,
-          paddingTop: 8,
+          borderTopColor: Theme.colors.divider,
+          paddingBottom: Theme.spacing.sm,
+          paddingTop: Theme.spacing.sm,
           height: 65,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
+          fontSize: Theme.typography.fontSize.sm,
+          fontWeight: Theme.typography.fontWeight.semiBold,
         },
         headerStyle: {
-          backgroundColor: '#2196F3',
+          backgroundColor: Theme.colors.primary.main,
         },
-        headerTintColor: '#fff',
+        headerTintColor: Theme.colors.primary.contrastText,
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontWeight: Theme.typography.fontWeight.bold,
         },
       }}
     >

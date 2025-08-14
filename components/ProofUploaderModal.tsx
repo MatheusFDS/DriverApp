@@ -8,11 +8,12 @@ import {
   StyleSheet,
   Alert,
   Modal,
-  ActivityIndicator,
   Image,
+  SafeAreaView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
+import { Button, Card, Theme, CommonStyles } from './ui';
 
 interface ProofUploaderModalProps {
   orderId: string;
@@ -81,7 +82,7 @@ export default function ProofUploaderModal({
       const file = {
         uri: selectedImage.uri,
         name: `proof_${orderId}_${Date.now()}.jpg`,
-        type: 'image/jpeg', // Padronizado para jpeg pois a compressão do expo pode converter
+        type: 'image/jpeg',
       };
 
       const response = await api.uploadDeliveryProof(orderId, file);
@@ -113,117 +114,227 @@ export default function ProofUploaderModal({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View style={styles.container}>
+      <SafeAreaView style={CommonStyles.container}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+          <Text style={[CommonStyles.heading2, styles.title]}>
+            {title}
+          </Text>
+          <TouchableOpacity 
+            onPress={handleClose} 
+            style={styles.closeButton}
+            disabled={uploading}
+          >
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Content */}
         <View style={styles.content}>
-          {selectedImage?.uri ? (
-            <Image
-              source={{ uri: selectedImage.uri }}
-              style={styles.previewImage}
-            />
-          ) : (
-            <View style={styles.placeholder}>
-              <Text style={styles.placeholderIcon}>📷</Text>
-              <Text style={styles.placeholderText}>
-                Nenhuma imagem selecionada
-              </Text>
-            </View>
-          )}
+          <Card style={styles.instructionsCard}>
+            <Text style={[CommonStyles.bodySmall, styles.instructionsText]}>
+              Tire uma foto ou selecione uma imagem da galeria como comprovante de entrega.
+            </Text>
+          </Card>
+
+          <Card style={styles.previewCard}>
+            {selectedImage?.uri ? (
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: selectedImage.uri }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.imageOverlay}>
+                  <TouchableOpacity
+                    style={styles.changeImageButton}
+                    onPress={() => setSelectedImage(null)}
+                  >
+                    <Text style={styles.changeImageText}>Alterar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.placeholder}>
+                <Text style={styles.placeholderIcon}>📷</Text>
+                <Text style={[CommonStyles.body, styles.placeholderText]}>
+                  Nenhuma imagem selecionada
+                </Text>
+                <Text style={[CommonStyles.bodySmall, styles.placeholderSubtext]}>
+                  Escolha uma das opções abaixo
+                </Text>
+              </View>
+            )}
+          </Card>
         </View>
 
+        {/* Actions */}
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => pickImage('camera')}
-          >
-            <Text style={styles.buttonText}>Tirar Foto</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => pickImage('gallery')}
-          >
-            <Text style={styles.buttonText}>Escolher da Galeria</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.uploadButton,
-              (!selectedImage || uploading) && styles.disabledButton,
-            ]}
+          <View style={styles.actionButtons}>
+            <Button
+              title="📷 Tirar Foto"
+              onPress={() => pickImage('camera')}
+              variant="outline"
+              disabled={uploading}
+              style={styles.actionButton}
+            />
+            
+            <Button
+              title="🖼️ Galeria"
+              onPress={() => pickImage('gallery')}
+              variant="outline"
+              disabled={uploading}
+              style={styles.actionButton}
+            />
+          </View>
+          
+          <Button
+            title="Enviar Comprovante"
             onPress={uploadProof}
             disabled={!selectedImage || uploading}
-          >
-            {uploading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.uploadButtonText}>Enviar Comprovante</Text>
-            )}
-          </TouchableOpacity>
+            loading={uploading}
+            variant="success"
+            fullWidth
+            size="large"
+            style={styles.uploadButton}
+          />
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f0f2f5' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
+    backgroundColor: Theme.colors.background.paper,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: Theme.colors.divider,
+    ...Theme.shadows.sm,
   },
-  title: { fontSize: 18, fontWeight: 'bold' },
-  closeButton: { padding: 8 },
-  closeButtonText: { fontSize: 18 },
+  
+  title: {
+    color: Theme.colors.text.primary,
+  },
+  
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: Theme.borderRadius.full,
+    backgroundColor: Theme.colors.gray[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  closeButtonText: {
+    fontSize: Theme.typography.fontSize.lg,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Theme.colors.text.secondary,
+  },
+  
   content: {
+    flex: 1,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingTop: Theme.spacing.lg,
+  },
+  
+  instructionsCard: {
+    marginBottom: Theme.spacing.lg,
+    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
+  },
+  
+  instructionsText: {
+    color: Theme.colors.primary.main,
+    textAlign: 'center',
+    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.relaxed,
+  },
+  
+  previewCard: {
+    flex: 1,
+    minHeight: 300,
+  },
+  
+  imageContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: Theme.borderRadius.lg,
+  },
+  
+  imageOverlay: {
+    position: 'absolute',
+    top: Theme.spacing.md,
+    right: Theme.spacing.md,
+  },
+  
+  changeImageButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.base,
+  },
+  
+  changeImageText: {
+    color: Theme.colors.primary.contrastText,
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+  },
+  
+  placeholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    backgroundColor: Theme.colors.gray[50],
+    borderRadius: Theme.borderRadius.lg,
+    paddingVertical: Theme.spacing['4xl'],
   },
-  previewImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    resizeMode: 'contain',
-    borderWidth: 1,
-    borderColor: '#ddd',
+  
+  placeholderIcon: {
+    fontSize: 64,
+    marginBottom: Theme.spacing.lg,
+    opacity: 0.5,
   },
-  placeholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 300,
-    width: '100%',
-    backgroundColor: '#e9ecef',
-    borderRadius: 12,
+  
+  placeholderText: {
+    color: Theme.colors.text.secondary,
+    marginBottom: Theme.spacing.sm,
+    textAlign: 'center',
   },
-  placeholderIcon: { fontSize: 64, color: '#ced4da' },
-  placeholderText: { fontSize: 16, color: '#868e96', marginTop: 8 },
+  
+  placeholderSubtext: {
+    color: Theme.colors.text.hint,
+    textAlign: 'center',
+  },
+  
   actions: {
-    padding: 16,
-    backgroundColor: 'white',
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.lg,
+    backgroundColor: Theme.colors.background.paper,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: Theme.colors.divider,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
+  
+  actionButtons: {
+    flexDirection: 'row',
+    gap: Theme.spacing.md,
+    marginBottom: Theme.spacing.lg,
   },
-  buttonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  uploadButton: { backgroundColor: '#4CAF50' },
-  uploadButtonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  disabledButton: { backgroundColor: '#a5d6a7' },
+  
+  actionButton: {
+    flex: 1,
+  },
+  
+  uploadButton: {
+    // Estilos específicos se necessário
+  },
 });

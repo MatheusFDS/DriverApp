@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '../contexts/AuthContext';
-import { NotificationProvider } from '../contexts/NotificationContext'; // 1. Importar
+import { NotificationProvider } from '../contexts/NotificationContext';
 import Toast from 'react-native-toast-message';
+import { Theme } from '../components/ui';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,13 +38,16 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      {/* 2. Envelopar a navegação com o NotificationProvider */}
       <NotificationProvider>
         <Stack
           screenOptions={{
-            headerStyle: { backgroundColor: '#2196F3' },
-            headerTintColor: '#fff',
-            headerTitleStyle: { fontWeight: 'bold' },
+            headerStyle: { 
+              backgroundColor: Theme.colors.primary.main 
+            },
+            headerTintColor: Theme.colors.primary.contrastText,
+            headerTitleStyle: { 
+              fontWeight: Theme.typography.fontWeight.bold 
+            },
           }}
         >
           <Stack.Screen 
@@ -56,20 +60,54 @@ export default function RootLayout() {
           />
           <Stack.Screen 
             name="route/[id]" 
-            options={{ title: 'Detalhes do Roteiro' }} 
+            options={{ 
+              title: 'Detalhes do Roteiro',
+              headerStyle: {
+                backgroundColor: Theme.colors.primary.main,
+              },
+              headerTintColor: Theme.colors.primary.contrastText,
+            }} 
           />
           <Stack.Screen 
             name="delivery/[id]" 
-            options={{ title: 'Entrega' }} 
+            options={{ 
+              title: 'Entrega',
+              headerStyle: {
+                backgroundColor: Theme.colors.primary.main,
+              },
+              headerTintColor: Theme.colors.primary.contrastText,
+            }} 
           />
-          {/* Adicionar a tela de notificações como um modal */}
           <Stack.Screen
             name="notifications"
-            options={{ title: 'Notificações', presentation: 'modal' }}
+            options={{ 
+              title: 'Notificações', 
+              presentation: 'modal',
+              headerStyle: {
+                backgroundColor: Theme.colors.primary.main,
+              },
+              headerTintColor: Theme.colors.primary.contrastText,
+            }}
+          />
+          <Stack.Screen 
+            name="complete-profile" 
+            options={{ 
+              title: 'Completar Perfil',
+              headerShown: false,
+            }} 
+          />
+          <Stack.Screen 
+            name="accept-invite/[token]" 
+            options={{ 
+              title: 'Aceitar Convite',
+              headerShown: false,
+            }} 
           />
         </Stack>
-        <StatusBar style="light" />
-        {/* 3. Adicionar o Toast global para os pop-ups */}
+        <StatusBar 
+          style="light" 
+          backgroundColor={Theme.colors.primary.main}
+        />
         <Toast />
       </NotificationProvider>
     </AuthProvider>

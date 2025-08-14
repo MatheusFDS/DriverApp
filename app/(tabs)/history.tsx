@@ -282,9 +282,9 @@ const styles = StyleSheet.create({
   },
   
   errorText: {
+    color: Theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: Theme.spacing.xl,
-    color: Theme.colors.status.error,
   },
   
   retryButton: {
@@ -418,6 +418,7 @@ const styles = StyleSheet.create({
   successText: {
     color: Theme.colors.status.success,
   },
+  
   
   routeFooter: {
     backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity

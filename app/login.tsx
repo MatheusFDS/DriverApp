@@ -7,21 +7,42 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  ActivityIndicator,
   SafeAreaView,
-  TouchableOpacity, // Importado para o link
+  ActivityIndicator,
+  TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
-import { Button, Card, Theme, CommonStyles } from '../components/ui';
-import { api } from '../services/api'; // Importar o serviço de API
+import { Button } from '../components/ui';
+import { api } from '../services/api';
+
+// Cores teal originais
+const Colors = {
+  primary: '#00695c',
+  primaryLight: '#439889', 
+  primaryDark: '#004c40',
+  background: '#ffffff',
+  text: '#2e3440',
+  textSecondary: '#5e6b73',
+  textHint: '#9ea7ad',
+  border: '#e0e4e7',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+};
 
 export default function LoginScreen() {
   const { login, isLoading: authIsLoading, user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  
+  // Estados para modal de esqueceu senha
+  const [forgotPasswordVisible, setForgotPasswordVisible] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmailFocused, setForgotEmailFocused] = useState(false);
+  const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
 
   useEffect(() => {
     if (!authIsLoading && user) {
@@ -31,7 +52,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Campos Vazios', 'Por favor, preencha seu email e senha.');
+      Alert.alert('Campos obrigatórios', 'Digite seu email e senha.');
       return;
     }
 
@@ -43,115 +64,142 @@ export default function LoginScreen() {
       }
     } catch (error) {
       console.error("Erro inesperado no handleLogin:", error);
-      Alert.alert('Erro Inesperado', 'Ocorreu um erro. Tente novamente.');
+      Alert.alert('Erro', 'Ocorreu um erro. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  // --- NOVA FUNÇÃO PARA O ESQUECI SENHA ---
-  const handleForgotPassword = () => {
-    Alert.prompt(
-      'Redefinir Senha',
-      'Digite o e-mail associado à sua conta para receber o link de redefinição.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Enviar',
-          onPress: async (promptEmail) => {
-            if (promptEmail) {
-              try {
-                const response = await api.forgotPassword(promptEmail);
-                Alert.alert('Verifique seu E-mail', response.message || 'Link de redefinição enviado.');
-              } catch (error: any) {
-                Alert.alert('Erro', error.message || 'Não foi possível enviar o e-mail de redefinição.');
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) {
+      Alert.alert('Email obrigatório', 'Digite seu email para recuperar a senha.');
+      return;
+    }
+
+    // Validação básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail.trim())) {
+      Alert.alert('Email inválido', 'Digite um email válido.');
+      return;
+    }
+
+    setIsSubmittingForgot(true);
+    try {
+      const response = await api.forgotPassword(forgotEmail.trim());
+      
+      if (response.success) {
+        Alert.alert(
+          'Email enviado!', 
+          'Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setForgotPasswordVisible(false);
+                setForgotEmail('');
               }
             }
-          },
-        },
-      ],
-      'plain-text', // tipo de input
-      email, // valor inicial
-      'email-address' // tipo de teclado
-    );
+          ]
+        );
+      } else {
+        Alert.alert('Erro', response.message || 'Não foi possível enviar o email de recuperação.');
+      }
+    } catch (error) {
+      console.error('Erro ao enviar email de recuperação:', error);
+      Alert.alert('Erro', 'Ocorreu um erro. Tente novamente.');
+    } finally {
+      setIsSubmittingForgot(false);
+    }
   };
 
+  const openForgotPasswordModal = () => {
+    setForgotEmail('');
+    setForgotEmailFocused(false);
+    setForgotPasswordVisible(true);
+  };
+
+  const closeForgotPasswordModal = () => {
+    setForgotPasswordVisible(false);
+    setForgotEmail('');
+    setForgotEmailFocused(false);
+  };
+  
   if (authIsLoading) {
     return (
-      <SafeAreaView style={CommonStyles.centeredContainer}>
-        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
-        <Text style={[CommonStyles.body, styles.loadingText]}>
-          Verificando sessão...
-        </Text>
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={CommonStyles.safeContainer}>
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         style={styles.keyboardContainer} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.content}>
+          {/* Logo minimalista */}
           <View style={styles.logoContainer}>
-            <View style={styles.logoIcon}>
+            <View style={styles.logoCircle}>
               <Text style={styles.logoEmoji}>🚚</Text>
             </View>
-            <Text style={[CommonStyles.heading1, styles.title]}>
-              DeliveryApp
-            </Text>
-            <Text style={[CommonStyles.bodyLarge, styles.subtitle]}>
-              Sistema para Motoristas
-            </Text>
+            <Text style={styles.appName}>DeliveryApp</Text>
           </View>
 
-          <Card style={styles.formCard}>
+          {/* Form com inputs minimalistas */}
+          <View style={styles.form}>
+            {/* Input Email - estilo linha */}
             <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                📧 Seu Email
-              </Text>
               <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Digite seu email"
-                placeholderTextColor={Theme.colors.text.hint}
+                style={[
+                  styles.input,
+                  emailFocused && styles.inputFocused
+                ]}
+                placeholder="Email"
+                placeholderTextColor={Colors.textHint}
                 value={email}
                 onChangeText={setEmail}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => setEmailFocused(false)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!isSubmitting}
                 autoComplete="email"
               />
+              <View style={[
+                styles.underline,
+                emailFocused && styles.underlineFocused
+              ]} />
             </View>
 
+            {/* Input Senha - estilo linha */}
             <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                🔒 Sua Senha
-              </Text>
               <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Digite sua senha"
-                placeholderTextColor={Theme.colors.text.hint}
+                style={[
+                  styles.input,
+                  passwordFocused && styles.inputFocused
+                ]}
+                placeholder="Senha"
+                placeholderTextColor={Colors.textHint}
                 value={password}
                 onChangeText={setPassword}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
                 secureTextEntry
                 editable={!isSubmitting}
                 autoComplete="password"
               />
+              <View style={[
+                styles.underline,
+                passwordFocused && styles.underlineFocused
+              ]} />
             </View>
-            
-            <TouchableOpacity onPress={handleForgotPassword} disabled={isSubmitting}>
-              <Text style={styles.forgotPasswordText}>
-                Esqueceu a senha?
-              </Text>
-            </TouchableOpacity>
 
+            {/* Botão clean */}
             <Button
-              title={isSubmitting ? "Entrando..." : "🚀 Entrar"}
+              title="Entrar"
               onPress={handleLogin}
               disabled={isSubmitting}
               loading={isSubmitting}
@@ -159,118 +207,319 @@ export default function LoginScreen() {
               size="large"
               style={styles.loginButton}
             />
-          </Card>
-          
-          <Card variant="outlined" style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>ℹ️</Text>
-              <Text style={[CommonStyles.bodySmall, styles.infoText]}>
-                Use suas credenciais de motorista fornecidas pela empresa.
+
+            {/* Esqueceu a senha */}
+            <TouchableOpacity 
+              style={styles.forgotPasswordContainer}
+              onPress={openForgotPasswordModal}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.forgotPasswordText}>
+                Esqueceu a senha?
               </Text>
-            </View>
-          </Card>
-        </ScrollView>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer minimalista */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              Sistema para motoristas
+            </Text>
+          </View>
+        </View>
       </KeyboardAvoidingView>
+
+      {/* Modal de Esqueceu Senha */}
+      <Modal
+        visible={forgotPasswordVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeForgotPasswordModal}
+      >
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            style={styles.modalKeyboard} 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Recuperar Senha</Text>
+                <Text style={styles.modalSubtitle}>
+                  Digite seu email para receber as instruções de recuperação
+                </Text>
+              </View>
+
+              <View style={styles.modalContent}>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      forgotEmailFocused && styles.inputFocused
+                    ]}
+                    placeholder="Email"
+                    placeholderTextColor={Colors.textHint}
+                    value={forgotEmail}
+                    onChangeText={setForgotEmail}
+                    onFocus={() => setForgotEmailFocused(true)}
+                    onBlur={() => setForgotEmailFocused(false)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!isSubmittingForgot}
+                    autoComplete="email"
+                  />
+                  <View style={[
+                    styles.underline,
+                    forgotEmailFocused && styles.underlineFocused
+                  ]} />
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={closeForgotPasswordModal}
+                  disabled={isSubmittingForgot}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[
+                    styles.confirmButton,
+                    isSubmittingForgot && styles.confirmButtonDisabled
+                  ]}
+                  onPress={handleForgotPassword}
+                  disabled={isSubmittingForgot}
+                >
+                  {isSubmittingForgot ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Enviar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
   keyboardContainer: {
     flex: 1,
   },
   
-  scrollContainer: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
     justifyContent: 'center',
-    paddingHorizontal: Theme.spacing.lg,
-    paddingVertical: Theme.spacing['2xl'],
   },
   
   logoContainer: {
     alignItems: 'center',
-    marginBottom: Theme.spacing['5xl'],
+    marginBottom: 80,
   },
   
-  logoIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: Theme.borderRadius.xl,
-    backgroundColor: Theme.colors.primary.main,
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Theme.spacing.lg,
-    ...Theme.shadows.lg,
+    marginBottom: 16,
   },
   
   logoEmoji: {
-    fontSize: 40,
+    fontSize: 28,
+    color: '#ffffff',
   },
   
-  title: {
-    color: Theme.colors.primary.main,
-    marginBottom: Theme.spacing.sm,
+  appName: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: Colors.text,
+    letterSpacing: -0.5,
   },
   
-  subtitle: {
-    color: Theme.colors.text.secondary,
-    textAlign: 'center',
-  },
-  
-  formCard: {
-    marginBottom: Theme.spacing.lg,
+  form: {
+    width: '100%',
+    maxWidth: 320,
+    alignSelf: 'center',
   },
   
   inputContainer: {
-    marginBottom: Theme.spacing.lg,
-  },
-  
-  inputLabel: {
-    fontWeight: Theme.typography.fontWeight.semiBold,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.sm,
+    marginBottom: 32,
   },
   
   input: {
-    fontSize: Theme.typography.fontSize.lg,
-    paddingVertical: Theme.spacing.lg,
+    fontSize: 16,
+    color: Colors.text,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
-
-  forgotPasswordText: {
-    color: Theme.colors.primary.main,
-    textAlign: 'right',
-    marginBottom: Theme.spacing.xl,
-    fontWeight: Theme.typography.fontWeight.medium,
+  
+  inputFocused: {
+    // Input focused styles se necessário
+  },
+  
+  underline: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginTop: 2,
+  },
+  
+  underlineFocused: {
+    height: 2,
+    backgroundColor: Colors.primary,
   },
   
   loginButton: {
-    marginTop: Theme.spacing.sm,
+    marginTop: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    height: 48,
+    shadowColor: Colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   
-  infoCard: {
-    backgroundColor: `${Theme.colors.primary.main}08`, // 8% opacity
-    borderColor: `${Theme.colors.primary.main}20`, // 20% opacity
+  forgotPasswordContainer: {
+    alignItems: 'center',
+    marginTop: 24,
+    paddingVertical: 8,
   },
   
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  forgotPasswordText: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '500',
   },
   
-  infoIcon: {
-    fontSize: Theme.typography.fontSize.lg,
-    marginRight: Theme.spacing.sm,
-    color: Theme.colors.primary.main,
+  footer: {
+    alignItems: 'center',
+    marginTop: 48,
   },
   
-  infoText: {
+  footerText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    letterSpacing: 0.25,
+  },
+
+  // Estilos do Modal
+  modalOverlay: {
     flex: 1,
-    color: Theme.colors.primary.main,
-    lineHeight: Theme.typography.fontSize.sm * Theme.typography.lineHeight.relaxed,
+    backgroundColor: Colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  
-  loadingText: {
-    marginTop: Theme.spacing.md,
-    color: Theme.colors.text.secondary,
+
+  modalKeyboard: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+
+  modalContainer: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  modalContent: {
+    marginBottom: 32,
+  },
+
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  cancelButton: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+  },
+
+  confirmButton: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    backgroundColor: Colors.primary,
+  },
+
+  confirmButtonDisabled: {
+    backgroundColor: Colors.textHint,
+  },
+
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#ffffff',
   },
 });

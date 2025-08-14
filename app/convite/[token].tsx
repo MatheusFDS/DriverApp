@@ -7,13 +7,13 @@ import {
   ScrollView,
   SafeAreaView,
   TextInput,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Button, Card, Theme, CommonStyles } from '../../components/ui';
 
 interface InviteDetails {
   email: string;
@@ -123,116 +123,196 @@ export default function AcceptInviteScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
-        <Text style={styles.loadingText}>Verificando convite...</Text>
-      </View>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
+        <ActivityIndicator size="large" color={Theme.colors.primary.main} />
+        <Text style={[CommonStyles.body, styles.loadingText]}>
+          Verificando convite...
+        </Text>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
+      <SafeAreaView style={CommonStyles.centeredContainer}>
         <Text style={styles.icon}>⚠️</Text>
-        <Text style={styles.errorTitle}>Ocorreu um Erro</Text>
-        <Text style={styles.errorMessage}>{error}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.replace('/login')}>
-          <Text style={styles.buttonText}>Voltar para o Login</Text>
-        </TouchableOpacity>
-      </View>
+        <Text style={[CommonStyles.heading3, styles.errorTitle]}>
+          Ocorreu um Erro
+        </Text>
+        <Text style={[CommonStyles.body, styles.errorMessage]}>
+          {error}
+        </Text>
+        <Button
+          title="Voltar para o Login"
+          onPress={() => router.replace('/login')}
+          style={styles.errorButton}
+        />
+      </SafeAreaView>
     );
   }
   
   const formattedExpiresAt = details ? format(new Date(details.expiresAt), "'expira em' dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <SafeAreaView style={CommonStyles.safeContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerIcon}>🎉</Text>
-          <Text style={styles.headerTitle}>Você foi convidado!</Text>
-          <Text style={styles.headerSubtitle}>Para se juntar como {details?.role.name}</Text>
+          <View style={styles.headerIcon}>
+            <Text style={styles.headerEmoji}>🎉</Text>
+          </View>
+          <Text style={[CommonStyles.heading1, styles.headerTitle]}>
+            Você foi convidado!
+          </Text>
+          <Text style={[CommonStyles.bodyLarge, styles.headerSubtitle]}>
+            Para se juntar como {details?.role.name}
+          </Text>
         </View>
 
-        <View style={styles.detailsCard}>
-          <Text style={styles.cardTitle}>Detalhes do Convite</Text>
-          <Text style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Convidado por: </Text>{details?.inviter.name}
+        {/* Detalhes do Convite */}
+        <Card style={styles.detailsCard}>
+          <Text style={[CommonStyles.heading3, styles.cardTitle]}>
+            Detalhes do Convite
           </Text>
-          <Text style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Email: </Text>{details?.email}
-          </Text>
-          {details?.tenant && (
-            <Text style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Empresa: </Text>{details.tenant.name}
-            </Text>
-          )}
-          <Text style={isExpired ? styles.expiresError : styles.expiresText}>
+          <View style={styles.detailsList}>
+            <View style={styles.detailItem}>
+              <Text style={[CommonStyles.body, styles.detailLabel]}>
+                Convidado por:
+              </Text>
+              <Text style={[CommonStyles.body, styles.detailValue]}>
+                {details?.inviter.name}
+              </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={[CommonStyles.body, styles.detailLabel]}>
+                Email:
+              </Text>
+              <Text style={[CommonStyles.body, styles.detailValue]}>
+                {details?.email}
+              </Text>
+            </View>
+            {details?.tenant && (
+              <View style={styles.detailItem}>
+                <Text style={[CommonStyles.body, styles.detailLabel]}>
+                  Empresa:
+                </Text>
+                <Text style={[CommonStyles.body, styles.detailValue]}>
+                  {details.tenant.name}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text style={[
+            CommonStyles.bodySmall, 
+            isExpired ? styles.expiresError : styles.expiresText
+          ]}>
             {isExpired ? 'Convite Expirado' : formattedExpiresAt}
           </Text>
-        </View>
+        </Card>
 
+        {/* Formulário ou Mensagem de Expirado */}
         {isExpired ? (
-          <View style={styles.centerContainer}>
-             <Text style={styles.errorMessage}>Por favor, solicite um novo convite.</Text>
-          </View>
+          <Card variant="outlined" style={styles.expiredCard}>
+            <Text style={[CommonStyles.body, styles.expiredMessage]}>
+              Por favor, solicite um novo convite.
+            </Text>
+          </Card>
         ) : (
-          <View style={styles.formContainer}>
-            <Text style={styles.formTitle}>Crie sua conta de Motorista</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Seu Nome Completo"
-              value={name}
-              onChangeText={setName}
-              editable={!isSubmitting}
-              autoCapitalize="words"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Nº da CNH (apenas números)"
-              value={license}
-              onChangeText={setLicense}
-              keyboardType="numeric"
-              maxLength={11}
-              editable={!isSubmitting}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="CPF (apenas números)"
-              value={formatCpf(cpf)}
-              onChangeText={(text) => setCpf(text.replace(/\D/g, ''))}
-              keyboardType="numeric"
-              maxLength={14}
-              editable={!isSubmitting}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Crie uma Senha"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              editable={!isSubmitting}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Confirme sua Senha"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              editable={!isSubmitting}
-            />
-            <TouchableOpacity 
-              style={[styles.button, isSubmitting && styles.buttonDisabled]} 
+          <Card style={styles.formCard}>
+            <Text style={[CommonStyles.heading3, styles.formTitle]}>
+              Crie sua conta de Motorista
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                Nome Completo
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Seu nome como aparece no documento"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={name}
+                onChangeText={setName}
+                editable={!isSubmitting}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                Nº da CNH
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Apenas os números"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={license}
+                onChangeText={setLicense}
+                keyboardType="numeric"
+                maxLength={11}
+                editable={!isSubmitting}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                CPF
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Apenas os números"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={formatCpf(cpf)}
+                onChangeText={(text) => setCpf(text.replace(/\D/g, ''))}
+                keyboardType="numeric"
+                maxLength={14}
+                editable={!isSubmitting}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                Senha
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Crie uma senha"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!isSubmitting}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={[CommonStyles.body, styles.inputLabel]}>
+                Confirmar Senha
+              </Text>
+              <TextInput
+                style={[CommonStyles.input, styles.input]}
+                placeholder="Confirme sua senha"
+                placeholderTextColor={Theme.colors.text.hint}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                editable={!isSubmitting}
+              />
+            </View>
+
+            <Button
+              title="Finalizar Cadastro"
               onPress={handleAcceptInvite}
               disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Finalizar Cadastro</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              loading={isSubmitting}
+              fullWidth
+              size="large"
+              style={styles.submitButton}
+            />
+          </Card>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -240,128 +320,154 @@ export default function AcceptInviteScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f0f4f8',
-  },
   scrollContainer: {
-    padding: 24,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.xl,
   },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
+  
   loadingText: {
-    marginTop: 16,
-    fontSize: 18,
-    color: '#333',
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
   },
+  
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: Theme.spacing['4xl'],
   },
+  
   headerIcon: {
-    fontSize: 64,
+    width: 80,
+    height: 80,
+    borderRadius: Theme.borderRadius.xl,
+    backgroundColor: Theme.colors.primary.main,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.lg,
+    ...Theme.shadows.lg,
   },
+  
+  headerEmoji: {
+    fontSize: 40,
+  },
+  
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#102a43',
-    marginTop: 16,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#627d98',
-  },
-  detailsCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#102a43',
-  },
-  detailItem: {
-    fontSize: 16,
-    marginBottom: 8,
-    color: '#334e68',
-  },
-  detailLabel: {
-    fontWeight: '600',
-  },
-  expiresText: {
-    marginTop: 12,
+    color: Theme.colors.primary.main,
+    marginBottom: Theme.spacing.sm,
     textAlign: 'center',
-    color: '#627d98',
+  },
+  
+  headerSubtitle: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+  },
+  
+  detailsCard: {
+    marginBottom: Theme.spacing.xl,
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
+  },
+  
+  cardTitle: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.lg,
+  },
+  
+  detailsList: {
+    gap: Theme.spacing.md,
+    marginBottom: Theme.spacing.lg,
+  },
+  
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.gray[100],
+  },
+  
+  detailLabel: {
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.secondary,
+  },
+  
+  detailValue: {
+    color: Theme.colors.text.primary,
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: Theme.spacing.md,
+  },
+  
+  expiresText: {
+    textAlign: 'center',
+    color: Theme.colors.text.secondary,
     fontStyle: 'italic',
   },
+  
   expiresError: {
-    marginTop: 12,
     textAlign: 'center',
-    color: '#d32f2f',
-    fontWeight: 'bold',
+    color: Theme.colors.status.error,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
-  formContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  input: {
-    height: 50,
-    borderColor: '#dce3e9',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    fontSize: 16,
-    backgroundColor: '#f8fafc',
-  },
-  button: {
-    backgroundColor: '#2196F3',
-    padding: 16,
-    borderRadius: 8,
+  
+  expiredCard: {
+    backgroundColor: `${Theme.colors.status.error}08`, // 8% opacity
+    borderColor: `${Theme.colors.status.error}20`, // 20% opacity
     alignItems: 'center',
-    marginTop: 8,
+    paddingVertical: Theme.spacing.xl,
   },
-  buttonDisabled: {
-    backgroundColor: '#a0c3e0',
+  
+  expiredMessage: {
+    color: Theme.colors.status.error,
+    textAlign: 'center',
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  
+  formCard: {
+    // Estilos padrão do Card
   },
+  
+  formTitle: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.xl,
+    textAlign: 'center',
+  },
+  
+  inputContainer: {
+    marginBottom: Theme.spacing.lg,
+  },
+  
+  inputLabel: {
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  input: {
+    fontSize: Theme.typography.fontSize.lg,
+    paddingVertical: Theme.spacing.lg,
+  },
+  
+  submitButton: {
+    marginTop: Theme.spacing.md,
+  },
+  
   icon: {
     fontSize: 48,
-    marginBottom: 16,
+    marginBottom: Theme.spacing.lg,
   },
+  
   errorTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#d32f2f',
-    marginBottom: 8,
-  },
-  errorMessage: {
-    fontSize: 16,
-    color: '#333',
+    color: Theme.colors.status.error,
+    marginBottom: Theme.spacing.sm,
     textAlign: 'center',
-    marginBottom: 24,
+  },
+  
+  errorMessage: {
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing.xl,
+  },
+  
+  errorButton: {
+    minWidth: 200,
   },
 });

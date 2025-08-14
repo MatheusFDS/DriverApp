@@ -52,7 +52,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   );
 };
 
-
+// Mapeamento de cores para cada variante
 
 const styles = StyleSheet.create({
   base: {

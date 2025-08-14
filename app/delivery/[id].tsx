@@ -456,7 +456,7 @@ export default function DeliveryDetailsScreen() {
                         handleUpdateStatus(action.targetStatus, undefined, action.requiresProof);
                     }
                   }}
-                  variant={action.style === 'success' ? 'success' : action.style === 'warning' ? 'danger' : 'primary'}
+                  variant={action.style === 'success' ? 'success' : 'primary'}
                   disabled={updatingStatus}
                   loading={updatingStatus}
                   fullWidth

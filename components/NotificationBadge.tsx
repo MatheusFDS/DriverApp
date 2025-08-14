@@ -4,6 +4,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useNotifications } from '../contexts/NotificationContext';
+import { Theme } from '../components/ui';
 
 interface NotificationBadgeProps {
   color?: string;
@@ -12,7 +13,7 @@ interface NotificationBadgeProps {
 }
 
 export default function NotificationBadge({ 
-  color = '#2196F3', 
+  color = Theme.colors.primary.contrastText, 
   size = 24,
   showLabel = false 
 }: NotificationBadgeProps) {
@@ -46,7 +47,7 @@ export default function NotificationBadge({
         {/* Indicador de conexão */}
         <View style={[
           styles.connectionIndicator,
-          { backgroundColor: isConnected ? '#4CAF50' : '#F44336' }
+          { backgroundColor: isConnected ? Theme.colors.status.success : Theme.colors.status.error }
         ]} />
       </View>
       
@@ -66,47 +67,53 @@ const styles = StyleSheet.create({
     minWidth: 44,
     minHeight: 44,
   },
+  
   iconContainer: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  
   bellIcon: {
     fontWeight: 'bold',
   },
+  
   badge: {
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: '#FF4444',
-    borderRadius: 10,
+    backgroundColor: Theme.colors.status.error,
+    borderRadius: Theme.borderRadius.full,
     minWidth: 20,
     height: 20,
-    paddingHorizontal: 6,
+    paddingHorizontal: Theme.spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: Theme.colors.background.paper,
   },
+  
   badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: Theme.colors.primary.contrastText,
+    fontSize: Theme.typography.fontSize.xs,
+    fontWeight: Theme.typography.fontWeight.bold,
     textAlign: 'center',
   },
+  
   connectionIndicator: {
     position: 'absolute',
     bottom: -2,
     right: -2,
     width: 8,
     height: 8,
-    borderRadius: 4,
+    borderRadius: Theme.borderRadius.full,
     borderWidth: 1,
-    borderColor: 'white',
+    borderColor: Theme.colors.background.paper,
   },
+  
   label: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
+    fontSize: Theme.typography.fontSize.xs,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    marginTop: Theme.spacing.xs / 2,
   },
 });

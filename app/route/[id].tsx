@@ -342,7 +342,7 @@ export default function RouteDetailsScreen() {
                 key={deliveryItem.id}
                 style={StyleSheet.flatten([
                   styles.deliveryCard,
-                  isUpdating ? styles.deliveryCardUpdating : null
+                  isUpdating && styles.deliveryCardUpdating
                 ])}
                 onPress={() => navigateToDeliveryItemDetails(deliveryItem.id)}
               >
