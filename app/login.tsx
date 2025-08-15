@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Modal,
-  Image,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
@@ -140,14 +139,10 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.content}>
-          {/* Logo personalizado */}
+          {/* Logo minimalista */}
           <View style={styles.logoContainer}>
-            <View style={styles.logoWrapper}>
-              <Image
-                source={require('../assets/logo.png')} // Coloque seu logo na pasta assets/
-                style={styles.logo}
-                resizeMode="contain"
-              />
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoEmoji}>🚚</Text>
             </View>
             <Text style={styles.appName}>DeliveryApp</Text>
           </View>
@@ -248,14 +243,6 @@ export default function LoginScreen() {
           >
             <View style={styles.modalContainer}>
               <View style={styles.modalHeader}>
-                {/* Logo menor no modal */}
-                <View style={styles.modalLogoContainer}>
-                  <Image
-                    source={require('../assets/logo.png')} // Mesmo logo
-                    style={styles.modalLogo}
-                    resizeMode="contain"
-                  />
-                </View>
                 <Text style={styles.modalTitle}>Recuperar Senha</Text>
                 <Text style={styles.modalSubtitle}>
                   Digite seu email para receber as instruções de recuperação
@@ -348,22 +335,19 @@ const styles = StyleSheet.create({
     marginBottom: 80,
   },
   
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    padding: 16,
   },
   
-  logo: {
-    width: '100%',
-    height: '100%',
-    maxWidth: 48,
-    maxHeight: 48,
+  logoEmoji: {
+    fontSize: 28,
+    color: '#ffffff',
   },
   
   appName: {
@@ -478,17 +462,6 @@ const styles = StyleSheet.create({
   modalHeader: {
     alignItems: 'center',
     marginBottom: 32,
-  },
-
-  modalLogoContainer: {
-    width: 50,
-    height: 50,
-    marginBottom: 16,
-  },
-
-  modalLogo: {
-    width: '100%',
-    height: '100%',
   },
 
   modalTitle: {
