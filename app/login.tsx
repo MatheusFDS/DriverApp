@@ -10,12 +10,14 @@ import {
   SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
   Modal,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 import { Button } from '../components/ui';
 import { api } from '../services/api';
+import LogoImage from '../assets/images/logo.png';
 
 // Cores teal originais
 const Colors = {
@@ -140,12 +142,17 @@ export default function LoginScreen() {
       >
         <View style={styles.content}>
           {/* Logo minimalista */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoEmoji}>🚚</Text>
-            </View>
-            <Text style={styles.appName}>DeliveryApp</Text>
-          </View>
+<View style={styles.logoContainer}>
+  <View style={styles.logoCircle}>
+    <Image 
+      source={LogoImage} 
+      style={styles.logoImage} 
+      resizeMode="contain"
+    />
+  </View>
+  <Text style={styles.appName}>Rotei App</Text>
+</View>
+
 
           {/* Form com inputs minimalistas */}
           <View style={styles.form}>
@@ -521,5 +528,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#ffffff',
+  },
+
+  logoImage: {
+    width: 64,
+    height: 64,
   },
 });

@@ -89,20 +89,6 @@ export default function RootLayout() {
               headerTintColor: Theme.colors.primary.contrastText,
             }}
           />
-          <Stack.Screen 
-            name="complete-profile" 
-            options={{ 
-              title: 'Completar Perfil',
-              headerShown: false,
-            }} 
-          />
-          <Stack.Screen 
-            name="accept-invite/[token]" 
-            options={{ 
-              title: 'Aceitar Convite',
-              headerShown: false,
-            }} 
-          />
         </Stack>
         <StatusBar 
           style="light" 
