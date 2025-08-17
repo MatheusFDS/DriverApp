@@ -1,3 +1,5 @@
+// app/(tabs)/delivery/[id].tsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -79,7 +81,7 @@ export default function DeliveryDetailsScreen() {
     setRefreshing(false);
   }, [loadDeliveryDetails]);
 
-  const handleUpdateStatus = async (newStatus: OrderMobileStatus, motivo?: string, requiresProof?: boolean) => {
+  const handleUpdateStatus = async (newStatus: OrderMobileStatus, motivo?: string) => {
     if (!deliveryItem || !id) return;
 
     const payload: StatusUpdatePayload = { status: newStatus };
@@ -97,18 +99,19 @@ export default function DeliveryDetailsScreen() {
           status: (response.data?.newStatusMobile || newStatus) as OrderMobileStatus 
         } : null);
         
-        Alert.alert(
-          'Sucesso!',
-          response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`,
-          [{ 
-            text: 'OK',
-            onPress: () => {
-              if (requiresProof && (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE')) {
-                setShowProofCamera(true);
-              }
-            }
-          }]
-        );
+        // Para ENTREGUE e NAO_ENTREGUE, sempre solicitar comprovante
+        if (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE') {
+          Alert.alert(
+            'Status Atualizado!',
+            `${response.data.message || 'Status atualizado com sucesso!'}\n\nAgora você precisa anexar um comprovante.`,
+            [{ 
+              text: 'Adicionar Comprovante',
+              onPress: () => setShowProofCamera(true)
+            }]
+          );
+        } else {
+          Alert.alert('Sucesso!', response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`);
+        }
       } else {
         throw new Error(response.message || 'Erro ao atualizar status');
       }
@@ -123,9 +126,66 @@ export default function DeliveryDetailsScreen() {
     }
   };
 
+  const confirmStatusUpdate = (targetStatus: OrderMobileStatus, customerName: string) => {
+    if (targetStatus === 'ENTREGUE') {
+      Alert.alert(
+        'Confirmar Entrega Realizada',
+        `Confirma que a entrega foi realizada com sucesso para "${customerName}"?\n\n⚠️ Você precisará anexar um comprovante da entrega.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Sim, Entrega Realizada',
+            onPress: () => handleUpdateStatus(targetStatus)
+          }
+        ]
+      );
+    } else if (targetStatus === 'NAO_ENTREGUE') {
+      Alert.alert(
+        'Confirmar Problema na Entrega',
+        `Confirma que não foi possível realizar a entrega para "${customerName}"?\n\n⚠️ Você precisará informar o motivo e anexar um comprovante.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Sim, Reportar Problema',
+            style: 'destructive',
+            onPress: () => {
+              Alert.prompt(
+                'Motivo da Não Entrega',
+                'Descreva detalhadamente por que não foi possível realizar a entrega:',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Confirmar',
+                    onPress: (motivo) => {
+                      if (motivo && motivo.trim() !== "") {
+                        handleUpdateStatus(targetStatus, motivo.trim());
+                      } else {
+                        Alert.alert("Atenção", "O motivo é obrigatório para reportar um problema de entrega.");
+                      }
+                    }
+                  }
+                ],
+                'plain-text',
+                '',
+                'default'
+              );
+            }
+          }
+        ]
+      );
+    } else {
+      // Para outros status (iniciar entrega)
+      handleUpdateStatus(targetStatus);
+    }
+  };
+
   const handleProofSuccess = (proofUrl: string) => {
     console.log('Proof uploaded:', proofUrl);
-    loadDeliveryDetails();
+    Alert.alert(
+      'Comprovante Enviado!',
+      'O comprovante foi anexado com sucesso à entrega.',
+      [{ text: 'OK', onPress: () => loadDeliveryDetails() }]
+    );
   };
 
   const viewProofImage = (proofUrl: string) => {
@@ -413,14 +473,12 @@ export default function DeliveryDetailsScreen() {
               variant="outline"
               style={styles.quickActionButton}
             />
-            {(deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE') && (
-              <Button
-                title="Comprovante"
-                onPress={() => setShowProofCamera(true)}
-                variant="outline"
-                style={styles.quickActionButton}
-              />
-            )}
+            <Button
+              title="Comprovante"
+              onPress={() => setShowProofCamera(true)}
+              variant="outline"
+              style={styles.quickActionButton}
+            />
           </View>
         </Card>
 
@@ -435,24 +493,7 @@ export default function DeliveryDetailsScreen() {
                 <Button
                   key={action.id}
                   title={action.label}
-                  onPress={() => {
-                    if (action.requiresReason && action.targetStatus === 'NAO_ENTREGUE') {
-                        Alert.prompt( 
-                          'Reportar Problema', 
-                          'Descreva o motivo da não entrega:',
-                          [
-                            { text: 'Cancelar', style: 'cancel' }, 
-                            { 
-                              text: 'Confirmar', 
-                              onPress: (motivo) => motivo && handleUpdateStatus(action.targetStatus, motivo, action.requiresProof) 
-                            }
-                          ],
-                          'plain-text'
-                        );
-                    } else {
-                        handleUpdateStatus(action.targetStatus, undefined, action.requiresProof);
-                    }
-                  }}
+                  onPress={() => confirmStatusUpdate(action.targetStatus, deliveryItem.customerName)}
                   variant={action.style === 'success' ? 'success' : 'primary'}
                   disabled={updatingStatus}
                   loading={updatingStatus}
@@ -461,6 +502,25 @@ export default function DeliveryDetailsScreen() {
                 />
               ))}
             </View>
+          </Card>
+        )}
+
+        {/* Alerta para Comprovante Obrigatório */}
+        {(deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE') && (!deliveryItem.proofs || deliveryItem.proofs.length === 0) && (
+          <Card style={styles.warningCard}>
+            <Text style={[CommonStyles.heading3, styles.warningTitle]}>
+              ⚠️ Comprovante Obrigatório
+            </Text>
+            <Text style={[CommonStyles.body, styles.warningText]}>
+              Esta entrega precisa de um comprovante anexado. Toque no botão abaixo para adicionar uma foto.
+            </Text>
+            <Button
+              title="Adicionar Comprovante Agora"
+              onPress={() => setShowProofCamera(true)}
+              variant="primary"
+              fullWidth
+              style={styles.warningButton}
+            />
           </Card>
         )}
 
@@ -718,6 +778,29 @@ const styles = StyleSheet.create({
   
   statusActionButton: {
     // Estilos específicos se necessário
+  },
+  
+  warningCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    backgroundColor: Theme.colors.status.warning + '15',
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.status.warning,
+  },
+  
+  warningTitle: {
+    color: Theme.colors.status.warning,
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  warningText: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.lg,
+    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.relaxed,
+  },
+  
+  warningButton: {
+    backgroundColor: Theme.colors.status.warning,
   },
   
   footer: {

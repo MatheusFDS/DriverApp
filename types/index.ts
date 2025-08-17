@@ -156,9 +156,9 @@ export const getRouteMobileStatusConfig = (status: RouteMobileStatus): StatusCon
 
 export const getOrderMobileStatusConfig = (status: OrderMobileStatus): StatusConfig => {
   const configs: Record<OrderMobileStatus, StatusConfig> = {
-    'SEM_ROTA': { color: '#BDBDBD', text: 'SEM ROTA', icon: '📑', description: 'Aguardando inclusão em roteiro.' },
+    'SEM_ROTA': { color: '#BDBDBD', text: 'SEM ROTA', icon: '📍', description: 'Aguardando inclusão em roteiro.' },
     'EM_ROTA_AGUARDANDO_LIBERACAO': { color: '#FFD54F', text: 'AG. LIBERAÇÃO', icon: '⏳', description: 'Roteiro aguarda liberação.' },
-    'EM_ROTA': { color: '#90CAF9', text: 'PENDENTE', icon: '📍', description: 'Pronto para entrega. Toque para iniciar.' },
+    'EM_ROTA': { color: '#90CAF9', text: 'PENDENTE', icon: '🎯', description: 'Pronto para entrega. Toque para iniciar.' },
     'EM_ENTREGA': { color: '#2196F3', text: 'EM ENTREGA', icon: '🚚', description: 'Motorista a caminho do cliente.' },
     'ENTREGUE': { color: '#4CAF50', text: 'ENTREGUE', icon: '📦✅', description: 'Entrega realizada com sucesso!' },
     'NAO_ENTREGUE': { color: '#EF5350', text: 'NÃO ENTREGUE', icon: '⚠️', description: 'Problema na entrega.' }
@@ -171,10 +171,28 @@ export const getAvailableOrderActions = (currentStatus: OrderMobileStatus, route
     return [];
   }
   const actions: Partial<Record<OrderMobileStatus, OrderActionMobile[]>> = {
-    'EM_ROTA': [{ id: 'iniciar_entrega', label: '🚚 Iniciar Entrega', targetStatus: 'EM_ENTREGA', style: 'primary' }],
+    'EM_ROTA': [{ 
+      id: 'iniciar_entrega', 
+      label: '🚚 Iniciar Entrega', 
+      targetStatus: 'EM_ENTREGA', 
+      style: 'primary' 
+    }],
     'EM_ENTREGA': [
-      { id: 'marcar_entregue', label: '✅ Entregue', targetStatus: 'ENTREGUE', style: 'success', requiresProof: true },
-      { id: 'reportar_nao_entrega', label: '⚠️ Não Entregue', targetStatus: 'NAO_ENTREGUE', style: 'warning', requiresReason: true, requiresProof: true }
+      { 
+        id: 'marcar_entregue', 
+        label: '✅ Entregue', 
+        targetStatus: 'ENTREGUE', 
+        style: 'success', 
+        requiresProof: true 
+      },
+      { 
+        id: 'reportar_nao_entrega', 
+        label: '⚠️ Não Entregue', 
+        targetStatus: 'NAO_ENTREGUE', 
+        style: 'warning', 
+        requiresReason: true, 
+        requiresProof: true 
+      }
     ],
   };
   return actions[currentStatus] || [];

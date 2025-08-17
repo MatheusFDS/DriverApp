@@ -1,3 +1,5 @@
+// app/(tabs)/routes/[id].tsx
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -91,7 +93,29 @@ export default function RouteDetailsScreen() {
             )
           };
         });
-        Alert.alert('Sucesso!', response.data.message || 'Status da entrega atualizado.');
+        
+        // Após atualizar o status, solicitar comprovante se necessário
+        if (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE') {
+          Alert.alert(
+            'Status Atualizado!', 
+            response.data.message || 'Status da entrega atualizado.',
+            [
+              {
+                text: 'Adicionar Comprovante Agora',
+                onPress: () => {
+                  // Navegar para tela de detalhes para adicionar comprovante
+                  router.push(`/delivery/${deliveryItem.id}`);
+                }
+              },
+              {
+                text: 'Adicionar Depois',
+                style: 'cancel'
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Sucesso!', response.data.message || 'Status da entrega atualizado.');
+        }
       } else {
         throw new Error(response.message || 'Erro ao atualizar status da entrega.');
       }
@@ -123,26 +147,58 @@ export default function RouteDetailsScreen() {
       ...availableActions.map((action: OrderActionMobile) => ({
         text: action.label,
         onPress: () => {
-          if (action.requiresReason && action.targetStatus === 'NAO_ENTREGUE') {
-            Alert.prompt(
-              'Reportar Problema',
-              `Motivo para "${deliveryItem.customerName}" não ter sido entregue:`,
+          if (action.targetStatus === 'NAO_ENTREGUE') {
+            // Confirmação para NÃO ENTREGUE
+            Alert.alert(
+              'Confirmar Não Entrega',
+              `Tem certeza que não foi possível entregar para "${deliveryItem.customerName}"?\n\nVocê precisará informar o motivo e anexar um comprovante.`,
               [
                 { text: 'Cancelar', style: 'cancel' },
                 {
-                  text: 'Confirmar Problema',
-                  onPress: (motivo) => {
-                    if (motivo && motivo.trim() !== "") {
-                        handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus, motivo.trim());
-                    } else {
-                        Alert.alert("Atenção", "O motivo é obrigatório para reportar um problema.")
-                    }
-                  },
-                },
-              ],
-              'plain-text'
+                  text: 'Sim, Reportar Problema',
+                  style: 'destructive',
+                  onPress: () => {
+                    Alert.prompt(
+                      'Motivo da Não Entrega',
+                      `Por que não foi possível entregar para "${deliveryItem.customerName}"?`,
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        {
+                          text: 'Confirmar',
+                          onPress: (motivo) => {
+                            if (motivo && motivo.trim() !== "") {
+                              handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus, motivo.trim());
+                            } else {
+                              Alert.alert("Atenção", "O motivo é obrigatório para reportar um problema.")
+                            }
+                          },
+                        },
+                      ],
+                      'plain-text',
+                      '',
+                      'default'
+                    );
+                  }
+                }
+              ]
+            );
+          } else if (action.targetStatus === 'ENTREGUE') {
+            // Confirmação para ENTREGUE
+            Alert.alert(
+              'Confirmar Entrega',
+              `Confirma que a entrega foi realizada com sucesso para "${deliveryItem.customerName}"?\n\nVocê precisará anexar um comprovante da entrega.`,
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Sim, Entrega Realizada',
+                  onPress: () => {
+                    handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus);
+                  }
+                }
+              ]
             );
           } else {
+            // Para outros status (iniciar entrega)
             handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus);
           }
         }
@@ -152,7 +208,10 @@ export default function RouteDetailsScreen() {
   };
 
   const navigateToDeliveryItemDetails = (deliveryItemId: string) => {
-    router.push(`/delivery/${deliveryItemId}`); 
+    // Usar setTimeout para evitar conflitos de navegação
+    setTimeout(() => {
+      router.push(`/delivery/${deliveryItemId}`);
+    }, 100);
   };
 
   const formatCurrency = (value: number) => {
@@ -331,41 +390,43 @@ export default function RouteDetailsScreen() {
                   styles.deliveryCard,
                   isUpdating && styles.deliveryCardUpdating
                 ])}
-                onPress={() => navigateToDeliveryItemDetails(deliveryItem.id)}
               >
-                <TouchableOpacity
-                  style={styles.deliveryCardContent}
-                  onLongPress={() => showDeliveryItemStatusUpdateOptions(deliveryItem)}
-                  disabled={isUpdating}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.deliveryHeader}>
-                    <View style={styles.deliveryNumber}>
-                      <Text style={styles.deliveryNumberText}>
-                        {index + 1}
-                      </Text>
+                <View style={styles.deliveryCardContent}>
+                  <TouchableOpacity
+                    style={styles.deliveryTouchable}
+                    onPress={() => navigateToDeliveryItemDetails(deliveryItem.id)}
+                    onLongPress={() => showDeliveryItemStatusUpdateOptions(deliveryItem)}
+                    disabled={isUpdating}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.deliveryHeader}>
+                      <View style={styles.deliveryNumber}>
+                        <Text style={styles.deliveryNumberText}>
+                          {index + 1}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.deliveryInfo}>
+                        <Text style={[CommonStyles.bodyLarge, styles.customerName]}>
+                          {deliveryItem.customerName}
+                        </Text>
+                        <Text style={[CommonStyles.body, styles.deliveryAddress]} numberOfLines={2}>
+                          {deliveryItem.address}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.deliveryMeta}>
+                        <Text style={[CommonStyles.bodyLarge, styles.deliveryValue]}>
+                          {formatCurrency(deliveryItem.value)}
+                        </Text>
+                        <StatusBadge
+                          text={itemStatusConfig.text}
+                          variant={getOrderStatusVariant(deliveryItem.status)}
+                          size="small"
+                        />
+                      </View>
                     </View>
-                    
-                    <View style={styles.deliveryInfo}>
-                      <Text style={[CommonStyles.bodyLarge, styles.customerName]}>
-                        {deliveryItem.customerName}
-                      </Text>
-                      <Text style={[CommonStyles.body, styles.deliveryAddress]} numberOfLines={2}>
-                        {deliveryItem.address}
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.deliveryMeta}>
-                      <Text style={[CommonStyles.bodyLarge, styles.deliveryValue]}>
-                        {formatCurrency(deliveryItem.value)}
-                      </Text>
-                      <StatusBadge
-                        text={itemStatusConfig.text}
-                        variant={getOrderStatusVariant(deliveryItem.status)}
-                        size="small"
-                      />
-                    </View>
-                  </View>
+                  </TouchableOpacity>
                   
                   {isUpdating && (
                     <View style={styles.updatingOverlay}>
@@ -375,7 +436,7 @@ export default function RouteDetailsScreen() {
                       </Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </View>
               </Card>
             );
           })}
@@ -563,9 +624,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
+  deliveryTouchable: {
+    // Remove onPress do Card e coloca aqui
+  },
+  
   deliveryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: Theme.spacing.md, // Adicionar padding aqui
   },
   
   deliveryNumber: {
