@@ -11,7 +11,7 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
-import auth from '@react-native-firebase/auth'; // ✅ ADICIONADO
+import auth from '@react-native-firebase/auth';
 import { api } from '../services/api';
 import { Notification } from '../types';
 import { useAuth } from './AuthContext';
@@ -34,6 +34,11 @@ interface NotificationContextType {
   isConnected: boolean;
   isLocationActive: boolean;
   lastLocationUpdate: string | null;
+  locationStats: {
+    totalSent: number;
+    lastSuccess: string | null;
+    lastError: string | null;
+  };
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
@@ -72,6 +77,11 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLocationActive, setIsLocationActive] = useState(false);
   const [lastLocationUpdate, setLastLocationUpdate] = useState<string | null>(null);
+  const [locationStats, setLocationStats] = useState({
+    totalSent: 0,
+    lastSuccess: null as string | null,
+    lastError: null as string | null,
+  });
   const [toastData, setToastData] = useState<ToastData>({
     visible: false,
     title: '',
@@ -137,7 +147,10 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   }, []);
 
   const sendLocationUpdate = useCallback(async (location: Location.LocationObject) => {
-    if (!socketRef.current?.connected || !user?.id) return;
+    if (!socketRef.current?.connected || !user?.id) {
+      console.warn('📍 Socket não conectado ou usuário não encontrado');
+      return;
+    }
 
     try {
       const speed = location.coords.speed || 0;
@@ -152,18 +165,45 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         speed,
       };
 
-      socketRef.current.emit('location-update', locationData);
-      setLastLocationUpdate(locationData.timestamp);
-      
-      console.log('📍 Localização enviada:', {
-        lat: locationData.lat,
-        lng: locationData.lng,
+      // Validação local antes de enviar
+      if (!locationData.lat || !locationData.lng || 
+          locationData.lat === 0 && locationData.lng === 0 ||
+          Math.abs(locationData.lat) > 90 || Math.abs(locationData.lng) > 180) {
+        console.warn('📍 Coordenadas inválidas, não enviando:', {
+          lat: locationData.lat,
+          lng: locationData.lng
+        });
+        setLocationStats(prev => ({
+          ...prev,
+          lastError: 'Coordenadas inválidas'
+        }));
+        return;
+      }
+
+      console.log('📍 Enviando localização:', {
+        lat: locationData.lat.toFixed(6),
+        lng: locationData.lng.toFixed(6),
         status: locationData.status,
-        speed: speed.toFixed(1)
+        speed: speed.toFixed(1),
+        accuracy: locationData.accuracy
       });
+
+      socketRef.current.emit('location-update', locationData);
+      
+      setLastLocationUpdate(locationData.timestamp);
+      setLocationStats(prev => ({
+        ...prev,
+        totalSent: prev.totalSent + 1,
+        lastSuccess: locationData.timestamp,
+        lastError: null
+      }));
 
     } catch (error) {
       console.error('📍 Erro ao enviar localização:', error);
+      setLocationStats(prev => ({
+        ...prev,
+        lastError: `Erro ao enviar: ${error}`
+      }));
     }
   }, [user?.id]);
 
@@ -180,28 +220,48 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus.status !== 'granted') {
         console.warn('📍 Permissão de background não concedida');
+        showToast('⚠️ Aviso', 'Permissão de background não concedida. O rastreamento pode ser limitado.', 'warning');
       }
 
+      // Configurações otimizadas para melhor precisão
       locationSubscriptionRef.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 30000, // 30 segundos
-          distanceInterval: 50, // 50 metros
+          accuracy: Location.Accuracy.Balanced, // Balanceado entre precisão e bateria
+          timeInterval: 15000, // 15 segundos - mais frequente
+          distanceInterval: 20, // 20 metros - mais sensível
+          mayShowUserSettingsDialog: true,
         },
         (location) => {
+          console.log('📍 Nova localização recebida:', {
+            lat: location.coords.latitude.toFixed(6),
+            lng: location.coords.longitude.toFixed(6),
+            accuracy: location.coords.accuracy,
+            speed: location.coords.speed?.toFixed(1) || '0'
+          });
+          
           lastLocationRef.current = location;
           sendLocationUpdate(location);
         }
       );
 
+      // Envio em background a cada 30 segundos quando o app não está em foreground
       locationIntervalRef.current = setInterval(async () => {
         if (appStateRef.current === 'background' && lastLocationRef.current) {
+          console.log('📍 Enviando localização em background...');
           await sendLocationUpdate(lastLocationRef.current);
         }
-      }, 60000) as any; // 1 minuto em background
+      }, 30000) as any;
 
       setIsLocationActive(true);
       showToast('📍 Rastreamento Ativo', 'Sua localização está sendo compartilhada', 'success');
+      
+      // Estatísticas iniciais
+      setLocationStats({
+        totalSent: 0,
+        lastSuccess: null,
+        lastError: null
+      });
+
       return true;
 
     } catch (error) {
@@ -229,14 +289,13 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     showToast('📍 Rastreamento Pausado', 'Localização não está mais sendo compartilhada', 'info');
   }, [showToast]);
 
-// ✅ FUNÇÃO CONNECTSOCKET LIMPA (sem debug)
   const connectSocket = useCallback(async () => {
     if (!user?.id) {
       console.log('🔌 Não conectando socket: usuário não encontrado');
       return;
     }
 
-    // ✅ SEMPRE BUSCAR TOKEN FRESH DO FIREBASE
+    // Sempre buscar token fresh do Firebase
     let freshToken: string;
     try {
       const firebaseUser = auth().currentUser;
@@ -288,20 +347,19 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       
       if (socketRef.current && freshToken) {
         try {
-          // ✅ USAR USER_ID DO TOKEN (Firebase) EM VEZ DO CONTEXT
+          // Usar user_id do token em vez do context
           const tokenPayload = JSON.parse(atob(freshToken.split('.')[1]));
           const tokenUserId = tokenPayload.user_id || tokenPayload.uid || tokenPayload.sub;
           
           socketRef.current.emit('register', tokenUserId);
+          console.log('🔌 Registro enviado com user ID:', tokenUserId);
         } catch (error) {
           console.error('🔌 Erro ao extrair user_id do token:', error);
-          // Fallback para user.id do context
           socketRef.current.emit('register', user.id);
         }
       }
     });
 
-    // ... resto dos event listeners permanecem iguais
     socketRef.current.on('connected', (data: any) => {
       console.log('🔌 Confirmação de conexão recebida:', data);
     });
@@ -311,7 +369,21 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     });
 
     socketRef.current.on('location-ack', (data: any) => {
-      console.log('📍 Confirmação de localização recebida:', data);
+      console.log('📍 Confirmação de localização recebida:', {
+        message: data.message,
+        timestamp: data.timestamp,
+        broadcastTo: data.broadcastTo,
+        position: data.position
+      });
+      
+      // Atualizar estatísticas de sucesso
+      if (data.timestamp) {
+        setLocationStats(prev => ({
+          ...prev,
+          lastSuccess: data.timestamp,
+          lastError: null
+        }));
+      }
     });
 
     socketRef.current.on('disconnect', (reason: any) => {
@@ -326,10 +398,21 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
     socketRef.current.on('error', (error: any) => {
       console.error('🔌 Erro do WebSocket:', error);
+      
+      // Se for erro de localização, atualizar estatísticas
+      if (error.message && error.message.includes('localização')) {
+        setLocationStats(prev => ({
+          ...prev,
+          lastError: error.message
+        }));
+      }
     });
 
+    // Log de todos os eventos recebidos
     socketRef.current.onAny((eventName: any, ...args: any[]) => {
-      console.log(`🔔 Evento recebido: ${eventName}`, args[0]);
+      if (eventName !== 'pong') { // Evitar spam do pong
+        console.log(`📨 Evento recebido: ${eventName}`, args[0]);
+      }
       
       const notificationEvents = [
         'delivery-approved-for-driver',
@@ -341,19 +424,23 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       ];
       
       if (notificationEvents.includes(eventName)) {
-        console.log('🔔 Atualizando notificações devido ao evento:', eventName);
+        console.log('📨 Atualizando notificações devido ao evento:', eventName);
         fetchNotifications();
       }
     });
 
+    // Ping mais frequente para manter conexão viva
     const pingInterval = setInterval(() => {
       if (socketRef.current?.connected) {
         socketRef.current.emit('ping');
       }
-    }, 30000);
+    }, 25000); // 25 segundos
 
     socketRef.current.on('pong', (data: any) => {
-      console.log('🏓 Pong recebido:', data);
+      console.log('🏓 Pong recebido:', {
+        timestamp: data.timestamp,
+        isDriver: data.isDriver
+      });
     });
 
     return () => {
@@ -373,23 +460,32 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      const previousAppState = appStateRef.current;
       appStateRef.current = nextAppState;
-      console.log('📱 App state changed:', nextAppState);
+      console.log('📱 App state changed:', { from: previousAppState, to: nextAppState });
       
       if (nextAppState === 'background' && isLocationActive) {
         console.log('📍 App em background, mantendo rastreamento ativo');
-      } else if (nextAppState === 'active' && isLocationActive) {
-        console.log('📍 App em foreground, rastreamento ativo');
+      } else if (nextAppState === 'active' && previousAppState === 'background' && isLocationActive) {
+        console.log('📍 App retornou do background, rastreamento ainda ativo');
+        // Enviar localização imediatamente ao voltar
+        if (lastLocationRef.current) {
+          sendLocationUpdate(lastLocationRef.current);
+        }
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isLocationActive]);
+  }, [isLocationActive, sendLocationUpdate]);
 
   useEffect(() => {
     if (user?.id) {
-      console.log('🔌 Usuário autenticado, conectando...');
+      console.log('🔌 Usuário autenticado, conectando...', {
+        userId: user.id,
+        name: user.name,
+        isDriver: !!user.driverId
+      });
       fetchNotifications();
       connectSocket();
     } else {
@@ -405,7 +501,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       disconnectSocket();
       stopLocationTracking();
     };
-  }, [user?.id, connectSocket, disconnectSocket, fetchNotifications, stopLocationTracking]);
+  }, [user?.id, connectSocket, disconnectSocket, fetchNotifications, stopLocationTracking, user?.name, user?.driverId]);
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -419,7 +515,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
       }
     } catch (error) {
-      console.error('🔔 Falha ao marcar notificação como lida:', error);
+      console.error('📨 Falha ao marcar notificação como lida:', error);
     }
   };
 
@@ -431,7 +527,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error('🔔 Falha ao marcar todas as notificações como lidas:', error);
+      console.error('📨 Falha ao marcar todas as notificações como lidas:', error);
     }
   };
 
@@ -442,6 +538,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     isConnected,
     isLocationActive,
     lastLocationUpdate,
+    locationStats,
     markAsRead,
     markAllAsRead,
     fetchNotifications,

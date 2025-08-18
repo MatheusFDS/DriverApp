@@ -13,16 +13,19 @@ import { useNotifications } from '../contexts/NotificationContext';
 interface LocationTrackingControlProps {
   style?: any;
   showDetails?: boolean;
+  showStats?: boolean;
 }
 
 export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = ({
   style,
   showDetails = true,
+  showStats = false,
 }) => {
   const {
     isLocationActive,
     isConnected,
     lastLocationUpdate,
+    locationStats,
     startLocationTracking,
     stopLocationTracking,
   } = useNotifications();
@@ -98,6 +101,16 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
     return lastUpdate.toLocaleDateString();
   };
 
+  const formatStatsTime = (timestamp: string | null) => {
+    if (!timestamp) return 'N/A';
+    
+    const time = new Date(timestamp);
+    return time.toLocaleTimeString('pt-BR', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
   return (
     <View style={[styles.container, style]}>
       <TouchableOpacity
@@ -147,21 +160,61 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
             </View>
           </View>
 
+          {/* Estatísticas de Localização */}
+          {showStats && isLocationActive && (
+            <View style={styles.statsContainer}>
+              <Text style={styles.statsTitle}>📊 Estatísticas de Envio</Text>
+              
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Total Enviado</Text>
+                  <Text style={styles.statValue}>{locationStats.totalSent}</Text>
+                </View>
+                
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Último Sucesso</Text>
+                  <Text style={styles.statValue}>
+                    {formatStatsTime(locationStats.lastSuccess)}
+                  </Text>
+                </View>
+              </View>
+
+              {locationStats.lastError && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="warning-outline" size={14} color="#f44336" />
+                  <Text style={styles.errorText}>
+                    Último erro: {locationStats.lastError}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {!isConnected && (
             <View style={styles.warningContainer}>
               <Ionicons name="warning-outline" size={16} color="#ff9800" />
               <Text style={styles.warningText}>
-                Sem conexão com o servidor. Aguardando...
+                Sem conexão com o servidor. Aguardando reconexão...
               </Text>
             </View>
           )}
 
-          {isLocationActive && (
+          {isLocationActive && isConnected && (
             <View style={styles.infoContainer}>
               <Ionicons name="information-circle-outline" size={16} color="#2196f3" />
               <Text style={styles.infoText}>
-                Sua localização está sendo compartilhada com a central
+                🎯 Sua localização está sendo compartilhada em tempo real com a central
               </Text>
+            </View>
+          )}
+
+          {/* Dicas para melhor rastreamento */}
+          {isLocationActive && (
+            <View style={styles.tipsContainer}>
+              <Text style={styles.tipsTitle}>💡 Dicas para melhor rastreamento:</Text>
+              <Text style={styles.tipText}>• Mantenha o GPS ativado</Text>
+              <Text style={styles.tipText}>• Evite economizadores de bateria</Text>
+              <Text style={styles.tipText}>• Mantenha o app em segundo plano</Text>
             </View>
           )}
         </View>
@@ -219,6 +272,51 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     color: '#757575',
   },
+  statsContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  statsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2196f3',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffebee',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#f44336',
+    marginLeft: 6,
+    flex: 1,
+  },
   warningContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -246,5 +344,22 @@ const styles = StyleSheet.create({
     color: '#2196f3',
     marginLeft: 6,
     flex: 1,
+  },
+  tipsContainer: {
+    backgroundColor: '#f1f8e9',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  tipsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4caf50',
+    marginBottom: 4,
+  },
+  tipText: {
+    fontSize: 11,
+    color: '#4caf50',
+    marginBottom: 2,
   },
 });
