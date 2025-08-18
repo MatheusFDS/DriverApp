@@ -16,7 +16,11 @@
         "policy": "appVersion"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Este app precisa acessar sua localização para rastrear entregas e permitir que a central acompanhe seu progresso em tempo real.",
+        "NSLocationWhenInUseUsageDescription": "Este app precisa acessar sua localização para rastrear entregas e permitir que a central acompanhe seu progresso.",
+        "NSLocationAlwaysUsageDescription": "Este app precisa acessar sua localização em segundo plano para continuar o rastreamento durante as entregas, mesmo quando o app não estiver em primeiro plano.",
+        "UIBackgroundModes": ["location", "background-processing", "remote-notification"]
       }
     },
     "android": {
@@ -27,7 +31,16 @@
       "edgeToEdgeEnabled": true,
       "package": "com.mathex.appmobile",
       "googleServicesFile": "./google-services.json",
-      "runtimeVersion": "1.0.0"
+      "runtimeVersion": "1.0.0",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -44,6 +57,26 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Este app precisa acessar sua localização para rastrear entregas e permitir que a central acompanhe seu progresso em tempo real.",
+          "locationAlwaysPermission": "Este app precisa acessar sua localização em segundo plano para continuar o rastreamento durante as entregas, mesmo quando o app não estiver em primeiro plano.",
+          "locationWhenInUsePermission": "Este app precisa acessar sua localização para rastrear entregas e permitir que a central acompanhe seu progresso.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#00695c",
+          "defaultChannel": "default",
+          "sounds": []
         }
       ]
     ],

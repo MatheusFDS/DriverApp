@@ -12,9 +12,14 @@ import {
 import { router } from 'expo-router';
 import { getRouteMobileStatusConfig, RouteMobile as Route } from '../../types';
 import { api } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { LocationTrackingControl } from '../../components/LocationTrackingControl';
 import { Button, Card, StatusBadge, Theme, CommonStyles, getRouteStatusVariant } from '../../components/ui';
 
 export default function RoutesScreen() {
+  const { user } = useAuth();
+  const { isLocationActive } = useNotifications();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [activeRoute, setActiveRoute] = useState<Route | undefined>(undefined);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,6 +73,9 @@ export default function RoutesScreen() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  // Detecta se há roteiros ativos para mostrar controles de rastreamento
+  const hasActiveRoutes = activeRoute !== undefined;
+
   if (loading) {
     return (
       <SafeAreaView style={CommonStyles.loadingState}>
@@ -99,6 +107,31 @@ export default function RoutesScreen() {
 
   return (
     <SafeAreaView style={CommonStyles.container}>
+      {/* Cabeçalho com saudação */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Meus Roteiros</Text>
+        <Text style={styles.headerSubtitle}>
+          Olá, {user?.name}! 👋
+        </Text>
+      </View>
+
+      {/* Controle de Rastreamento - Só aparece se há roteiros ativos */}
+      {hasActiveRoutes && (
+        <LocationTrackingControl 
+          style={styles.trackingControl}
+          showDetails={true}
+        />
+      )}
+
+      {/* Aviso se há roteiros ativos mas rastreamento está desligado */}
+      {hasActiveRoutes && !isLocationActive && (
+        <View style={styles.warningBanner}>
+          <Text style={styles.warningText}>
+            🚨 Você tem roteiros ativos! Ative o rastreamento para que a central possa acompanhar suas entregas.
+          </Text>
+        </View>
+      )}
+
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -116,7 +149,7 @@ export default function RoutesScreen() {
         {activeRoute && (
           <View style={styles.activeSection}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              Roteiro Ativo
+              🚚 Roteiro Ativo
             </Text>
             
             <Card 
@@ -142,12 +175,19 @@ export default function RoutesScreen() {
               
               <View style={styles.activeRouteDetails}>
                 <Text style={[CommonStyles.body, styles.detailText]}>
-                  {activeRoute.deliveries.length} entregas
+                  📦 {activeRoute.deliveries.length} entregas
                 </Text>
                 
                 <Text style={[CommonStyles.body, styles.detailText]}>
-                  {activeRoute.deliveries.filter(d => d.status === 'ENTREGUE').length} concluídas
+                  ✅ {activeRoute.deliveries.filter(d => d.status === 'ENTREGUE').length} concluídas
                 </Text>
+
+                {/* Indicador de rastreamento */}
+                {isLocationActive && (
+                  <Text style={[CommonStyles.body, styles.trackingIndicator]}>
+                    📍 Rastreando
+                  </Text>
+                )}
               </View>
 
               <View style={styles.continueButton}>
@@ -212,7 +252,7 @@ export default function RoutesScreen() {
                     
                     {isActive && (
                       <Text style={[CommonStyles.body, styles.activeIndicator]}>
-                        Em andamento
+                        {isLocationActive ? '📍 Rastreando' : 'Em andamento'}
                       </Text>
                     )}
                   </View>
@@ -227,6 +267,54 @@ export default function RoutesScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Novos estilos para rastreamento
+  header: {
+    backgroundColor: '#fff',
+    padding: Theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider,
+  },
+  
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Theme.colors.text.primary,
+  },
+  
+  headerSubtitle: {
+    fontSize: 16,
+    color: Theme.colors.text.secondary,
+    marginTop: Theme.spacing.xs,
+  },
+  
+  trackingControl: {
+    marginHorizontal: 0,
+    marginTop: 0,
+    borderRadius: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider,
+  },
+  
+  warningBanner: {
+    backgroundColor: '#fff3e0',
+    padding: Theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider,
+  },
+  
+  warningText: {
+    color: '#ff9800',
+    fontSize: 14,
+    fontWeight: Theme.typography.fontWeight.medium,
+    textAlign: 'center',
+  },
+  
+  trackingIndicator: {
+    color: Theme.colors.status.success,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+  },
+  
+  // Estilos existentes mantidos
   scrollView: {
     flex: 1,
   },
