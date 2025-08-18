@@ -99,7 +99,6 @@ export default function DeliveryDetailsScreen() {
           status: (response.data?.newStatusMobile || newStatus) as OrderMobileStatus 
         } : null);
         
-        // Para ENTREGUE e NAO_ENTREGUE, sempre solicitar comprovante
         if (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE') {
           Alert.alert(
             'Status Atualizado!',
@@ -126,6 +125,7 @@ export default function DeliveryDetailsScreen() {
     }
   };
 
+  // 🔽 [MODIFICAÇÃO APLICADA AQUI] 🔽
   const confirmStatusUpdate = (targetStatus: OrderMobileStatus, customerName: string) => {
     if (targetStatus === 'ENTREGUE') {
       Alert.alert(
@@ -173,8 +173,21 @@ export default function DeliveryDetailsScreen() {
           }
         ]
       );
+    // Validação adicionada para o status de 'Iniciar Entrega'
+    } else if (targetStatus === 'EM_ROTA') { 
+      Alert.alert(
+        'Iniciar Entrega',
+        `Tem certeza que deseja iniciar o deslocamento para a entrega de "${customerName}"?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Sim, Iniciar', 
+            onPress: () => handleUpdateStatus(targetStatus) 
+          }
+        ]
+      );
     } else {
-      // Para outros status (iniciar entrega)
+      // Fallback para qualquer outro status que não precise de confirmação especial
       handleUpdateStatus(targetStatus);
     }
   };
@@ -211,7 +224,7 @@ export default function DeliveryDetailsScreen() {
       return; 
     }
     const encodedAddress = encodeURIComponent(deliveryItem.address);
-    const url = `https://maps.google.com/?q=${encodedAddress}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
   };
 
