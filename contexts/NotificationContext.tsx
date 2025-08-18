@@ -11,6 +11,7 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
+import auth from '@react-native-firebase/auth'; // ✅ ADICIONADO
 import { api } from '../services/api';
 import { Notification } from '../types';
 import { useAuth } from './AuthContext';
@@ -108,14 +109,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     }
   }, [user]);
 
-  const getStoredToken = useCallback(async (): Promise<string | null> => {
-    try {
-      return await AsyncStorage.getItem('auth_token');
-    } catch {
-      return null;
-    }
-  }, []);
-
   const getSocketUrl = useCallback(() => {
     const apiUrl = currentApiConfig.baseURL;
     if (apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1')) {
@@ -180,7 +173,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        showToast('❌ Permissão Negada', 'Permissão de localização é necessária para rastreamento', 'error');
+        showToast('⚠️ Permissão Negada', 'Permissão de localização é necessária para rastreamento', 'error');
         return false;
       }
 
@@ -213,7 +206,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
     } catch (error) {
       console.error('📍 Erro ao iniciar rastreamento:', error);
-      showToast('❌ Erro', 'Falha ao iniciar rastreamento de localização', 'error');
+      showToast('⚠️ Erro', 'Falha ao iniciar rastreamento de localização', 'error');
       return false;
     }
   }, [sendLocationUpdate, showToast]);
@@ -236,15 +229,28 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     showToast('📍 Rastreamento Pausado', 'Localização não está mais sendo compartilhada', 'info');
   }, [showToast]);
 
+// ✅ FUNÇÃO CONNECTSOCKET LIMPA (sem debug)
   const connectSocket = useCallback(async () => {
     if (!user?.id) {
       console.log('🔌 Não conectando socket: usuário não encontrado');
       return;
     }
 
-    const token = await getStoredToken();
-    if (!token) {
-      console.log('🔌 Não conectando socket: token não encontrado');
+    // ✅ SEMPRE BUSCAR TOKEN FRESH DO FIREBASE
+    let freshToken: string;
+    try {
+      const firebaseUser = auth().currentUser;
+      if (!firebaseUser) {
+        console.log('🔌 Usuário Firebase não encontrado');
+        return;
+      }
+
+      freshToken = await firebaseUser.getIdToken(true);
+      await AsyncStorage.setItem('auth_token', freshToken);
+      console.log('🔌 Token atualizado, conectando WebSocket...');
+
+    } catch (error) {
+      console.error('🔌 Erro ao obter token fresh:', error);
       return;
     }
 
@@ -264,7 +270,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     const socketUrl = getSocketUrl();
     
     socketRef.current = io(socketUrl, {
-      auth: { token },
+      auth: { token: freshToken },
       transports: ['websocket', 'polling'],
       upgrade: true,
       rememberUpgrade: true,
@@ -280,11 +286,22 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       console.log('🔌 WebSocket Mobile conectado com sucesso');
       setIsConnected(true);
       
-      if (socketRef.current && user?.id) {
-        socketRef.current.emit('register', user.id);
+      if (socketRef.current && freshToken) {
+        try {
+          // ✅ USAR USER_ID DO TOKEN (Firebase) EM VEZ DO CONTEXT
+          const tokenPayload = JSON.parse(atob(freshToken.split('.')[1]));
+          const tokenUserId = tokenPayload.user_id || tokenPayload.uid || tokenPayload.sub;
+          
+          socketRef.current.emit('register', tokenUserId);
+        } catch (error) {
+          console.error('🔌 Erro ao extrair user_id do token:', error);
+          // Fallback para user.id do context
+          socketRef.current.emit('register', user.id);
+        }
       }
     });
 
+    // ... resto dos event listeners permanecem iguais
     socketRef.current.on('connected', (data: any) => {
       console.log('🔌 Confirmação de conexão recebida:', data);
     });
@@ -342,7 +359,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     return () => {
       clearInterval(pingInterval);
     };
-  }, [user?.id, getStoredToken, getSocketUrl, fetchNotifications]);
+  }, [user?.id, getSocketUrl, fetchNotifications]);
 
   const disconnectSocket = useCallback(() => {
     if (socketRef.current) {
