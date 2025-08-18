@@ -93,7 +93,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const lastLocationRef = useRef<Location.LocationObject | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     if (!user) {
@@ -146,16 +145,20 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     setToastData(prev => ({ ...prev, visible: false }));
   }, []);
 
-  const sendLocationUpdate = useCallback(async (location: Location.LocationObject) => {
+  // CORREÇÃO: Nova função para enviar localização para o socket de forma mais robusta.
+  const emitLocationUpdate = useCallback((location: Location.LocationObject) => {
     if (!socketRef.current?.connected || !user?.id) {
-      console.warn('📍 Socket não conectado ou usuário não encontrado');
+      console.warn('📍 Socket não conectado ou usuário não encontrado. Envio adiado.');
+      setLocationStats(prev => ({
+        ...prev,
+        lastError: 'Socket desconectado'
+      }));
       return;
     }
-
+  
     try {
       const speed = location.coords.speed || 0;
       const status = speed > 1 ? 'moving' : 'stopped';
-
       const locationData: LocationData = {
         lat: location.coords.latitude,
         lng: location.coords.longitude,
@@ -165,31 +168,21 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         speed,
       };
 
-      // Validação local antes de enviar
-      if (!locationData.lat || !locationData.lng || 
+      if (!locationData.lat || !locationData.lng ||
           locationData.lat === 0 && locationData.lng === 0 ||
           Math.abs(locationData.lat) > 90 || Math.abs(locationData.lng) > 180) {
-        console.warn('📍 Coordenadas inválidas, não enviando:', {
-          lat: locationData.lat,
-          lng: locationData.lng
-        });
-        setLocationStats(prev => ({
-          ...prev,
-          lastError: 'Coordenadas inválidas'
-        }));
+        console.warn('📍 Coordenadas inválidas, não enviando:', { lat: locationData.lat, lng: locationData.lng });
+        setLocationStats(prev => ({ ...prev, lastError: 'Coordenadas inválidas' }));
         return;
       }
-
+  
       console.log('📍 Enviando localização:', {
         lat: locationData.lat.toFixed(6),
         lng: locationData.lng.toFixed(6),
         status: locationData.status,
-        speed: speed.toFixed(1),
-        accuracy: locationData.accuracy
       });
-
+  
       socketRef.current.emit('location-update', locationData);
-      
       setLastLocationUpdate(locationData.timestamp);
       setLocationStats(prev => ({
         ...prev,
@@ -197,65 +190,43 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         lastSuccess: locationData.timestamp,
         lastError: null
       }));
-
+  
     } catch (error) {
       console.error('📍 Erro ao enviar localização:', error);
-      setLocationStats(prev => ({
-        ...prev,
-        lastError: `Erro ao enviar: ${error}`
-      }));
+      setLocationStats(prev => ({ ...prev, lastError: `Erro ao enviar: ${error}` }));
     }
   }, [user?.id]);
-
+  
   const startLocationTracking = useCallback(async (): Promise<boolean> => {
     try {
       console.log('📍 Iniciando rastreamento de localização...');
-
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         showToast('⚠️ Permissão Negada', 'Permissão de localização é necessária para rastreamento', 'error');
         return false;
       }
-
       const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus.status !== 'granted') {
         console.warn('📍 Permissão de background não concedida');
         showToast('⚠️ Aviso', 'Permissão de background não concedida. O rastreamento pode ser limitado.', 'warning');
       }
 
-      // Configurações otimizadas para melhor precisão
       locationSubscriptionRef.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced, // Balanceado entre precisão e bateria
-          timeInterval: 15000, // 15 segundos - mais frequente
-          distanceInterval: 20, // 20 metros - mais sensível
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 15000,
+          distanceInterval: 20,
           mayShowUserSettingsDialog: true,
         },
         (location) => {
-          console.log('📍 Nova localização recebida:', {
-            lat: location.coords.latitude.toFixed(6),
-            lng: location.coords.longitude.toFixed(6),
-            accuracy: location.coords.accuracy,
-            speed: location.coords.speed?.toFixed(1) || '0'
-          });
-          
+          console.log('📍 Nova localização recebida:', { lat: location.coords.latitude.toFixed(6), lng: location.coords.longitude.toFixed(6), });
           lastLocationRef.current = location;
-          sendLocationUpdate(location);
+          emitLocationUpdate(location);
         }
       );
 
-      // Envio em background a cada 30 segundos quando o app não está em foreground
-      locationIntervalRef.current = setInterval(async () => {
-        if (appStateRef.current === 'background' && lastLocationRef.current) {
-          console.log('📍 Enviando localização em background...');
-          await sendLocationUpdate(lastLocationRef.current);
-        }
-      }, 30000) as any;
-
       setIsLocationActive(true);
       showToast('📍 Rastreamento Ativo', 'Sua localização está sendo compartilhada', 'success');
-      
-      // Estatísticas iniciais
       setLocationStats({
         totalSent: 0,
         lastSuccess: null,
@@ -269,7 +240,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       showToast('⚠️ Erro', 'Falha ao iniciar rastreamento de localização', 'error');
       return false;
     }
-  }, [sendLocationUpdate, showToast]);
+  }, [emitLocationUpdate, showToast]);
 
   const stopLocationTracking = useCallback(() => {
     console.log('📍 Parando rastreamento de localização...');
@@ -277,11 +248,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     if (locationSubscriptionRef.current) {
       locationSubscriptionRef.current.remove();
       locationSubscriptionRef.current = null;
-    }
-
-    if (locationIntervalRef.current) {
-      clearInterval(locationIntervalRef.current);
-      locationIntervalRef.current = null;
     }
 
     setIsLocationActive(false);
@@ -295,7 +261,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       return;
     }
 
-    // Sempre buscar token fresh do Firebase
     let freshToken: string;
     try {
       const firebaseUser = auth().currentUser;
@@ -347,7 +312,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       
       if (socketRef.current && freshToken) {
         try {
-          // Usar user_id do token em vez do context
           const tokenPayload = JSON.parse(atob(freshToken.split('.')[1]));
           const tokenUserId = tokenPayload.user_id || tokenPayload.uid || tokenPayload.sub;
           
@@ -376,7 +340,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         position: data.position
       });
       
-      // Atualizar estatísticas de sucesso
       if (data.timestamp) {
         setLocationStats(prev => ({
           ...prev,
@@ -399,7 +362,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     socketRef.current.on('error', (error: any) => {
       console.error('🔌 Erro do WebSocket:', error);
       
-      // Se for erro de localização, atualizar estatísticas
       if (error.message && error.message.includes('localização')) {
         setLocationStats(prev => ({
           ...prev,
@@ -408,9 +370,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       }
     });
 
-    // Log de todos os eventos recebidos
     socketRef.current.onAny((eventName: any, ...args: any[]) => {
-      if (eventName !== 'pong') { // Evitar spam do pong
+      if (eventName !== 'pong') {
         console.log(`📨 Evento recebido: ${eventName}`, args[0]);
       }
       
@@ -429,12 +390,11 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       }
     });
 
-    // Ping mais frequente para manter conexão viva
     const pingInterval = setInterval(() => {
       if (socketRef.current?.connected) {
         socketRef.current.emit('ping');
       }
-    }, 25000); // 25 segundos
+    }, 25000);
 
     socketRef.current.on('pong', (data: any) => {
       console.log('🏓 Pong recebido:', {
@@ -468,16 +428,15 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         console.log('📍 App em background, mantendo rastreamento ativo');
       } else if (nextAppState === 'active' && previousAppState === 'background' && isLocationActive) {
         console.log('📍 App retornou do background, rastreamento ainda ativo');
-        // Enviar localização imediatamente ao voltar
         if (lastLocationRef.current) {
-          sendLocationUpdate(lastLocationRef.current);
+          emitLocationUpdate(lastLocationRef.current);
         }
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isLocationActive, sendLocationUpdate]);
+  }, [isLocationActive, emitLocationUpdate]);
 
   useEffect(() => {
     if (user?.id) {
