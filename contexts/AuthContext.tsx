@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(backendUser);
           
           if (backendUser.role?.name === 'driver' && !backendUser.driverId) {
-            router.replace('/complete-profile');
+            router.replace('/login');
           } else {
             router.replace('/(tabs)');
           }
@@ -102,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
+      await AsyncStorage.clear();
       await auth().signOut();
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
