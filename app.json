@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Rotei App",
-    "slug": "Rotei App",
+    "name": "DriverApp",
+    "slug": "DriverApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

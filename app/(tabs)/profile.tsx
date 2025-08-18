@@ -12,11 +12,17 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { LocationTrackingControl } from '../../components/LocationTrackingControl';
 import { Button, Card, Theme, CommonStyles } from '../../components/ui';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();
+  const { 
+    isConnected  } = useNotifications();
+  
   const [notifications, setNotifications] = useState({
     newRoutes: true,
     deliveryReminders: true,
@@ -45,8 +51,8 @@ export default function ProfileScreen() {
       'Como gostaria de entrar em contato?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'WhatsApp', onPress: () => Linking.openURL('https://wa.me/55NUMEROAQUI') },
-        { text: 'Email', onPress: () => Linking.openURL('mailto:suporte@example.com') }
+        { text: 'WhatsApp', onPress: () => Linking.openURL('https://wa.me/5511983773695') },
+        { text: 'Email', onPress: () => Linking.openURL('mailto:suporte@rotei.com.br') }
       ]
     );
   };
@@ -122,10 +128,64 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
+        {/* Card de Rastreamento de Localização */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            📍 Rastreamento de Localização
+          </Text>
+          
+          <LocationTrackingControl 
+            style={styles.locationControl}
+            showDetails={true}
+            showStats={true}
+          />
+          
+          <View style={styles.locationInfo}>
+            <Ionicons 
+              name="information-circle-outline" 
+              size={16} 
+              color={Theme.colors.text.secondary} 
+            />
+            <Text style={[CommonStyles.bodySmall, styles.locationInfoText]}>
+              Quando ativado, sua localização será compartilhada em tempo real com a central durante as entregas.
+            </Text>
+          </View>
+        </Card>
+
+        {/* Card de Status da Conexão */}
+        <Card style={styles.sectionCard}>
+          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+            🌐 Status da Conexão
+          </Text>
+          
+          <View style={styles.connectionStatus}>
+            <View style={styles.statusIndicator}>
+              <Ionicons
+                name={isConnected ? 'cloud-done-outline' : 'cloud-offline-outline'}
+                size={24}
+                color={isConnected ? Theme.colors.status.success : Theme.colors.status.error}
+              />
+              <Text style={[
+                CommonStyles.body, 
+                styles.statusText,
+                { color: isConnected ? Theme.colors.status.success : Theme.colors.status.error }
+              ]}>
+                {isConnected ? 'Conectado ao servidor' : 'Desconectado'}
+              </Text>
+            </View>
+            
+            {!isConnected && (
+              <Text style={[CommonStyles.bodySmall, styles.connectionWarning]}>
+                Verifique sua conexão com a internet. O app tentará reconectar automaticamente.
+              </Text>
+            )}
+          </View>
+        </Card>
+
         {/* Card do Veículo */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            Veículo
+            🚛 Veículo
           </Text>
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
@@ -147,7 +207,7 @@ export default function ProfileScreen() {
         {user.companyName && (
           <Card style={styles.sectionCard}>
             <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              Empresa
+              🏢 Empresa
             </Text>
             <View style={styles.infoList}>
               <View style={styles.infoRow}>
@@ -169,7 +229,7 @@ export default function ProfileScreen() {
         {/* Card de Notificações */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            Notificações
+            🔔 Notificações
           </Text>
           <View style={styles.settingsList}>
             {notificationSettings.map((setting) => (
@@ -198,7 +258,7 @@ export default function ProfileScreen() {
         {/* Card de Configurações */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            Configurações
+            ⚙️ Configurações
           </Text>
           <View style={styles.actionsList}>
             <TouchableOpacity 
@@ -232,7 +292,7 @@ export default function ProfileScreen() {
         {/* Card de Informações do App */}
         <Card style={styles.sectionCard}>
           <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            Informações do App
+            📱 Informações do App
           </Text>
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
@@ -329,6 +389,51 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.lg,
+  },
+  
+  // Estilos para o controle de localização
+  locationControl: {
+    margin: 0,
+    padding: 0,
+    shadowOpacity: 0,
+    elevation: 0,
+    backgroundColor: 'transparent',
+  },
+  
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: Theme.spacing.md,
+    paddingTop: Theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.gray[200],
+  },
+  
+  locationInfoText: {
+    color: Theme.colors.text.secondary,
+    marginLeft: Theme.spacing.sm,
+    flex: 1,
+  },
+  
+  // Estilos para status de conexão
+  connectionStatus: {
+    paddingVertical: Theme.spacing.sm,
+  },
+  
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  statusText: {
+    marginLeft: Theme.spacing.sm,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  
+  connectionWarning: {
+    color: Theme.colors.text.secondary,
+    marginTop: Theme.spacing.xs,
   },
   
   infoList: {
