@@ -52,43 +52,50 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   );
 };
 
-// Mapeamento de cores para cada variante
-
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Theme.borderRadius.full,
+    borderRadius: Theme.borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   
   text: {
-    fontWeight: Theme.typography.fontWeight.bold,
-    textTransform: 'uppercase',
+    fontWeight: Theme.typography.fontWeight.semiBold,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   
-  // Variants
+  // Variants - Cores empresariais
   primary: {
     backgroundColor: Theme.colors.primary.main,
+    borderColor: Theme.colors.primary.dark,
   },
   secondary: {
     backgroundColor: Theme.colors.secondary.main,
+    borderColor: Theme.colors.secondary.dark,
   },
   success: {
     backgroundColor: Theme.colors.status.success,
+    borderColor: Theme.colors.green[700],
   },
   warning: {
     backgroundColor: Theme.colors.status.warning,
+    borderColor: '#ef6c00',
   },
   error: {
     backgroundColor: Theme.colors.status.error,
+    borderColor: '#b71c1c',
   },
   info: {
     backgroundColor: Theme.colors.status.info,
+    borderColor: '#0d47a1',
   },
   neutral: {
     backgroundColor: Theme.colors.gray[500],
+    borderColor: Theme.colors.gray[600],
   },
   
   // Text colors
@@ -114,21 +121,21 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   
-  // Sizes
+  // Sizes - Mais conservadores
   smallSize: {
-    paddingHorizontal: Theme.spacing.xs,
-    paddingVertical: Theme.spacing.xs / 2,
-    minWidth: 60,
-  },
-  mediumSize: {
     paddingHorizontal: Theme.spacing.sm,
     paddingVertical: Theme.spacing.xs,
-    minWidth: 80,
+    minWidth: 50,
   },
-  largeSize: {
+  mediumSize: {
     paddingHorizontal: Theme.spacing.md,
     paddingVertical: Theme.spacing.sm,
-    minWidth: 100,
+    minWidth: 70,
+  },
+  largeSize: {
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
+    minWidth: 90,
   },
   
   // Text sizes

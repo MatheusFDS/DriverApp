@@ -59,7 +59,7 @@ export const Button: React.FC<ButtonProps> = ({
       style={buttonStyle}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={isDisabled ? 1 : 0.7}
+      activeOpacity={isDisabled ? 1 : 0.8}
     >
       {loading ? (
         <ActivityIndicator 
@@ -81,84 +81,104 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    ...Theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   
   text: {
     fontWeight: Theme.typography.fontWeight.semiBold,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   
   fullWidth: {
     width: '100%',
   },
   
-  // Variants
+  // Variants - Cores com muito mais contraste
   primary: {
-    backgroundColor: Theme.colors.primary.main,
+    backgroundColor: '#00695c', // Verde escuro
+    borderColor: '#004d40',
+    ...Theme.shadows.base,
   },
   secondary: {
-    backgroundColor: Theme.colors.secondary.main,
+    backgroundColor: '#37474f', // Cinza escuro azulado
+    borderColor: '#263238',
+    ...Theme.shadows.base,
   },
   outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Theme.colors.primary.main,
+    backgroundColor: Theme.colors.background.paper,
+    borderColor: '#00695c',
+    borderWidth: 2,
+    ...Theme.shadows.sm,
   },
   ghost: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#eceff1', // Cinza bem claro mas visível
+    borderColor: '#90a4ae',
+    borderWidth: 1,
   },
   danger: {
-    backgroundColor: Theme.colors.status.error,
+    backgroundColor: '#c62828', // Vermelho escuro
+    borderColor: '#b71c1c',
+    ...Theme.shadows.base,
   },
   success: {
-    backgroundColor: Theme.colors.status.success,
+    backgroundColor: '#2e7d32', // Verde escuro
+    borderColor: '#1b5e20',
+    ...Theme.shadows.base,
   },
   
   disabled: {
     backgroundColor: Theme.colors.gray[300],
+    borderColor: Theme.colors.gray[300],
     shadowOpacity: 0,
     elevation: 0,
   },
   
-  // Text colors
+  // Text colors - Contraste máximo
   primaryText: {
-    color: Theme.colors.primary.contrastText,
+    color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   secondaryText: {
-    color: Theme.colors.secondary.contrastText,
+    color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   outlineText: {
-    color: Theme.colors.primary.main,
+    color: '#00695c',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   ghostText: {
-    color: Theme.colors.primary.main,
+    color: '#37474f',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   dangerText: {
     color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   successText: {
     color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   
   disabledText: {
     color: Theme.colors.text.disabled,
   },
   
-  // Sizes
+  // Sizes - Mais conservadores
   smallSize: {
     paddingVertical: Theme.spacing.sm,
-    paddingHorizontal: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.lg,
     minHeight: 36,
   },
   mediumSize: {
     paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.lg,
+    paddingHorizontal: Theme.spacing.xl,
     minHeight: 44,
   },
   largeSize: {
     paddingVertical: Theme.spacing.lg,
-    paddingHorizontal: Theme.spacing.xl,
+    paddingHorizontal: Theme.spacing['2xl'],
     minHeight: 52,
   },
   

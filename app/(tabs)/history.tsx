@@ -14,11 +14,14 @@ import { api } from '../../services/api';
 import { Button, Card, StatusBadge, Theme, CommonStyles } from '../../components/ui';
 
 export default function HistoryScreen() {
-  const [completedRoutes, setCompletedRoutes] = useState<Route[]>([]);
+  const [allRoutes, setAllRoutes] = useState<Route[]>([]);
+  const [displayedRoutes, setDisplayedRoutes] = useState<Route[]>([]);
   const [totalReceivable, setTotalReceivable] = useState<number>(0);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string>('');
+  const [displayLimit, setDisplayLimit] = useState(5);
 
   const loadData = useCallback(async () => {
     try {
@@ -27,7 +30,11 @@ export default function HistoryScreen() {
       
       const historyResponse = await api.getHistory();
       if (historyResponse.success && historyResponse.data) {
-        setCompletedRoutes(historyResponse.data);
+        const routes = historyResponse.data;
+        setAllRoutes(routes);
+        // Mostrar apenas os primeiros 5
+        setDisplayedRoutes(routes.slice(0, 5));
+        setDisplayLimit(5);
       } else {
         setError(historyResponse.message || 'Erro ao carregar histórico');
       }
@@ -55,6 +62,20 @@ export default function HistoryScreen() {
     setRefreshing(false);
   }, [loadData]);
 
+  const loadMoreRoutes = useCallback(() => {
+    if (loadingMore || displayedRoutes.length >= allRoutes.length) return;
+    
+    setLoadingMore(true);
+    
+    // Simular um pequeno delay para melhor UX
+    setTimeout(() => {
+      const newLimit = displayLimit + 5;
+      setDisplayLimit(newLimit);
+      setDisplayedRoutes(allRoutes.slice(0, newLimit));
+      setLoadingMore(false);
+    }, 500);
+  }, [allRoutes, displayedRoutes.length, displayLimit, loadingMore]);
+
   const navigateToRoute = (routeId: string) => {
     router.push(`/route/${routeId}`);
   };
@@ -75,7 +96,9 @@ export default function HistoryScreen() {
     });
   };
 
-  if (loading && completedRoutes.length === 0) {
+  const hasMoreRoutes = displayedRoutes.length < allRoutes.length;
+
+  if (loading && displayedRoutes.length === 0) {
     return (
       <SafeAreaView style={CommonStyles.loadingState}>
         <ActivityIndicator size="large" color={Theme.colors.primary.main} />
@@ -128,7 +151,7 @@ export default function HistoryScreen() {
           <View style={styles.summaryContent}>
             <View style={styles.summaryItem}>
               <Text style={[CommonStyles.heading1, styles.summaryNumber]}>
-                {completedRoutes.length}
+                {allRoutes.length}
               </Text>
               <Text style={[CommonStyles.body, styles.summaryLabel]}>
                 Roteiros Concluídos
@@ -150,56 +173,91 @@ export default function HistoryScreen() {
 
         {/* Lista de Roteiros */}
         <View style={styles.routesSection}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            Roteiros Finalizados
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Roteiros Finalizados
+            </Text>
+            {allRoutes.length > 0 && (
+              <Text style={[CommonStyles.bodySmall, styles.counterText]}>
+                Mostrando {displayedRoutes.length} de {allRoutes.length}
+              </Text>
+            )}
+          </View>
           
-          {completedRoutes.length > 0 ? (
-            completedRoutes.map((route) => {
-              const isPaid = route.paymentStatus === 'pago';
-              const deliveredCount = route.deliveries.filter(d => d.status === 'ENTREGUE').length;
-              
-              return (
-                <Card
-                  key={route.id}
-                  style={styles.routeCard}
-                  onPress={() => navigateToRoute(route.id)}
-                >
-                  <View style={styles.routeHeader}>
-                    <View style={styles.routeMainInfo}>
-                      <Text style={[CommonStyles.bodyLarge, styles.routeDate]}>
-                        {formatDate(route.date)}
-                      </Text>
-                      <Text style={[CommonStyles.heading3, styles.routeFreightValue]}>
-                        {formatCurrency(route.freightValue)}
-                      </Text>
+          {displayedRoutes.length > 0 ? (
+            <>
+              {displayedRoutes.map((route) => {
+                const isPaid = route.paymentStatus === 'pago';
+                const deliveredCount = route.deliveries.filter(d => d.status === 'ENTREGUE').length;
+                
+                return (
+                  <Card
+                    key={route.id}
+                    style={styles.routeCard}
+                    onPress={() => navigateToRoute(route.id)}
+                  >
+                    <View style={styles.routeHeader}>
+                      <View style={styles.routeMainInfo}>
+                        <Text style={[CommonStyles.bodyLarge, styles.routeDate]}>
+                          {formatDate(route.date)}
+                        </Text>
+                        <Text style={[CommonStyles.heading3, styles.routeFreightValue]}>
+                          {formatCurrency(route.freightValue)}
+                        </Text>
+                      </View>
+                      
+                      <StatusBadge
+                        text={isPaid ? 'PAGO' : 'PENDENTE'}
+                        variant={isPaid ? 'success' : 'warning'}
+                        size="small"
+                      />
                     </View>
                     
-                    <StatusBadge
-                      text={isPaid ? 'PAGO' : 'PENDENTE'}
-                      variant={isPaid ? 'success' : 'warning'}
-                      size="small"
-                    />
-                  </View>
-                  
-                  <View style={styles.routeStats}>
-                    <Text style={[CommonStyles.body, styles.statText]}>
-                      {route.deliveries.length} entregas
-                    </Text>
-                    
-                    <Text style={[CommonStyles.body, styles.statText, styles.successText]}>
-                      {deliveredCount} entregues
-                    </Text>
-                    
-                    {route.deliveries.length > deliveredCount && (
-                      <Text style={[CommonStyles.body, styles.statText, styles.errorText]}>
-                        {route.deliveries.length - deliveredCount} pendentes
+                    <View style={styles.routeStats}>
+                      <Text style={[CommonStyles.body, styles.statText]}>
+                        {route.deliveries.length} entregas
                       </Text>
-                    )}
-                  </View>
-                </Card>
-              );
-            })
+                      
+                      <Text style={[CommonStyles.body, styles.statText, styles.successText]}>
+                        {deliveredCount} entregues
+                      </Text>
+                      
+                      {route.deliveries.length > deliveredCount && (
+                        <Text style={[CommonStyles.body, styles.statText, styles.errorText]}>
+                          {route.deliveries.length - deliveredCount} pendentes
+                        </Text>
+                      )}
+                    </View>
+                  </Card>
+                );
+              })}
+              
+              {/* Botão para carregar mais */}
+              {hasMoreRoutes && (
+                <View style={styles.loadMoreContainer}>
+                  <Button
+                    title={loadingMore ? "Carregando..." : `Carregar mais (+${Math.min(5, allRoutes.length - displayedRoutes.length)})`}
+                    onPress={loadMoreRoutes}
+                    variant="outline"
+                    disabled={loadingMore}
+                    loading={loadingMore}
+                    style={styles.loadMoreButton}
+                  />
+                  <Text style={[CommonStyles.bodySmall, styles.loadMoreHint]}>
+                    {allRoutes.length - displayedRoutes.length} roteiros restantes
+                  </Text>
+                </View>
+              )}
+              
+              {/* Indicador de que chegou ao fim */}
+              {!hasMoreRoutes && allRoutes.length > 5 && (
+                <View style={styles.endIndicator}>
+                  <Text style={[CommonStyles.bodySmall, styles.endText]}>
+                    ✓ Todos os roteiros foram carregados
+                  </Text>
+                </View>
+              )}
+            </>
           ) : (
             <Card style={styles.emptyState}>
               <Text style={[CommonStyles.heading3, styles.emptyStateTitle]}>
@@ -295,9 +353,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.lg,
   },
   
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.lg,
+  },
+  
   sectionTitle: {
     color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.lg,
+  },
+  
+  counterText: {
+    color: Theme.colors.text.secondary,
+    fontStyle: 'italic',
   },
   
   routeCard: {
@@ -340,6 +409,33 @@ const styles = StyleSheet.create({
   
   successText: {
     color: Theme.colors.status.success,
+  },
+  
+  loadMoreContainer: {
+    alignItems: 'center',
+    marginTop: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+  },
+  
+  loadMoreButton: {
+    minWidth: 200,
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  loadMoreHint: {
+    color: Theme.colors.text.hint,
+    fontStyle: 'italic',
+  },
+  
+  endIndicator: {
+    alignItems: 'center',
+    paddingVertical: Theme.spacing.lg,
+    marginTop: Theme.spacing.md,
+  },
+  
+  endText: {
+    color: Theme.colors.status.success,
+    fontStyle: 'italic',
   },
   
   emptyState: {

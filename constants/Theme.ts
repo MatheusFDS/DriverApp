@@ -1,73 +1,92 @@
 // constants/Theme.ts
 import { StyleSheet } from 'react-native';
 
-// Paleta de cores baseada no design web
+// Paleta de cores empresarial com verde corporativo
 export const Colors = {
-  // Cores principais (mesmo padrão do web)
+  // Cores principais - verde empresarial
   primary: {
-    main: '#00695c',      // Teal escuro
-    light: '#439889',     // Teal claro
-    dark: '#004c40',      // Teal mais escuro
+    main: '#00695c',      // Verde teal original (mais empresarial)
+    light: '#4db6ac',     // Verde claro
+    dark: '#004d40',      // Verde escuro
     contrastText: '#ffffff'
   },
   secondary: {
-    main: '#ff6f00',      // Laranja vibrante
-    light: '#ff9800',     // Laranja claro
-    dark: '#e65100',      // Laranja escuro
+    main: '#37474f',      // Cinza azulado corporativo
+    light: '#62727b',     // Cinza claro
+    dark: '#263238',      // Cinza escuro
     contrastText: '#ffffff'
   },
   
   // Backgrounds
   background: {
-    default: '#f7f8fa',   // Cinza muito claro (mesmo do web)
+    default: '#f8f9fa',   // Cinza muito claro neutro
+    primary: '#f8f9fa',   // Alias para compatibilidade
     paper: '#ffffff',     // Branco para cards
-    surface: '#fafbfc'    // Cinza ultra claro
+    surface: '#fcfcfc'    // Branco quase puro
   },
+  
+  // Cores básicas
+  white: '#ffffff',
+  black: '#000000',
   
   // Textos
   text: {
-    primary: '#2e3440',   // Cinza escuro (mesmo do web)
-    secondary: '#5e6b73', // Cinza médio
-    disabled: '#9ea7ad',  // Cinza claro
-    hint: '#bcc1c6'       // Cinza muito claro
+    primary: '#263238',   // Cinza escuro com tom azulado
+    secondary: '#546e7a', // Cinza médio azulado
+    disabled: '#90a4ae',  // Cinza claro
+    hint: '#cfd8dc'       // Cinza muito claro
   },
   
-  // Status colors
+  // Status colors empresariais
   status: {
-    success: '#2e7d32',
-    successLight: '#4caf50',
-    warning: '#ed6c02', 
-    warningLight: '#ff9800',
-    error: '#d32f2f',
+    success: '#2e7d32',   // Verde escuro
+    successLight: '#66bb6a',
+    warning: '#f57c00',   // Laranja corporativo
+    warningLight: '#ffb74d',
+    error: '#c62828',     // Vermelho corporativo
     errorLight: '#ef5350',
-    info: '#0288d1',
-    infoLight: '#03a9f4'
+    info: '#1565c0',      // Azul corporativo
+    infoLight: '#42a5f5'
   },
   
-  // Grays (escala do web)
+  // Grays (escala azulada empresarial)
   gray: {
-    50: '#fafbfc',
-    100: '#f1f3f4',
-    200: '#e8ebef',
-    300: '#dadee3',
-    400: '#bcc1c6',
-    500: '#9ea7ad',
-    600: '#7c858d',
-    700: '#5e6b73',
-    800: '#434a54',
-    900: '#2e3440'
+    50: '#fafafa',
+    100: '#f5f5f5',
+    200: '#eeeeee',
+    300: '#e0e0e0',
+    400: '#bdbdbd',
+    500: '#9e9e9e',
+    600: '#757575',
+    700: '#616161',
+    800: '#424242',
+    900: '#212121'
+  },
+  
+  // Cores específicas do verde empresarial
+  green: {
+    50: '#e0f2f1',
+    100: '#b2dfdb',
+    200: '#80cbc4',
+    300: '#4db6ac',
+    400: '#26a69a',
+    500: '#009688',
+    600: '#00897b',
+    700: '#00796b',
+    800: '#00695c',
+    900: '#004d40'
   },
   
   // Utility colors
-  divider: '#e0e4e7',
+  divider: '#e0e0e0',
   overlay: 'rgba(0, 0, 0, 0.5)',
   transparent: 'transparent'
 };
 
-// Tipografia baseada no web
+// Tipografia empresarial
 export const Typography = {
   fontFamily: {
-    regular: 'System', // React Native usa System como padrão
+    regular: 'System',
     medium: 'System',
     semiBold: 'System',
     bold: 'System'
@@ -99,7 +118,7 @@ export const Typography = {
   }
 };
 
-// Espaçamentos (sistema 4px base)
+// Espaçamentos empresariais
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -113,47 +132,47 @@ export const Spacing = {
   '6xl': 64
 };
 
-// Border radius (mesmo padrão do web)
+// Border radius empresarial - mais reto
 export const BorderRadius = {
   none: 0,
-  sm: 4,
-  base: 8,
-  lg: 12,
-  xl: 16,
-  '2xl': 20,
+  sm: 2,
+  base: 4,
+  lg: 6,
+  xl: 8,
+  '2xl': 10,
   full: 999
 };
 
-// Sombras (adaptadas para mobile)
+// Sombras sutis e profissionais
 export const Shadows = {
   none: {},
   sm: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 2,
     elevation: 1
   },
   base: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 3
+    elevation: 2
   },
   lg: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 5
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4
   },
   xl: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6
   }
 };
 
@@ -166,9 +185,9 @@ export const Theme = {
   shadows: Shadows
 };
 
-// Estilos comuns reutilizáveis
+// Estilos comuns empresariais
 export const CommonStyles = StyleSheet.create({
-  // Containers
+  // Containers com safe area
   container: {
     flex: 1,
     backgroundColor: Colors.background.default
@@ -176,7 +195,8 @@ export const CommonStyles = StyleSheet.create({
   
   safeContainer: {
     flex: 1,
-    backgroundColor: Colors.background.default
+    backgroundColor: Colors.background.default,
+    paddingTop: 0
   },
   
   centeredContainer: {
@@ -187,19 +207,35 @@ export const CommonStyles = StyleSheet.create({
     paddingHorizontal: Spacing.lg
   },
   
-  // Cards
+  // Cards empresariais com bordas definidas
   card: {
     backgroundColor: Colors.background.paper,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.base,
     padding: Spacing.lg,
-    ...Shadows.base
+    ...Shadows.base,
+    borderWidth: 1,
+    borderColor: Colors.gray[200]
   },
   
   cardCompact: {
     backgroundColor: Colors.background.paper,
-    borderRadius: BorderRadius.base,
+    borderRadius: BorderRadius.sm,
     padding: Spacing.md,
-    ...Shadows.sm
+    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: Colors.gray[200]
+  },
+  
+  // Card com destaque verde
+  cardPrimary: {
+    backgroundColor: Colors.background.paper,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.lg,
+    ...Shadows.base,
+    borderWidth: 1,
+    borderColor: Colors.primary.light + '30',
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary.main
   },
   
   // Textos
@@ -268,11 +304,17 @@ export const CommonStyles = StyleSheet.create({
     flexDirection: 'column'
   },
   
-  // Divisores
+  // Divisores empresariais
   divider: {
     height: 1,
     backgroundColor: Colors.divider,
     marginVertical: Spacing.md
+  },
+  
+  dividerThick: {
+    height: 2,
+    backgroundColor: Colors.gray[300],
+    marginVertical: Spacing.lg
   },
   
   // Estados de loading/erro
@@ -301,7 +343,7 @@ export const CommonStyles = StyleSheet.create({
   paddingHorizontalMd: { paddingHorizontal: Spacing.md },
   paddingHorizontalLg: { paddingHorizontal: Spacing.lg },
   
-  // Inputs
+  // Inputs empresariais
   inputContainer: {
     marginBottom: Spacing.lg
   },
@@ -313,7 +355,7 @@ export const CommonStyles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     fontSize: Typography.fontSize.base,
-    backgroundColor: Colors.background.surface,
+    backgroundColor: Colors.background.paper,
     color: Colors.text.primary
   },
   
@@ -324,6 +366,42 @@ export const CommonStyles = StyleSheet.create({
   
   inputError: {
     borderColor: Colors.status.error
+  },
+  
+  // Botões empresariais
+  buttonPrimary: {
+    backgroundColor: Colors.primary.main,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.sm
+  },
+  
+  buttonSecondary: {
+    backgroundColor: Colors.background.paper,
+    borderWidth: 1,
+    borderColor: Colors.primary.main,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  
+  // Headers empresariais
+  headerContainer: {
+    backgroundColor: Colors.primary.main,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    ...Shadows.sm
+  },
+  
+  headerTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    color: Colors.primary.contrastText
   }
 });
 

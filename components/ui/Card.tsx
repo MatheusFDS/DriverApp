@@ -5,7 +5,7 @@ import { Theme } from '../../constants/Theme';
 
 interface CardProps {
   children: React.ReactNode;
-  variant?: 'default' | 'compact' | 'elevated' | 'outlined';
+  variant?: 'default' | 'compact' | 'elevated' | 'outlined' | 'primary' | 'secondary';
   onPress?: () => void;
   style?: ViewStyle;
   disabled?: boolean;
@@ -18,7 +18,7 @@ export const Card: React.FC<CardProps> = ({
   onPress,
   style,
   disabled = false,
-  activeOpacity = 0.7,
+  activeOpacity = 0.8,
 }) => {
   const cardStyle = [
     styles.base,
@@ -46,7 +46,9 @@ export const Card: React.FC<CardProps> = ({
 const styles = StyleSheet.create({
   base: {
     backgroundColor: Theme.colors.background.paper,
-    borderRadius: Theme.borderRadius.lg,
+    borderRadius: Theme.borderRadius.base,
+    borderWidth: 1,
+    borderColor: Theme.colors.gray[200],
   },
   
   default: {
@@ -62,17 +64,39 @@ const styles = StyleSheet.create({
   elevated: {
     padding: Theme.spacing.lg,
     ...Theme.shadows.lg,
+    borderColor: Theme.colors.gray[100],
   },
   
   outlined: {
     padding: Theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: Theme.colors.divider,
+    borderWidth: 1.5,
+    borderColor: Theme.colors.gray[300],
+    backgroundColor: Theme.colors.background.surface,
     // Sem sombra para outlined
+  },
+  
+  // Variantes com cores do tema
+  primary: {
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.green[50],
+    borderColor: Theme.colors.green[200],
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
+    ...Theme.shadows.sm,
+  },
+  
+  secondary: {
+    padding: Theme.spacing.lg,
+    backgroundColor: Theme.colors.gray[50],
+    borderColor: Theme.colors.gray[300],
+    borderLeftWidth: 3,
+    borderLeftColor: Theme.colors.secondary.main,
+    ...Theme.shadows.sm,
   },
   
   disabled: {
     opacity: 0.6,
+    backgroundColor: Theme.colors.gray[100],
   },
 });
 

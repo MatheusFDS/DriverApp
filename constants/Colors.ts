@@ -1,77 +1,88 @@
 // constants/Colors.ts
 /**
- * Cores padronizadas baseadas no design web
- * Mantendo compatibilidade com o sistema anterior mas usando as cores corretas
+ * Cores padronizadas harmonizadas com o tema verde empresarial
+ * Mantendo compatibilidade mas alinhado com o novo Theme.ts
  */
 
-// Cores principais (baseadas no ThemeProvider.tsx do web)
-const tintColorLight = '#00695c';  // Primary main do web
-const tintColorDark = '#ffffff';
+// Cores principais baseadas no tema verde empresarial
+const tintColorLight = '#00695c';  // Primary main do tema
 
 export const Colors = {
   light: {
-    text: '#2e3440',           // Text primary do web
-    background: '#f7f8fa',     // Background default do web
-    tint: tintColorLight,      // Primary main
-    icon: '#5e6b73',           // Text secondary do web
-    tabIconDefault: '#9ea7ad', // Gray 500 do web
+    text: '#263238',           // Text primary empresarial
+    background: '#f8f9fa',     // Background default empresarial
+    tint: tintColorLight,      // Primary main verde
+    icon: '#546e7a',           // Text secondary empresarial
+    tabIconDefault: '#90a4ae', // Gray claro empresarial
     tabIconSelected: tintColorLight,
     
-    // Adicionando as cores completas do sistema web
-    primary: '#00695c',
-    primaryLight: '#439889',
-    primaryDark: '#004c40',
-    secondary: '#ff6f00',
-    secondaryLight: '#ff9800',
-    secondaryDark: '#e65100',
+    // Cores principais harmonizadas
+    primary: '#00695c',        // Verde empresarial principal
+    primaryLight: '#4db6ac',   // Verde claro
+    primaryDark: '#004d40',    // Verde escuro
+    secondary: '#37474f',      // Cinza azulado empresarial
+    secondaryLight: '#62727b', // Cinza claro
+    secondaryDark: '#263238',  // Cinza escuro
     
-    surface: '#ffffff',        // Background paper do web
-    surfaceVariant: '#fafbfc', // Gray 50 do web
+    surface: '#ffffff',        // Background paper
+    surfaceVariant: '#fcfcfc', // Surface empresarial
     
-    success: '#2e7d32',
-    successLight: '#4caf50',
-    warning: '#ed6c02',
-    warningLight: '#ff9800',
-    error: '#d32f2f',
-    errorLight: '#ef5350',
-    info: '#0288d1',
-    infoLight: '#03a9f4',
+    // Status harmonizados
+    success: '#2e7d32',        // Verde escuro para sucesso
+    successLight: '#66bb6a',   // Verde claro
+    warning: '#f57c00',        // Laranja empresarial
+    warningLight: '#ffb74d',   // Laranja claro
+    error: '#c62828',          // Vermelho empresarial
+    errorLight: '#ef5350',     // Vermelho claro
+    info: '#1565c0',           // Azul empresarial
+    infoLight: '#42a5f5',      // Azul claro
     
-    outline: '#e0e4e7',        // Divider do web
-    outlineVariant: '#dadee3',  // Gray 300 do web
+    // Outlines empresariais
+    outline: '#e0e0e0',        // Divider neutro
+    outlineVariant: '#bdbdbd', // Gray médio
+    
+    // Tons de verde para harmonia
+    greenLight: '#e0f2f1',     // Verde muito claro
+    greenMedium: '#80cbc4',    // Verde médio
+    greenDark: '#00796b',      // Verde escuro
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#e0f2f1',           // Verde muito claro para texto
+    background: '#263238',     // Cinza escuro empresarial
+    tint: '#4db6ac',           // Verde claro para contraste
+    icon: '#80cbc4',           // Verde médio
+    tabIconDefault: '#546e7a', // Cinza médio
+    tabIconSelected: '#4db6ac', // Verde claro
     
-    // Para modo escuro (futuro)
-    primary: '#439889',        // Primary light para contraste
-    primaryLight: '#66bb6a',
-    primaryDark: '#2e7d32',
-    secondary: '#ff9800',      // Secondary light
-    secondaryLight: '#ffb74d',
-    secondaryDark: '#f57c00',
+    // Modo escuro harmonizado
+    primary: '#4db6ac',        // Verde claro para contraste
+    primaryLight: '#80cbc4',   // Verde ainda mais claro
+    primaryDark: '#26a69a',    // Verde médio
+    secondary: '#62727b',      // Cinza claro para contraste
+    secondaryLight: '#90a4ae', // Cinza mais claro
+    secondaryDark: '#455a64',  // Cinza médio
     
-    surface: '#1e1e1e',
-    surfaceVariant: '#2a2a2a',
+    surface: '#37474f',        // Cinza médio
+    surfaceVariant: '#455a64', // Cinza claro
     
-    success: '#4caf50',
-    successLight: '#66bb6a',
-    warning: '#ff9800',
-    warningLight: '#ffb74d',
-    error: '#ef5350',
-    errorLight: '#e57373',
-    info: '#03a9f4',
-    infoLight: '#29b6f6',
+    success: '#66bb6a',        // Verde claro
+    successLight: '#81c784',   // Verde mais claro
+    warning: '#ffb74d',        // Laranja claro
+    warningLight: '#ffcc02',   // Laranja mais claro
+    error: '#ef5350',          // Vermelho claro
+    errorLight: '#e57373',     // Vermelho mais claro
+    info: '#42a5f5',           // Azul claro
+    infoLight: '#64b5f6',      // Azul mais claro
     
-    outline: '#424242',
-    outlineVariant: '#616161',
+    outline: '#546e7a',        // Cinza médio
+    outlineVariant: '#62727b', // Cinza claro
+    
+    // Tons de verde para modo escuro
+    greenLight: '#80cbc4',     // Verde claro
+    greenMedium: '#4db6ac',    // Verde médio
+    greenDark: '#26a69a',      // Verde escuro
   },
 };
 
-// Exportação para compatibilidade com código existente
+// Exportação para compatibilidade
 export default Colors;
