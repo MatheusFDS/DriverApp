@@ -8,6 +8,7 @@ import {
   StatusUpdatePayload,
   Notification,
   PaginatedNotifications,
+  AcceptInviteDto,
 } from '../types';
 import { currentApiConfig } from '../config/apiConfig';
 
@@ -247,7 +248,7 @@ class ApiService {
 
   async acceptInvite(
     token: string, 
-    payload: { name: string; email: string; password?: string; cpf?: string; license?: string }
+    payload: AcceptInviteDto,
   ): Promise<ApiResponse<any>> {
     return this.request<any>(`/invites/${token}/accept`, {
       method: 'POST',

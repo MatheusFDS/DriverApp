@@ -37,8 +37,6 @@ export type OrderMobileStatus =
   | 'ENTREGUE'
   | 'NAO_ENTREGUE';
 
-// --- TIPOS DE NOTIFICAÇÃO ---
-
 export interface Notification {
   id: string;
   tenantId: string;
@@ -59,14 +57,11 @@ export interface PaginatedNotifications {
   lastPage: number;
 }
 
-// Tipo adicional necessário para o backend
 export interface PaginatedNotificationsResponse {
   success: boolean;
   message?: string;
   data: PaginatedNotifications;
 }
-
-// --- FIM DOS TIPOS DE NOTIFICAÇÃO ---
 
 export interface DeliveryProof {
   id: string;
@@ -221,4 +216,14 @@ export interface DeliveryEvidence {
   url: string;
   description?: string;
   createdAt: string;
+}
+
+export interface AcceptInviteDto {
+  name: string;
+  email: string;
+  password?: string;
+  cpf?: string;
+  license?: string;
+  model?: string;
+  plate?: string;
 }

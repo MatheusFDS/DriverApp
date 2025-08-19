@@ -8,6 +8,8 @@ import {
   SafeAreaView,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../services/api';
@@ -37,6 +39,8 @@ export default function AcceptInviteScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [license, setLicense] = useState('');
   const [cpf, setCpf] = useState('');
+  const [model, setModel] = useState('');
+  const [plate, setPlate] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,6 +51,12 @@ export default function AcceptInviteScreen() {
     if (cleaned.length <= 6) return `${cleaned.slice(0, 3)}.${cleaned.slice(3)}`;
     if (cleaned.length <= 9) return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6)}`;
     return `${cleaned.slice(0, 3)}.${cleaned.slice(3, 6)}.${cleaned.slice(6, 9)}-${cleaned.slice(9, 11)}`;
+  };
+  
+  const formatPlate = (value: string) => {
+    const cleaned = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (cleaned.length <= 7) return cleaned;
+    return cleaned.slice(0, 7);
   };
 
   const fetchInviteDetails = useCallback(async () => {
@@ -81,13 +91,20 @@ export default function AcceptInviteScreen() {
 
     const cleanedCpf = cpf.replace(/\D/g, '');
     const cleanedLicense = license.replace(/\D/g, '');
+    const cleanedPlate = plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 
-    if (!name.trim() || !password || !cleanedLicense || !cleanedCpf) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
+    if (!name.trim() || !password || !cleanedLicense || !cleanedCpf || !model.trim() || !cleanedPlate) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos, incluindo os do veículo.');
       return;
     }
+    
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).*$/;
     if (password.length < 6) {
       Alert.alert('Senha Curta', 'A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+    if (!passwordRegex.test(password)) {
+      Alert.alert('Senha Fraca', 'A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.');
       return;
     }
     if (password !== confirmPassword) {
@@ -103,6 +120,8 @@ export default function AcceptInviteScreen() {
         password,
         license: cleanedLicense,
         cpf: cleanedCpf,
+        model: model.trim(),
+        plate: cleanedPlate,
       });
 
       if (response.success) {
@@ -155,166 +174,198 @@ export default function AcceptInviteScreen() {
 
   return (
     <SafeAreaView style={CommonStyles.safeContainer}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerIcon}>
-            <Text style={styles.headerEmoji}>🎉</Text>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <View style={styles.headerIcon}>
+              <Text style={styles.headerEmoji}>🎉</Text>
+            </View>
+            <Text style={[CommonStyles.heading1, styles.headerTitle]}>
+              Você foi convidado!
+            </Text>
+            <Text style={[CommonStyles.bodyLarge, styles.headerSubtitle]}>
+              Para se juntar como {details?.role.name}
+            </Text>
           </View>
-          <Text style={[CommonStyles.heading1, styles.headerTitle]}>
-            Você foi convidado!
-          </Text>
-          <Text style={[CommonStyles.bodyLarge, styles.headerSubtitle]}>
-            Para se juntar como {details?.role.name}
-          </Text>
-        </View>
 
-        {/* Detalhes do Convite */}
-        <Card style={styles.detailsCard}>
-          <Text style={[CommonStyles.heading3, styles.cardTitle]}>
-            Detalhes do Convite
-          </Text>
-          <View style={styles.detailsList}>
-            <View style={styles.detailItem}>
-              <Text style={[CommonStyles.body, styles.detailLabel]}>
-                Convidado por:
-              </Text>
-              <Text style={[CommonStyles.body, styles.detailValue]}>
-                {details?.inviter.name}
-              </Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={[CommonStyles.body, styles.detailLabel]}>
-                Email:
-              </Text>
-              <Text style={[CommonStyles.body, styles.detailValue]}>
-                {details?.email}
-              </Text>
-            </View>
-            {details?.tenant && (
+          <Card style={styles.detailsCard}>
+            <Text style={[CommonStyles.heading3, styles.cardTitle]}>
+              Detalhes do Convite
+            </Text>
+            <View style={styles.detailsList}>
               <View style={styles.detailItem}>
                 <Text style={[CommonStyles.body, styles.detailLabel]}>
-                  Empresa:
+                  Convidado por:
                 </Text>
                 <Text style={[CommonStyles.body, styles.detailValue]}>
-                  {details.tenant.name}
+                  {details?.inviter.name}
                 </Text>
               </View>
-            )}
-          </View>
-          <Text style={[
-            CommonStyles.bodySmall, 
-            isExpired ? styles.expiresError : styles.expiresText
-          ]}>
-            {isExpired ? 'Convite Expirado' : formattedExpiresAt}
-          </Text>
-        </Card>
-
-        {/* Formulário ou Mensagem de Expirado */}
-        {isExpired ? (
-          <Card variant="outlined" style={styles.expiredCard}>
-            <Text style={[CommonStyles.body, styles.expiredMessage]}>
-              Por favor, solicite um novo convite.
+              <View style={styles.detailItem}>
+                <Text style={[CommonStyles.body, styles.detailLabel]}>
+                  Email:
+                </Text>
+                <Text style={[CommonStyles.body, styles.detailValue]}>
+                  {details?.email}
+                </Text>
+              </View>
+              {details?.tenant && (
+                <View style={styles.detailItem}>
+                  <Text style={[CommonStyles.body, styles.detailLabel]}>
+                    Empresa:
+                  </Text>
+                  <Text style={[CommonStyles.body, styles.detailValue]}>
+                    {details.tenant.name}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={[
+              CommonStyles.bodySmall, 
+              isExpired ? styles.expiresError : styles.expiresText
+            ]}>
+              {isExpired ? 'Convite Expirado' : formattedExpiresAt}
             </Text>
           </Card>
-        ) : (
-          <Card style={styles.formCard}>
-            <Text style={[CommonStyles.heading3, styles.formTitle]}>
-              Crie sua conta de Motorista
-            </Text>
-            
-            <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                Nome Completo
-              </Text>
-              <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Seu nome como aparece no documento"
-                placeholderTextColor={Theme.colors.text.hint}
-                value={name}
-                onChangeText={setName}
-                editable={!isSubmitting}
-                autoCapitalize="words"
-              />
-            </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                Nº da CNH
+          {isExpired ? (
+            <Card variant="outlined" style={styles.expiredCard}>
+              <Text style={[CommonStyles.body, styles.expiredMessage]}>
+                Por favor, solicite um novo convite.
               </Text>
-              <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Apenas os números"
-                placeholderTextColor={Theme.colors.text.hint}
-                value={license}
-                onChangeText={setLicense}
-                keyboardType="numeric"
-                maxLength={11}
-                editable={!isSubmitting}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                CPF
+            </Card>
+          ) : (
+            <Card style={styles.formCard}>
+              <Text style={[CommonStyles.heading3, styles.formTitle]}>
+                Crie sua conta de Motorista
               </Text>
-              <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Apenas os números"
-                placeholderTextColor={Theme.colors.text.hint}
-                value={formatCpf(cpf)}
-                onChangeText={(text) => setCpf(text.replace(/\D/g, ''))}
-                keyboardType="numeric"
-                maxLength={14}
-                editable={!isSubmitting}
-              />
-            </View>
+              
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  Nome Completo
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Seu nome como aparece no documento"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={name}
+                  onChangeText={setName}
+                  editable={!isSubmitting}
+                  autoCapitalize="words"
+                />
+              </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                Senha
-              </Text>
-              <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Crie uma senha"
-                placeholderTextColor={Theme.colors.text.hint}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                editable={!isSubmitting}
-              />
-            </View>
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  Nº da CNH
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Apenas os números"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={license}
+                  onChangeText={setLicense}
+                  keyboardType="numeric"
+                  maxLength={11}
+                  editable={!isSubmitting}
+                />
+              </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={[CommonStyles.body, styles.inputLabel]}>
-                Confirmar Senha
-              </Text>
-              <TextInput
-                style={[CommonStyles.input, styles.input]}
-                placeholder="Confirme sua senha"
-                placeholderTextColor={Theme.colors.text.hint}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                editable={!isSubmitting}
-              />
-            </View>
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  CPF
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Apenas os números"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={formatCpf(cpf)}
+                  onChangeText={(text) => setCpf(text.replace(/\D/g, ''))}
+                  keyboardType="numeric"
+                  maxLength={14}
+                  editable={!isSubmitting}
+                />
+              </View>
 
-            <Button
-              title="Finalizar Cadastro"
-              onPress={handleAcceptInvite}
-              disabled={isSubmitting}
-              loading={isSubmitting}
-              fullWidth
-              size="large"
-              style={styles.submitButton}
-            />
-          </Card>
-        )}
-      </ScrollView>
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  Modelo do Veículo
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Ex: Fiat Strada"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={model}
+                  onChangeText={setModel}
+                  editable={!isSubmitting}
+                />
+              </View>
+              
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  Placa do Veículo
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Ex: ABC1234"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={formatPlate(plate)}
+                  onChangeText={(text) => setPlate(text.replace(/[^A-Za-z0-9]/g, ''))}
+                  autoCapitalize="characters"
+                  maxLength={7}
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  Senha
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Crie uma senha"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={[CommonStyles.body, styles.inputLabel]}>
+                  Confirmar Senha
+                </Text>
+                <TextInput
+                  style={[CommonStyles.input, styles.input]}
+                  placeholder="Confirme sua senha"
+                  placeholderTextColor={Theme.colors.text.hint}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  editable={!isSubmitting}
+                />
+              </View>
+
+              <Button
+                title="Finalizar Cadastro"
+                onPress={handleAcceptInvite}
+                disabled={isSubmitting}
+                loading={isSubmitting}
+                fullWidth
+                size="large"
+                style={styles.submitButton}
+              />
+            </Card>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
