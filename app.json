@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "roteiapp",
-    "slug": "roteiapp",
+    "name": "DriverApp",
+    "slug": "DriverApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "roteiapp",
+    "scheme": "driverapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -28,7 +28,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "package": "com.mathex.appmobile",
       "googleServicesFile": "./google-services.json",
       "runtimeVersion": "1.0.0",

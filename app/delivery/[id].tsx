@@ -43,6 +43,10 @@ export default function DeliveryDetailsScreen() {
   const [viewingProof, setViewingProof] = useState<string | null>(null);
   const [showMotivoModal, setShowMotivoModal] = useState(false);
   const [motivoTexto, setMotivoTexto] = useState('');
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<{
+    status: OrderMobileStatus;
+    motivo?: string;
+  } | null>(null);
 
   const loadDeliveryDetails = useCallback(async () => {
     try {
@@ -85,51 +89,43 @@ export default function DeliveryDetailsScreen() {
   }, [loadDeliveryDetails]);
 
   const handleUpdateStatus = async (newStatus: OrderMobileStatus, motivo?: string) => {
-    console.log('handleUpdateStatus called with:', { newStatus, motivo, deliveryItem: !!deliveryItem, id }); // Debug
+    console.log('handleUpdateStatus called with:', { newStatus, motivo, deliveryItem: !!deliveryItem, id });
     
     if (!deliveryItem || !id) {
-      console.log('Missing deliveryItem or id'); // Debug
+      console.log('Missing deliveryItem or id');
       return;
     }
 
     const payload: StatusUpdatePayload = { status: newStatus };
     if (newStatus === 'NAO_ENTREGUE' && motivo) {
         payload.motivoNaoEntrega = motivo;
-        console.log('Added motivo to payload:', payload); // Debug
+        console.log('Added motivo to payload:', payload);
     }
 
     try {
       setUpdatingStatus(true);
-      console.log('Calling API with payload:', payload); // Debug
+      console.log('Calling API with payload:', payload);
       
       const response = await api.updateDeliveryStatus(id, payload);
-      console.log('API response:', response); // Debug
+      console.log('API response:', response);
       
       if (response.success && response.data) {
-        console.log('Status update successful, updating local state'); // Debug
+        console.log('Status update successful, updating local state');
         setDeliveryItem(prev => prev ? { 
           ...prev, 
           status: (response.data?.newStatusMobile || newStatus) as OrderMobileStatus 
         } : null);
         
-        if (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE') {
-          Alert.alert(
-            'Status Atualizado!',
-            `${response.data.message || 'Status atualizado com sucesso!'}\n\nAgora você precisa anexar um comprovante.`,
-            [{ 
-              text: 'Adicionar Comprovante',
-              onPress: () => setShowProofCamera(true)
-            }]
-          );
-        } else {
-          Alert.alert('Sucesso!', response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`);
-        }
+        Alert.alert('Sucesso!', response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`);
+        
+        // Limpar pendência após sucesso
+        setPendingStatusUpdate(null);
       } else {
-        console.log('API returned error:', response.message); // Debug
+        console.log('API returned error:', response.message);
         throw new Error(response.message || 'Erro ao atualizar status');
       }
     } catch (updateError) {
-      console.log('Error updating status:', updateError); // Debug
+      console.log('Error updating status:', updateError);
       Alert.alert(
         'Erro ao Atualizar',
         updateError instanceof Error ? updateError.message : 'Não foi possível atualizar o status da entrega.',
@@ -141,22 +137,21 @@ export default function DeliveryDetailsScreen() {
   };
 
   const confirmStatusUpdate = (targetStatus: OrderMobileStatus, customerName: string) => {
-    console.log('🚀 confirmStatusUpdate INICIOU com status:', targetStatus);
+    console.log('confirmStatusUpdate INICIOU com status:', targetStatus);
     
-    if (targetStatus === 'NAO_ENTREGUE') {
-      console.log('🚨 PROCESSANDO NAO_ENTREGUE');
+    // Para finalizações, sempre exigir comprovante primeiro
+    if (targetStatus === 'ENTREGUE') {
       Alert.alert(
-        'Confirmar Problema na Entrega',
-        `Confirma que não foi possível realizar a entrega para "${customerName}"?\n\n⚠️ Você precisará informar o motivo e anexar um comprovante.`,
+        'Confirmar Entrega Realizada',
+        `Confirma que a entrega foi realizada com sucesso para "${customerName}"?\n\nPrimeiro você precisa anexar um comprovante da entrega.`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
-            text: 'Sim, Reportar Problema',
-            style: 'destructive',
+            text: 'Sim, Adicionar Comprovante',
             onPress: () => {
-              console.log('✅ User confirmed NAO_ENTREGUE, opening motivo modal');
-              setMotivoTexto('');
-              setShowMotivoModal(true);
+              console.log('User confirmed ENTREGUE, opening camera');
+              setPendingStatusUpdate({ status: 'ENTREGUE' });
+              setShowProofCamera(true);
             }
           }
         ]
@@ -164,8 +159,28 @@ export default function DeliveryDetailsScreen() {
       return;
     }
     
+    if (targetStatus === 'NAO_ENTREGUE') {
+      Alert.alert(
+        'Confirmar Problema na Entrega',
+        `Confirma que não foi possível realizar a entrega para "${customerName}"?\n\nPrimeiro você precisa anexar um comprovante e informar o motivo.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Sim, Adicionar Comprovante',
+            style: 'destructive',
+            onPress: () => {
+              console.log('User confirmed NAO_ENTREGUE, opening camera');
+              setPendingStatusUpdate({ status: 'NAO_ENTREGUE' });
+              setShowProofCamera(true);
+            }
+          }
+        ]
+      );
+      return;
+    }
+    
+    // Para outros status que não precisam de comprovante
     if (targetStatus === 'EM_ROTA' || targetStatus === 'EM_ENTREGA') { 
-      console.log('🚛 PROCESSANDO INICIAR ENTREGA');
       Alert.alert(
         'Iniciar Entrega',
         `Tem certeza que deseja iniciar o deslocamento para a entrega de "${customerName}"?\n\nApós confirmar, o status será alterado para "Em Rota".`,
@@ -174,50 +189,72 @@ export default function DeliveryDetailsScreen() {
           { 
             text: 'Sim, Iniciar Entrega', 
             onPress: () => {
-              console.log('✅ User confirmed:', targetStatus);
-              handleUpdateStatus(targetStatus);
-            }
-          }
-        ]
-      );
-    } else if (targetStatus === 'ENTREGUE') {
-      console.log('📦 PROCESSANDO ENTREGUE');
-      Alert.alert(
-        'Confirmar Entrega Realizada',
-        `Confirma que a entrega foi realizada com sucesso para "${customerName}"?\n\n⚠️ Você precisará anexar um comprovante da entrega.`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Sim, Entrega Realizada',
-            onPress: () => {
-              console.log('✅ User confirmed ENTREGUE');
+              console.log('User confirmed:', targetStatus);
               handleUpdateStatus(targetStatus);
             }
           }
         ]
       );
     } else {
-      console.log('🔄 PROCESSANDO OUTRO STATUS:', targetStatus);
+      console.log('PROCESSANDO OUTRO STATUS:', targetStatus);
       handleUpdateStatus(targetStatus);
     }
   };
 
   const submitMotivoNaoEntrega = () => {
-    console.log('📝 submitMotivoNaoEntrega called with motivo:', motivoTexto);
+    console.log('submitMotivoNaoEntrega called with motivo:', motivoTexto);
     
     if (motivoTexto.trim() === '') {
       Alert.alert('Atenção', 'O motivo é obrigatório para reportar um problema de entrega.');
       return;
     }
     
-    console.log('✅ Motivo válido, chamando handleUpdateStatus');
+    console.log('Motivo válido, chamando handleUpdateStatus');
     setShowMotivoModal(false);
     handleUpdateStatus('NAO_ENTREGUE', motivoTexto.trim());
   };
 
   const handleProofSuccess = (proofUrl: string) => {
     Alert.alert('Comprovante Enviado!', 'Comprovante anexado com sucesso.');
-    loadDeliveryDetails();
+    
+    // Recarregar dados para obter comprovantes atualizados
+    loadDeliveryDetails().then(() => {
+      // Verificar se havia uma intenção de atualização pendente
+      if (pendingStatusUpdate) {
+        const { status } = pendingStatusUpdate;
+        
+        if (status === 'NAO_ENTREGUE') {
+          // Para não entrega, solicitar motivo após comprovante
+          Alert.alert(
+            'Comprovante Anexado',
+            'Agora informe o motivo da não entrega para finalizar o processo.',
+            [
+              {
+                text: 'Informar Motivo',
+                onPress: () => {
+                  setMotivoTexto('');
+                  setShowMotivoModal(true);
+                }
+              }
+            ]
+          );
+        } else if (status === 'ENTREGUE') {
+          // Para entrega bem-sucedida, atualizar status imediatamente
+          Alert.alert(
+            'Comprovante Anexado',
+            'Finalizando a entrega...',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  handleUpdateStatus('ENTREGUE');
+                }
+              }
+            ]
+          );
+        }
+      }
+    });
   };
 
   const callCustomer = () => {
@@ -268,13 +305,14 @@ export default function DeliveryDetailsScreen() {
 
   const statusConfig = getOrderMobileStatusConfig(deliveryItem.status);
   const availableActions = getAvailableOrderActions(deliveryItem.status, deliveryItem.routeStatus);
-  const needsProof = (deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE') && 
-                     (!deliveryItem.proofs || deliveryItem.proofs.length === 0);
+  const hasProofs = deliveryItem.proofs && deliveryItem.proofs.length > 0;
+  const isFinalized = deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE';
 
-  // Debug logs
-  console.log('🔍 Debug Info:', {
+  console.log('Debug Info:', {
     status: deliveryItem.status,
     routeStatus: deliveryItem.routeStatus,
+    hasProofs,
+    isFinalized,
     availableActions: availableActions.map(a => ({ id: a.id, label: a.label, targetStatus: a.targetStatus }))
   });
 
@@ -356,12 +394,39 @@ export default function DeliveryDetailsScreen() {
           </Card>
         )}
 
+        {/* Status do Comprovante */}
+        <Card style={hasProofs ? styles.proofStatusSuccess : styles.proofStatusPending}>
+          <View style={styles.proofStatusHeader}>
+            <Text style={styles.proofStatusTitle}>
+              {hasProofs ? '✅ Comprovante Anexado' : '📸 Comprovante Necessário'}
+            </Text>
+            <Button
+              title={hasProofs ? "Ver Comprovantes" : "Adicionar Foto"}
+              onPress={() => setShowProofCamera(true)}
+              variant={hasProofs ? "outline" : "primary"}
+              size="small"
+            />
+          </View>
+          
+          {!hasProofs && isFinalized && (
+            <Text style={styles.proofWarningText}>
+              ⚠️ Entrega finalizada sem comprovante. Adicione um comprovante para completar o processo.
+            </Text>
+          )}
+          
+          {!hasProofs && !isFinalized && (
+            <Text style={styles.proofInfoText}>
+              Para finalizar a entrega (ENTREGUE ou NÃO ENTREGUE), é obrigatório anexar um comprovante.
+            </Text>
+          )}
+        </Card>
+
         {/* Comprovantes (se houver) */}
-        {deliveryItem.proofs && deliveryItem.proofs.length > 0 && (
+        {hasProofs && (
           <Card style={styles.proofsCard}>
-            <Text style={styles.sectionTitle}>Comprovantes ({deliveryItem.proofs.length})</Text>
+            <Text style={styles.sectionTitle}>Comprovantes ({deliveryItem.proofs!.length})</Text>
             <View style={styles.proofsGrid}>
-              {deliveryItem.proofs.map((proof: DeliveryProof) => {
+              {deliveryItem.proofs!.map((proof: DeliveryProof) => {
                 const fullProofUrl = proof.proofUrl.startsWith('http')
                   ? proof.proofUrl
                   : `${currentApiConfig.baseURL}${proof.proofUrl}`;
@@ -382,28 +447,14 @@ export default function DeliveryDetailsScreen() {
           </Card>
         )}
 
-        {/* Alerta para Comprovante Obrigatório */}
-        {needsProof && (
-          <Card style={styles.warningCard}>
-            <Text style={styles.warningText}>⚠️ Comprovante obrigatório</Text>
-            <Button
-              title="Adicionar Foto"
-              onPress={() => setShowProofCamera(true)}
-              style={styles.proofButton}
-            />
-          </Card>
-        )}
-
         {/* Ações de Status */}
         {availableActions.length > 0 && (
           <View style={styles.actionsContainer}>
-            <Text style={{ fontSize: 12, color: 'gray', marginBottom: 8 }}>
-              Debug: {availableActions.length} ações disponíveis para status {deliveryItem.status}
-            </Text>
+            <Text style={styles.actionsTitle}>Ações Disponíveis</Text>
             {availableActions.map((action) => {
-              console.log('🔘 Renderizando botão:', action.label, 'para status:', action.targetStatus);
+              console.log('Renderizando botão:', action.label, 'para status:', action.targetStatus);
               
-              // Determinar a variante do botão baseada no tipo de ação
+              // Determinar a variante do botão
               let buttonVariant: 'primary' | 'success' | 'danger' | 'secondary' = 'primary';
               
               if (action.targetStatus === 'ENTREGUE') {
@@ -421,7 +472,7 @@ export default function DeliveryDetailsScreen() {
                   key={action.id}
                   title={action.label}
                   onPress={() => {
-                    console.log('🔴 BOTÃO CLICADO:', action.label, 'Status:', action.targetStatus);
+                    console.log('BOTÃO CLICADO:', action.label, 'Status:', action.targetStatus);
                     confirmStatusUpdate(action.targetStatus, deliveryItem.customerName);
                   }}
                   variant={buttonVariant}
@@ -450,7 +501,13 @@ export default function DeliveryDetailsScreen() {
       <ProofUploaderModal
         orderId={id || ''}
         visible={showProofCamera}
-        onClose={() => setShowProofCamera(false)}
+        onClose={() => {
+          setShowProofCamera(false);
+          // Limpar pendência se o usuário cancelar
+          if (!hasProofs) {
+            setPendingStatusUpdate(null);
+          }
+        }}
         onSuccess={handleProofSuccess}
         title="Comprovante"
       />
@@ -484,9 +541,10 @@ export default function DeliveryDetailsScreen() {
               <TouchableOpacity
                 style={[styles.motivoModalButton, styles.motivoModalButtonCancel]}
                 onPress={() => {
-                  console.log('❌ User cancelled motivo input');
+                  console.log('User cancelled motivo input');
                   setShowMotivoModal(false);
                   setMotivoTexto('');
+                  setPendingStatusUpdate(null); // Limpar pendência
                 }}
               >
                 <Text style={styles.motivoModalButtonTextCancel}>Cancelar</Text>
@@ -705,6 +763,58 @@ const styles = StyleSheet.create({
     color: Theme.colors.text.primary,
     lineHeight: 20,
   },
+
+  proofStatusCard: {
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    padding: Theme.spacing.lg,
+    borderRadius: Theme.borderRadius.base,
+    ...Theme.shadows.sm,
+    borderWidth: 1,
+  },
+
+  proofStatusSuccess: {
+    backgroundColor: Theme.colors.green[50],
+    borderColor: Theme.colors.green[200],
+    borderLeftWidth: 3,
+    borderLeftColor: Theme.colors.green[500],
+  },
+
+  proofStatusPending: {
+    backgroundColor: '#fff3e0', // Laranja claro
+    borderColor: '#ffcc80', // Laranja médio
+    borderLeftWidth: 3,
+    borderLeftColor: '#ff9800', // Laranja
+  },
+
+  proofStatusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+
+  proofStatusTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Theme.colors.text.primary,
+  },
+
+  proofWarningText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: '#e65100', // Laranja escuro
+    backgroundColor: '#fff3e0', // Laranja claro
+    padding: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.sm,
+    marginTop: Theme.spacing.sm,
+  },
+
+  proofInfoText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.text.secondary,
+    fontStyle: 'italic',
+    marginTop: Theme.spacing.sm,
+  },
   
   proofsCard: {
     marginHorizontal: Theme.spacing.lg,
@@ -730,40 +840,26 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.gray[200],
   },
   
-  warningCard: {
-    marginHorizontal: Theme.spacing.lg,
-    marginBottom: Theme.spacing.md,
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.status.warning + '10',
-    borderWidth: 1,
-    borderColor: Theme.colors.status.warning + '30',
-    borderLeftWidth: 3,
-    borderLeftColor: Theme.colors.status.warning,
-  },
-  
-  warningText: {
-    color: Theme.colors.status.warning,
-    fontWeight: Theme.typography.fontWeight.medium,
-    marginBottom: Theme.spacing.md,
-  },
-  
-  proofButton: {
-    backgroundColor: Theme.colors.status.warning,
-  },
-  
   actionsContainer: {
     padding: Theme.spacing.lg,
     gap: Theme.spacing.md,
-    backgroundColor: '#f5f5f5', // Fundo cinza claro para destacar
+    backgroundColor: '#f5f5f5',
     borderTopWidth: 2,
     borderTopColor: '#e0e0e0',
     marginTop: Theme.spacing.md,
+  },
+
+  actionsTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.sm,
   },
   
   statusActionButton: {
     minHeight: 54,
     borderRadius: Theme.borderRadius.base,
-    shadowOpacity: 0.15, // Sombra mais forte
+    shadowOpacity: 0.15,
     elevation: 4,
   },
   

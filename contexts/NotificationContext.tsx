@@ -145,7 +145,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     setToastData(prev => ({ ...prev, visible: false }));
   }, []);
 
-  // CORREÇÃO: Nova função para enviar localização para o socket de forma mais robusta.
   const emitLocationUpdate = useCallback((location: Location.LocationObject) => {
     if (!socketRef.current?.connected || !user?.id) {
       console.warn('📍 Socket não conectado ou usuário não encontrado. Envio adiado.');
@@ -312,13 +311,14 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       
       if (socketRef.current && freshToken) {
         try {
-          const tokenPayload = JSON.parse(atob(freshToken.split('.')[1]));
-          const tokenUserId = tokenPayload.user_id || tokenPayload.uid || tokenPayload.sub;
-          
-          socketRef.current.emit('register', tokenUserId);
-          console.log('🔌 Registro enviado com user ID:', tokenUserId);
+          // Usar Firebase UID para registro, igual à web
+          const firebaseUser = auth().currentUser;
+          if (firebaseUser) {
+            socketRef.current.emit('register', firebaseUser.uid);
+            console.log('🔌 Registro enviado com Firebase UID:', firebaseUser.uid);
+          }
         } catch (error) {
-          console.error('🔌 Erro ao extrair user_id do token:', error);
+          console.error('🔌 Erro ao extrair Firebase UID:', error);
           socketRef.current.emit('register', user.id);
         }
       }
