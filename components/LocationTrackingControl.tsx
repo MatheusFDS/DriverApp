@@ -1,11 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -26,51 +23,12 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
     isConnected,
     lastLocationUpdate,
     locationStats,
-    startLocationTracking,
-    stopLocationTracking,
   } = useNotifications();
 
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleToggleTracking = async () => {
-    if (isLocationActive) {
-      Alert.alert(
-        'Parar Rastreamento',
-        'Tem certeza que deseja parar o compartilhamento de localização? A central não conseguirá acompanhar sua posição.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Parar',
-            style: 'destructive',
-            onPress: () => {
-              stopLocationTracking();
-            },
-          },
-        ]
-      );
-    } else {
-      setIsLoading(true);
-      try {
-        const success = await startLocationTracking();
-        if (!success) {
-          Alert.alert(
-            'Erro',
-            'Não foi possível iniciar o rastreamento. Verifique as permissões de localização.'
-          );
-        }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-        Alert.alert('Erro', 'Falha ao iniciar rastreamento.');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
   const getStatusColor = () => {
-    if (!isConnected) return '#f44336'; // Vermelho - desconectado
-    if (isLocationActive) return '#4caf50'; // Verde - ativo
-    return '#ff9800'; // Laranja - inativo
+    if (!isConnected) return '#f44336';
+    if (isLocationActive) return '#4caf50';
+    return '#ff9800';
   };
 
   const getStatusText = () => {
@@ -113,26 +71,18 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
 
   return (
     <View style={[styles.container, style]}>
-      <TouchableOpacity
-        style={[styles.mainButton, { backgroundColor: getStatusColor() }]}
-        onPress={handleToggleTracking}
-        disabled={isLoading || !isConnected}
-      >
+      <View style={[styles.mainButton, { backgroundColor: getStatusColor() }]}>
         <View style={styles.buttonContent}>
-          {isLoading ? (
-            <ActivityIndicator color="white" size="small" />
-          ) : (
-            <Ionicons
-              name={getStatusIcon()}
-              size={24}
-              color="white"
-            />
-          )}
+          <Ionicons
+            name={getStatusIcon()}
+            size={24}
+            color="white"
+          />
           <Text style={styles.buttonText}>
-            {isLoading ? 'Carregando...' : getStatusText()}
+            {getStatusText()}
           </Text>
         </View>
-      </TouchableOpacity>
+      </View>
 
       {showDetails && (
         <View style={styles.detailsContainer}>
@@ -160,7 +110,6 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
             </View>
           </View>
 
-          {/* Estatísticas de Localização */}
           {showStats && isLocationActive && (
             <View style={styles.statsContainer}>
               <Text style={styles.statsTitle}>📊 Estatísticas de Envio</Text>
@@ -208,7 +157,6 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
             </View>
           )}
 
-          {/* Dicas para melhor rastreamento */}
           {isLocationActive && (
             <View style={styles.tipsContainer}>
               <Text style={styles.tipsTitle}>💡 Dicas para melhor rastreamento:</Text>
