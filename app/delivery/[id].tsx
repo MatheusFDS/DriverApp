@@ -1,4 +1,4 @@
-// app/(tabs)/delivery/[id].tsx
+// app/delivery/[id].tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -15,8 +15,13 @@ import {
   Modal,
   SafeAreaView,
   TextInput,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import ProofUploaderModal from '../../components/ProofUploaderModal';
 
 import {
@@ -30,7 +35,9 @@ import {
 
 import { api } from '../../services/api';
 import { currentApiConfig } from '@/config/apiConfig';
-import { Button, Card, StatusBadge, Theme, getOrderStatusVariant } from '../../components/ui';
+import { Theme, CommonStyles } from '../../components/ui';
+
+Dimensions.get('window');
 
 export default function DeliveryDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -59,18 +66,16 @@ export default function DeliveryDetailsScreen() {
         return;
       }
 
-      const response = await api.getDeliveryDetails(id); 
+      const response = await api.getDeliveryDetails(id);
       
       if (response.success && response.data) {
         setDeliveryItem(response.data);
       } else {
         setError(response.message || 'Erro ao carregar detalhes da entrega.');
-        Alert.alert('Erro', response.message || 'Erro ao carregar detalhes da entrega.');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       setError(`Erro de conexão: ${errorMessage}`);
-      Alert.alert('Erro de Conexão', 'Verifique sua internet e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -89,67 +94,49 @@ export default function DeliveryDetailsScreen() {
   }, [loadDeliveryDetails]);
 
   const handleUpdateStatus = async (newStatus: OrderMobileStatus, motivo?: string) => {
-    console.log('handleUpdateStatus called with:', { newStatus, motivo, deliveryItem: !!deliveryItem, id });
-    
-    if (!deliveryItem || !id) {
-      console.log('Missing deliveryItem or id');
-      return;
-    }
+    if (!deliveryItem || !id) return;
 
     const payload: StatusUpdatePayload = { status: newStatus };
     if (newStatus === 'NAO_ENTREGUE' && motivo) {
         payload.motivoNaoEntrega = motivo;
-        console.log('Added motivo to payload:', payload);
     }
 
     try {
       setUpdatingStatus(true);
-      console.log('Calling API with payload:', payload);
       
       const response = await api.updateDeliveryStatus(id, payload);
-      console.log('API response:', response);
       
       if (response.success && response.data) {
-        console.log('Status update successful, updating local state');
         setDeliveryItem(prev => prev ? { 
           ...prev, 
           status: (response.data?.newStatusMobile || newStatus) as OrderMobileStatus 
         } : null);
         
-        Alert.alert('Sucesso!', response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`);
-        
-        // Limpar pendência após sucesso
+        Alert.alert('Sucesso', response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`);
         setPendingStatusUpdate(null);
       } else {
-        console.log('API returned error:', response.message);
         throw new Error(response.message || 'Erro ao atualizar status');
       }
     } catch (updateError) {
-      console.log('Error updating status:', updateError);
       Alert.alert(
         'Erro ao Atualizar',
-        updateError instanceof Error ? updateError.message : 'Não foi possível atualizar o status da entrega.',
-        [{ text: 'OK' }]
+        updateError instanceof Error ? updateError.message : 'Não foi possível atualizar o status da entrega.'
       );
     } finally {
       setUpdatingStatus(false);
     }
   };
 
-  const confirmStatusUpdate = (targetStatus: OrderMobileStatus, customerName: string) => {
-    console.log('confirmStatusUpdate INICIOU com status:', targetStatus);
-    
-    // Para finalizações, sempre exigir comprovante primeiro
+  const confirmStatusUpdate = (targetStatus: OrderMobileStatus) => {
     if (targetStatus === 'ENTREGUE') {
       Alert.alert(
-        'Confirmar Entrega Realizada',
-        `Confirma que a entrega foi realizada com sucesso para "${customerName}"?\n\nPrimeiro você precisa anexar um comprovante da entrega.`,
+        'Confirmar Entrega',
+        `Confirma que a entrega foi realizada com sucesso para "${deliveryItem?.customerName}"?\n\nÉ necessário anexar um comprovante da entrega.`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Sim, Adicionar Comprovante',
             onPress: () => {
-              console.log('User confirmed ENTREGUE, opening camera');
               setPendingStatusUpdate({ status: 'ENTREGUE' });
               setShowProofCamera(true);
             }
@@ -161,15 +148,14 @@ export default function DeliveryDetailsScreen() {
     
     if (targetStatus === 'NAO_ENTREGUE') {
       Alert.alert(
-        'Confirmar Problema na Entrega',
-        `Confirma que não foi possível realizar a entrega para "${customerName}"?\n\nPrimeiro você precisa anexar um comprovante e informar o motivo.`,
+        'Reportar Problema',
+        `Confirma que não foi possível realizar a entrega para "${deliveryItem?.customerName}"?\n\nÉ necessário anexar um comprovante e informar o motivo.`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
             text: 'Sim, Adicionar Comprovante',
             style: 'destructive',
             onPress: () => {
-              console.log('User confirmed NAO_ENTREGUE, opening camera');
               setPendingStatusUpdate({ status: 'NAO_ENTREGUE' });
               setShowProofCamera(true);
             }
@@ -179,55 +165,44 @@ export default function DeliveryDetailsScreen() {
       return;
     }
     
-    // Para outros status que não precisam de comprovante
-    if (targetStatus === 'EM_ROTA' || targetStatus === 'EM_ENTREGA') { 
+    if (targetStatus === 'EM_ROTA' || targetStatus === 'EM_ENTREGA') {
       Alert.alert(
-        'Iniciar Entrega',
-        `Tem certeza que deseja iniciar o deslocamento para a entrega de "${customerName}"?\n\nApós confirmar, o status será alterado para "Em Rota".`,
+        'Iniciar Deslocamento',
+        `Confirma o início do deslocamento para a entrega de "${deliveryItem?.customerName}"?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           { 
-            text: 'Sim, Iniciar Entrega', 
-            onPress: () => {
-              console.log('User confirmed:', targetStatus);
-              handleUpdateStatus(targetStatus);
-            }
+            text: 'Sim, Iniciar', 
+            onPress: () => handleUpdateStatus(targetStatus)
           }
         ]
       );
     } else {
-      console.log('PROCESSANDO OUTRO STATUS:', targetStatus);
       handleUpdateStatus(targetStatus);
     }
   };
 
   const submitMotivoNaoEntrega = () => {
-    console.log('submitMotivoNaoEntrega called with motivo:', motivoTexto);
-    
     if (motivoTexto.trim() === '') {
       Alert.alert('Atenção', 'O motivo é obrigatório para reportar um problema de entrega.');
       return;
     }
     
-    console.log('Motivo válido, chamando handleUpdateStatus');
     setShowMotivoModal(false);
     handleUpdateStatus('NAO_ENTREGUE', motivoTexto.trim());
   };
 
   const handleProofSuccess = (proofUrl: string) => {
-    Alert.alert('Comprovante Enviado!', 'Comprovante anexado com sucesso.');
+    Alert.alert('Comprovante Enviado', 'Comprovante anexado com sucesso.');
     
-    // Recarregar dados para obter comprovantes atualizados
     loadDeliveryDetails().then(() => {
-      // Verificar se havia uma intenção de atualização pendente
       if (pendingStatusUpdate) {
         const { status } = pendingStatusUpdate;
         
         if (status === 'NAO_ENTREGUE') {
-          // Para não entrega, solicitar motivo após comprovante
           Alert.alert(
             'Comprovante Anexado',
-            'Agora informe o motivo da não entrega para finalizar o processo.',
+            'Agora informe o motivo da não entrega.',
             [
               {
                 text: 'Informar Motivo',
@@ -239,16 +214,13 @@ export default function DeliveryDetailsScreen() {
             ]
           );
         } else if (status === 'ENTREGUE') {
-          // Para entrega bem-sucedida, atualizar status imediatamente
           Alert.alert(
             'Comprovante Anexado',
             'Finalizando a entrega...',
             [
               {
                 text: 'OK',
-                onPress: () => {
-                  handleUpdateStatus('ENTREGUE');
-                }
+                onPress: () => handleUpdateStatus('ENTREGUE')
               }
             ]
           );
@@ -258,9 +230,9 @@ export default function DeliveryDetailsScreen() {
   };
 
   const callCustomer = () => {
-    if (!deliveryItem?.phone) { 
-      Alert.alert('Aviso', 'Número não disponível.'); 
-      return; 
+    if (!deliveryItem?.phone) {
+      Alert.alert('Aviso', 'Número não disponível.');
+      return;
     }
     const phoneNumber = deliveryItem.phone.replace(/[^\d]/g, '');
     Linking.openURL(`tel:${phoneNumber}`)
@@ -268,9 +240,9 @@ export default function DeliveryDetailsScreen() {
   };
 
   const openMaps = () => {
-    if (!deliveryItem?.address) { 
-      Alert.alert('Aviso', 'Endereço não disponível.'); 
-      return; 
+    if (!deliveryItem?.address) {
+      Alert.alert('Aviso', 'Endereço não disponível.');
+      return;
     }
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(deliveryItem.address)}`;
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
@@ -278,7 +250,7 @@ export default function DeliveryDetailsScreen() {
 
   if (loading && !deliveryItem) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView style={CommonStyles.loadingState}>
         <ActivityIndicator size="large" color={Theme.colors.primary.main} />
         <Text style={styles.loadingText}>Carregando...</Text>
       </SafeAreaView>
@@ -287,18 +259,24 @@ export default function DeliveryDetailsScreen() {
 
   if (error && !deliveryItem) {
     return (
-      <SafeAreaView style={styles.errorContainer}>
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Ionicons name="alert-circle" size={48} color={Theme.colors.status.error} />
+        <Text style={styles.errorTitle}>Erro ao carregar</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <Button title="Tentar novamente" onPress={loadDeliveryDetails} />
+        <TouchableOpacity style={styles.retryButton} onPress={loadDeliveryDetails}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
   if (!deliveryItem) {
     return (
-      <SafeAreaView style={styles.errorContainer}>
-        <Text style={styles.errorText}>Entrega não encontrada</Text>
-        <Button title="Voltar" onPress={() => router.back()} variant="outline" />
+      <SafeAreaView style={CommonStyles.errorState}>
+        <Text style={styles.errorTitle}>Entrega não encontrada</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Text style={styles.backButtonText}>Voltar</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -308,18 +286,33 @@ export default function DeliveryDetailsScreen() {
   const hasProofs = deliveryItem.proofs && deliveryItem.proofs.length > 0;
   const isFinalized = deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE';
 
-  console.log('Debug Info:', {
-    status: deliveryItem.status,
-    routeStatus: deliveryItem.routeStatus,
-    hasProofs,
-    isFinalized,
-    availableActions: availableActions.map(a => ({ id: a.id, label: a.label, targetStatus: a.targetStatus }))
-  });
-
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header com Status */}
+      <LinearGradient
+        colors={[statusConfig.color, statusConfig.color + 'dd']}
+        style={styles.header}
+      >
+        <TouchableOpacity style={styles.headerBackButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerContent}>
+          <Text style={styles.headerOrder}>PEDIDO #{deliveryItem.numeroPedido}</Text>
+          <Text style={styles.headerStatus}>{statusConfig.text}</Text>
+        </View>
+        
+        <View style={styles.headerValueContainer}>
+          <Text style={styles.headerValueLabel}>Valor</Text>
+          <Text style={styles.headerValue}>
+            {deliveryItem.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </Text>
+        </View>
+      </LinearGradient>
+
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -327,104 +320,122 @@ export default function DeliveryDetailsScreen() {
             colors={[Theme.colors.primary.main]} 
           />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header Principal */}
-        <Card style={styles.headerCard}>
-          <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.orderNumber}>#{deliveryItem.numeroPedido}</Text>
-              <Text style={styles.customerName}>{deliveryItem.customerName}</Text>
-            </View>
-            <StatusBadge
-              text={statusConfig.text}
-              variant={getOrderStatusVariant(deliveryItem.status)}
-            />
+        {/* Card Principal - Cliente e Endereço */}
+        <View style={styles.mainCard}>
+          <View style={styles.customerSection}>
+            <Text style={styles.customerLabel}>CLIENTE</Text>
+            <Text style={styles.customerName}>{deliveryItem.customerName}</Text>
           </View>
-        </Card>
-
-        {/* Endereço e Ações Rápidas */}
-        <Card style={styles.mainCard}>
-          <Text style={styles.address}>{deliveryItem.address}</Text>
           
+          <View style={styles.addressSection}>
+            <Text style={styles.addressLabel}>ENDEREÇO DE ENTREGA</Text>
+            <Text style={styles.addressText}>{deliveryItem.address}</Text>
+          </View>
+
+          {/* Botões de Ação Rápida */}
           <View style={styles.quickActions}>
             {deliveryItem.phone && (
               <TouchableOpacity style={styles.actionButton} onPress={callCustomer}>
-                <Text style={styles.actionButtonText}>📞 Ligar</Text>
+                <View style={styles.actionButtonIcon}>
+                  <Ionicons name="call" size={20} color="#ffffff" />
+                </View>
+                <Text style={styles.actionButtonText}>Ligar</Text>
+                <Text style={styles.actionButtonSubtext}>{deliveryItem.phone}</Text>
               </TouchableOpacity>
             )}
+            
             <TouchableOpacity style={styles.actionButton} onPress={openMaps}>
-              <Text style={styles.actionButtonText}>🗺️ Navegar</Text>
+              <View style={styles.actionButtonIcon}>
+                <Ionicons name="navigate" size={20} color="#ffffff" />
+              </View>
+              <Text style={styles.actionButtonText}>Navegar</Text>
+              <Text style={styles.actionButtonSubtext}>Abrir no Maps</Text>
             </TouchableOpacity>
           </View>
-        </Card>
+        </View>
 
-        {/* Informações Essenciais */}
-        <Card style={styles.infoCard}>
+        {/* Informações do Pedido */}
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Informações do Pedido</Text>
+          
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Valor:</Text>
-            <Text style={styles.infoValue}>
-              {deliveryItem.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Pagamento:</Text>
+            <Text style={styles.infoLabel}>Forma de Pagamento</Text>
             <Text style={styles.infoValue}>{deliveryItem.paymentMethod}</Text>
           </View>
-          {deliveryItem.phone && (
+          
+          {deliveryItem.nomeContato && (
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Telefone:</Text>
-              <Text style={styles.infoValue}>{deliveryItem.phone}</Text>
+              <Text style={styles.infoLabel}>Contato</Text>
+              <Text style={styles.infoValue}>{deliveryItem.nomeContato}</Text>
             </View>
           )}
-        </Card>
+          
+          {deliveryItem.cpfCnpjDestinatario && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>CPF/CNPJ</Text>
+              <Text style={styles.infoValue}>{deliveryItem.cpfCnpjDestinatario}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Itens do Pedido */}
-        <Card style={styles.itemsCard}>
-          <Text style={styles.sectionTitle}>Itens</Text>
+        <View style={styles.itemsCard}>
+          <Text style={styles.sectionTitle}>Itens ({deliveryItem.items.length})</Text>
           {deliveryItem.items.map((item: string, index: number) => (
-            <Text key={index} style={styles.itemText}>• {item}</Text>
+            <View key={index} style={styles.itemRow}>
+              <View style={styles.itemBullet} />
+              <Text style={styles.itemText}>{item}</Text>
+            </View>
           ))}
-        </Card>
+        </View>
 
-        {/* Observações (se houver) */}
+        {/* Observações */}
         {deliveryItem.notes && (
-          <Card style={styles.notesCard}>
-            <Text style={styles.sectionTitle}>Observações</Text>
+          <View style={styles.notesCard}>
+            <View style={styles.notesHeader}>
+              <Ionicons name="information-circle" size={20} color={Theme.colors.secondary.main} />
+              <Text style={styles.notesTitle}>Observações</Text>
+            </View>
             <Text style={styles.notesText}>{deliveryItem.notes}</Text>
-          </Card>
+          </View>
         )}
 
         {/* Status do Comprovante */}
-        <Card style={hasProofs ? styles.proofStatusSuccess : styles.proofStatusPending}>
-          <View style={styles.proofStatusHeader}>
-            <Text style={styles.proofStatusTitle}>
-              {hasProofs ? '✅ Comprovante Anexado' : '📸 Comprovante Necessário'}
-            </Text>
-            <Button
-              title={hasProofs ? "Ver Comprovantes" : "Adicionar Foto"}
+        <View style={[styles.proofCard, hasProofs ? styles.proofCardSuccess : styles.proofCardPending]}>
+          <View style={styles.proofHeader}>
+            <View style={styles.proofStatus}>
+              <Ionicons 
+                name={hasProofs ? "checkmark-circle" : "camera"} 
+                size={24} 
+                color={hasProofs ? Theme.colors.status.success : Theme.colors.status.warning} 
+              />
+              <Text style={styles.proofTitle}>
+                {hasProofs ? 'Comprovante Anexado' : 'Comprovante Necessário'}
+              </Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={[styles.proofButton, hasProofs && styles.proofButtonOutline]}
               onPress={() => setShowProofCamera(true)}
-              variant={hasProofs ? "outline" : "primary"}
-              size="small"
-            />
+            >
+              <Text style={[styles.proofButtonText, hasProofs && styles.proofButtonTextOutline]}>
+                {hasProofs ? "Ver" : "Adicionar"}
+              </Text>
+            </TouchableOpacity>
           </View>
           
           {!hasProofs && isFinalized && (
-            <Text style={styles.proofWarningText}>
-              ⚠️ Entrega finalizada sem comprovante. Adicione um comprovante para completar o processo.
-            </Text>
+            <View style={styles.proofWarning}>
+              <Ionicons name="warning" size={16} color={Theme.colors.status.warning} />
+              <Text style={styles.proofWarningText}>
+                Entrega finalizada sem comprovante. Adicione para completar.
+              </Text>
+            </View>
           )}
           
-          {!hasProofs && !isFinalized && (
-            <Text style={styles.proofInfoText}>
-              Para finalizar a entrega (ENTREGUE ou NÃO ENTREGUE), é obrigatório anexar um comprovante.
-            </Text>
-          )}
-        </Card>
-
-        {/* Comprovantes (se houver) */}
-        {hasProofs && (
-          <Card style={styles.proofsCard}>
-            <Text style={styles.sectionTitle}>Comprovantes ({deliveryItem.proofs!.length})</Text>
+          {hasProofs && (
             <View style={styles.proofsGrid}>
               {deliveryItem.proofs!.map((proof: DeliveryProof) => {
                 const fullProofUrl = proof.proofUrl.startsWith('http')
@@ -435,6 +446,7 @@ export default function DeliveryDetailsScreen() {
                   <TouchableOpacity 
                     key={proof.id} 
                     onPress={() => setViewingProof(fullProofUrl)}
+                    style={styles.proofThumbContainer}
                   >
                     <Image 
                       source={{ uri: fullProofUrl }} 
@@ -444,86 +456,89 @@ export default function DeliveryDetailsScreen() {
                 );
               })}
             </View>
-          </Card>
-        )}
-
-        {/* Ações de Status */}
-        {availableActions.length > 0 && (
-          <View style={styles.actionsContainer}>
-            <Text style={styles.actionsTitle}>Ações Disponíveis</Text>
-            {availableActions.map((action) => {
-              console.log('Renderizando botão:', action.label, 'para status:', action.targetStatus);
-              
-              // Determinar a variante do botão
-              let buttonVariant: 'primary' | 'success' | 'danger' | 'secondary' = 'primary';
-              
-              if (action.targetStatus === 'ENTREGUE') {
-                buttonVariant = 'success';
-              } else if (action.targetStatus === 'NAO_ENTREGUE') {
-                buttonVariant = 'danger';
-              } else if (action.targetStatus === 'EM_ENTREGA') {
-                buttonVariant = 'primary';
-              } else {
-                buttonVariant = 'secondary';
-              }
-
-              return (
-                <Button
-                  key={action.id}
-                  title={action.label}
-                  onPress={() => {
-                    console.log('BOTÃO CLICADO:', action.label, 'Status:', action.targetStatus);
-                    confirmStatusUpdate(action.targetStatus, deliveryItem.customerName);
-                  }}
-                  variant={buttonVariant}
-                  disabled={updatingStatus}
-                  loading={updatingStatus}
-                  fullWidth
-                  size="large"
-                  style={styles.statusActionButton}
-                />
-              );
-            })}
-          </View>
-        )}
-
-        {/* Botão Voltar */}
-        <View style={styles.footer}>
-          <Button
-            title="← Voltar"
-            onPress={() => router.back()}
-            variant="outline"
-            fullWidth
-          />
+          )}
         </View>
+
+        {/* Espaçamento para zona de ação fixa */}
+        <View style={{ height: 120 }} />
       </ScrollView>
 
+      {/* Zona de Ação Fixa */}
+      {availableActions.length > 0 && (
+        <View style={styles.actionZone}>
+          {availableActions.map((action) => {
+            let buttonStyle = styles.primaryActionButton;
+            let textStyle = styles.primaryActionText;
+            
+            if (action.targetStatus === 'ENTREGUE') {
+              buttonStyle = styles.successActionButton;
+            } else if (action.targetStatus === 'NAO_ENTREGUE') {
+              buttonStyle = styles.dangerActionButton;
+            }
+            
+            return (
+              <TouchableOpacity
+                key={action.id}
+                style={[buttonStyle, updatingStatus && styles.disabledButton]}
+                onPress={() => confirmStatusUpdate(action.targetStatus)}
+                disabled={updatingStatus}
+              >
+                {updatingStatus ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={
+                        action.targetStatus === 'ENTREGUE' ? 'checkmark-circle' :
+                        action.targetStatus === 'NAO_ENTREGUE' ? 'close-circle' :
+                        'arrow-forward-circle'
+                      } 
+                      size={24} 
+                      color="#ffffff" 
+                    />
+                    <Text style={textStyle}>{action.label.replace(/[^\w\s]/g, '').trim()}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Modais */}
       <ProofUploaderModal
         orderId={id || ''}
         visible={showProofCamera}
         onClose={() => {
           setShowProofCamera(false);
-          // Limpar pendência se o usuário cancelar
           if (!hasProofs) {
             setPendingStatusUpdate(null);
           }
         }}
         onSuccess={handleProofSuccess}
-        title="Comprovante"
+        title="Comprovante de Entrega"
       />
 
-      {/* Modal para motivo da não entrega */}
       <Modal
         visible={showMotivoModal}
         transparent={true}
         animationType="slide"
         onRequestClose={() => setShowMotivoModal(false)}
       >
-        <View style={styles.motivoModalOverlay}>
-          <View style={styles.motivoModalContainer}>
-            <Text style={styles.motivoModalTitle}>Motivo da Não Entrega</Text>
-            <Text style={styles.motivoModalSubtitle}>
-              Descreva detalhadamente por que não foi possível realizar a entrega:
+        <KeyboardAvoidingView 
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Motivo da Não Entrega</Text>
+              <TouchableOpacity onPress={() => setShowMotivoModal(false)}>
+                <Ionicons name="close" size={24} color={Theme.colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSubtitle}>
+              Descreva detalhadamente o motivo da não entrega:
             </Text>
             
             <TextInput
@@ -532,33 +547,32 @@ export default function DeliveryDetailsScreen() {
               numberOfLines={4}
               value={motivoTexto}
               onChangeText={setMotivoTexto}
-              placeholder="Ex: Cliente ausente, endereço não localizado, recusa do recebimento..."
+              placeholder="Ex: Cliente ausente, endereço incorreto, recusa..."
               placeholderTextColor={Theme.colors.text.hint}
               autoFocus
             />
             
-            <View style={styles.motivoModalButtons}>
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.motivoModalButton, styles.motivoModalButtonCancel]}
+                style={styles.modalCancelButton}
                 onPress={() => {
-                  console.log('User cancelled motivo input');
                   setShowMotivoModal(false);
                   setMotivoTexto('');
-                  setPendingStatusUpdate(null); // Limpar pendência
+                  setPendingStatusUpdate(null);
                 }}
               >
-                <Text style={styles.motivoModalButtonTextCancel}>Cancelar</Text>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={[styles.motivoModalButton, styles.motivoModalButtonConfirm]}
+                style={styles.modalConfirmButton}
                 onPress={submitMotivoNaoEntrega}
               >
-                <Text style={styles.motivoModalButtonTextConfirm}>Confirmar</Text>
+                <Text style={styles.modalConfirmText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -567,7 +581,7 @@ export default function DeliveryDetailsScreen() {
         onRequestClose={() => setViewingProof(null)}
       >
         <TouchableOpacity 
-          style={styles.modalOverlay} 
+          style={styles.imageModalOverlay} 
           onPress={() => setViewingProof(null)}
         >
           <Image 
@@ -576,10 +590,10 @@ export default function DeliveryDetailsScreen() {
             resizeMode="contain"
           />
           <TouchableOpacity 
-            style={styles.closeButton} 
+            style={styles.closeImageButton} 
             onPress={() => setViewingProof(null)}
           >
-            <Text style={styles.closeButtonText}>×</Text>
+            <Ionicons name="close" size={30} color="#ffffff" />
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -590,120 +604,162 @@ export default function DeliveryDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background.primary,
+    backgroundColor: Theme.colors.background.default,
+  },
+  
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? Theme.spacing['3xl'] : Theme.spacing.lg,
+  },
+  
+  headerBackButton: {
+    padding: Theme.spacing.sm,
+    marginRight: Theme.spacing.md,
+  },
+  
+  headerContent: {
+    flex: 1,
+  },
+  
+  headerOrder: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: 'rgba(255, 255, 255, 0.8)',
+    letterSpacing: 1,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  
+  headerStatus: {
+    fontSize: Theme.typography.fontSize.lg,
+    color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  
+  headerValueContainer: {
+    alignItems: 'flex-end',
+  },
+  
+  headerValueLabel: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  
+  headerValue: {
+    fontSize: Theme.typography.fontSize.xl,
+    color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   
   scrollView: {
     flex: 1,
   },
   
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Theme.spacing.md,
+  scrollContent: {
+    paddingVertical: Theme.spacing.md,
   },
   
-  loadingText: {
-    color: Theme.colors.text.secondary,
-  },
-  
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Theme.spacing.xl,
-    gap: Theme.spacing.lg,
-  },
-  
-  errorText: {
-    color: Theme.colors.status.error,
-    textAlign: 'center',
-  },
-  
-  headerCard: {
-    margin: Theme.spacing.lg,
-    marginBottom: Theme.spacing.md,
+  mainCard: {
     backgroundColor: Theme.colors.background.paper,
-    borderRadius: Theme.borderRadius.base,
+    marginHorizontal: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.lg,
     padding: Theme.spacing.lg,
     ...Theme.shadows.base,
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
-    borderLeftWidth: 4,
-    borderLeftColor: Theme.colors.primary.main,
   },
   
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  customerSection: {
+    marginBottom: Theme.spacing.lg,
   },
   
-  headerLeft: {
-    flex: 1,
-  },
-  
-  orderNumber: {
-    fontSize: Theme.typography.fontSize.sm,
+  customerLabel: {
+    fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.text.secondary,
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: Theme.spacing.xs,
   },
   
   customerName: {
-    fontSize: Theme.typography.fontSize.xl,
+    fontSize: Theme.typography.fontSize['2xl'],
     fontWeight: Theme.typography.fontWeight.bold,
     color: Theme.colors.text.primary,
   },
   
-  mainCard: {
-    margin: Theme.spacing.lg,
-    marginTop: 0,
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background.paper,
-    borderRadius: Theme.borderRadius.base,
-    ...Theme.shadows.base,
-    borderWidth: 1,
-    borderColor: Theme.colors.gray[200],
+  addressSection: {
+    paddingTop: Theme.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.divider,
   },
   
-  address: {
+  addressLabel: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.text.secondary,
+    letterSpacing: 1,
+    marginBottom: Theme.spacing.xs,
+  },
+  
+  addressText: {
     fontSize: Theme.typography.fontSize.base,
     color: Theme.colors.text.primary,
-    lineHeight: 24,
-    marginBottom: Theme.spacing.lg,
+    lineHeight: 22,
   },
   
   quickActions: {
     flexDirection: 'row',
-    gap: Theme.spacing.sm,
+    gap: Theme.spacing.md,
+    marginTop: Theme.spacing.xl,
   },
   
   actionButton: {
     flex: 1,
-    backgroundColor: Theme.colors.green[50],
-    padding: Theme.spacing.md,
+    backgroundColor: Theme.colors.primary.main,
     borderRadius: Theme.borderRadius.base,
+    padding: Theme.spacing.md,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Theme.colors.green[200],
+    ...Theme.shadows.sm,
+  },
+  
+  actionButtonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.xs,
   },
   
   actionButtonText: {
-    fontSize: Theme.typography.fontSize.sm,
-    color: Theme.colors.primary.main,
+    fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.semiBold,
+    color: '#ffffff',
+  },
+  
+  actionButtonSubtext: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
   },
   
   infoCard: {
+    backgroundColor: Theme.colors.background.paper,
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background.paper,
     borderRadius: Theme.borderRadius.base,
+    padding: Theme.spacing.lg,
     ...Theme.shadows.sm,
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
+  },
+  
+  sectionTitle: {
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.md,
   },
   
   infoRow: {
@@ -711,164 +767,246 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: Theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.gray[200],
+    borderBottomColor: Theme.colors.gray[100],
   },
   
   infoLabel: {
+    fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.secondary,
   },
   
   infoValue: {
+    fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.primary,
     fontWeight: Theme.typography.fontWeight.medium,
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: Theme.spacing.md,
   },
   
   itemsCard: {
+    backgroundColor: Theme.colors.background.paper,
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background.paper,
     borderRadius: Theme.borderRadius.base,
+    padding: Theme.spacing.lg,
     ...Theme.shadows.sm,
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
   },
   
-  sectionTitle: {
-    fontSize: Theme.typography.fontSize.lg,
-    fontWeight: Theme.typography.fontWeight.bold,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.md,
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  itemBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Theme.colors.primary.main,
+    marginRight: Theme.spacing.sm,
+    marginTop: 5,
   },
   
   itemText: {
+    flex: 1,
+    fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.xs,
+    lineHeight: 20,
   },
   
   notesCard: {
+    backgroundColor: Theme.colors.green[50],
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.green[50],
     borderRadius: Theme.borderRadius.base,
-    ...Theme.shadows.sm,
+    padding: Theme.spacing.lg,
     borderWidth: 1,
     borderColor: Theme.colors.green[200],
     borderLeftWidth: 3,
     borderLeftColor: Theme.colors.secondary.main,
   },
   
-  notesText: {
-    color: Theme.colors.text.primary,
-    lineHeight: 20,
-  },
-
-  proofStatusCard: {
-    marginHorizontal: Theme.spacing.lg,
-    marginBottom: Theme.spacing.md,
-    padding: Theme.spacing.lg,
-    borderRadius: Theme.borderRadius.base,
-    ...Theme.shadows.sm,
-    borderWidth: 1,
-  },
-
-  proofStatusSuccess: {
-    backgroundColor: Theme.colors.green[50],
-    borderColor: Theme.colors.green[200],
-    borderLeftWidth: 3,
-    borderLeftColor: Theme.colors.green[500],
-  },
-
-  proofStatusPending: {
-    backgroundColor: '#fff3e0', // Laranja claro
-    borderColor: '#ffcc80', // Laranja médio
-    borderLeftWidth: 3,
-    borderLeftColor: '#ff9800', // Laranja
-  },
-
-  proofStatusHeader: {
+  notesHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Theme.spacing.sm,
   },
-
-  proofStatusTitle: {
-    fontSize: Theme.typography.fontSize.lg,
-    fontWeight: Theme.typography.fontWeight.bold,
+  
+  notesTitle: {
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
-  },
-
-  proofWarningText: {
-    fontSize: Theme.typography.fontSize.sm,
-    color: '#e65100', // Laranja escuro
-    backgroundColor: '#fff3e0', // Laranja claro
-    padding: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.sm,
-    marginTop: Theme.spacing.sm,
-  },
-
-  proofInfoText: {
-    fontSize: Theme.typography.fontSize.sm,
-    color: Theme.colors.text.secondary,
-    fontStyle: 'italic',
-    marginTop: Theme.spacing.sm,
+    marginLeft: Theme.spacing.sm,
   },
   
-  proofsCard: {
+  notesText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.text.primary,
+    lineHeight: 20,
+  },
+  
+  proofCard: {
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
-    padding: Theme.spacing.lg,
-    backgroundColor: Theme.colors.background.paper,
     borderRadius: Theme.borderRadius.base,
-    ...Theme.shadows.sm,
+    padding: Theme.spacing.lg,
     borderWidth: 1,
-    borderColor: Theme.colors.gray[200],
+  },
+  
+  proofCardSuccess: {
+    backgroundColor: Theme.colors.green[50],
+    borderColor: Theme.colors.green[200],
+  },
+  
+  proofCardPending: {
+    backgroundColor: '#fff8e1',
+    borderColor: '#ffcc80',
+  },
+  
+  proofHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  
+  proofStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  
+  proofTitle: {
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
+    marginLeft: Theme.spacing.sm,
+  },
+  
+  proofButton: {
+    backgroundColor: Theme.colors.primary.main,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.base,
+  },
+  
+  proofButtonOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Theme.colors.primary.main,
+  },
+  
+  proofButtonText: {
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: '#ffffff',
+  },
+  
+  proofButtonTextOutline: {
+    color: Theme.colors.primary.main,
+  },
+  
+  proofWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Theme.spacing.md,
+    padding: Theme.spacing.sm,
+    backgroundColor: '#fff3e0',
+    borderRadius: Theme.borderRadius.sm,
+  },
+  
+  proofWarningText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.status.warning,
+    marginLeft: Theme.spacing.xs,
+    flex: 1,
   },
   
   proofsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Theme.spacing.sm,
+    marginTop: Theme.spacing.md,
+  },
+  
+  proofThumbContainer: {
+    borderRadius: Theme.borderRadius.base,
+    overflow: 'hidden',
+    ...Theme.shadows.sm,
   },
   
   proofThumb: {
     width: 80,
     height: 80,
-    borderRadius: Theme.borderRadius.base,
     backgroundColor: Theme.colors.gray[200],
   },
   
-  actionsContainer: {
-    padding: Theme.spacing.lg,
+  actionZone: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Theme.colors.background.paper,
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? Theme.spacing.xl : Theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.divider,
+    ...Theme.shadows.lg,
+    flexDirection: 'row',
     gap: Theme.spacing.md,
-    backgroundColor: '#f5f5f5',
-    borderTopWidth: 2,
-    borderTopColor: '#e0e0e0',
-    marginTop: Theme.spacing.md,
-  },
-
-  actionsTitle: {
-    fontSize: Theme.typography.fontSize.lg,
-    fontWeight: Theme.typography.fontWeight.bold,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.sm,
   },
   
-  statusActionButton: {
-    minHeight: 54,
+  primaryActionButton: {
+    flex: 1,
+    backgroundColor: Theme.colors.primary.main,
     borderRadius: Theme.borderRadius.base,
-    shadowOpacity: 0.15,
-    elevation: 4,
+    paddingVertical: Theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Theme.spacing.sm,
+    ...Theme.shadows.sm,
   },
   
-  footer: {
-    padding: Theme.spacing.lg,
+  successActionButton: {
+    flex: 1,
+    backgroundColor: Theme.colors.status.success,
+    borderRadius: Theme.borderRadius.base,
+    paddingVertical: Theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Theme.spacing.sm,
+    ...Theme.shadows.sm,
   },
   
-  // Estilos do modal de motivo
-  motivoModalOverlay: {
+  dangerActionButton: {
+    flex: 1,
+    backgroundColor: Theme.colors.status.error,
+    borderRadius: Theme.borderRadius.base,
+    paddingVertical: Theme.spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: Theme.spacing.sm,
+    ...Theme.shadows.sm,
+  },
+  
+  primaryActionText: {
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: '#ffffff',
+  },
+  
+  disabledButton: {
+    opacity: 0.5,
+  },
+  
+  // Estilos dos modais
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
@@ -876,7 +1014,7 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.lg,
   },
   
-  motivoModalContainer: {
+  modalContainer: {
     backgroundColor: Theme.colors.background.paper,
     borderRadius: Theme.borderRadius.lg,
     padding: Theme.spacing.xl,
@@ -885,19 +1023,23 @@ const styles = StyleSheet.create({
     ...Theme.shadows.xl,
   },
   
-  motivoModalTitle: {
-    fontSize: Theme.typography.fontSize.xl,
-    fontWeight: Theme.typography.fontWeight.bold,
-    color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.sm,
-    textAlign: 'center',
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.md,
   },
   
-  motivoModalSubtitle: {
-    fontSize: Theme.typography.fontSize.base,
+  modalTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    fontWeight: Theme.typography.fontWeight.bold,
+    color: Theme.colors.text.primary,
+  },
+  
+  modalSubtitle: {
+    fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.secondary,
     marginBottom: Theme.spacing.lg,
-    textAlign: 'center',
     lineHeight: 20,
   },
   
@@ -914,45 +1056,39 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.lg,
   },
   
-  motivoModalButtons: {
+  modalActions: {
     flexDirection: 'row',
     gap: Theme.spacing.md,
   },
   
-  motivoModalButton: {
+  modalCancelButton: {
     flex: 1,
     paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.lg,
     borderRadius: Theme.borderRadius.base,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  
-  motivoModalButtonCancel: {
     backgroundColor: Theme.colors.gray[200],
-    borderWidth: 1,
-    borderColor: Theme.colors.gray[300],
+    alignItems: 'center',
   },
   
-  motivoModalButtonConfirm: {
+  modalConfirmButton: {
+    flex: 1,
+    paddingVertical: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.base,
     backgroundColor: Theme.colors.status.error,
-    borderWidth: 1,
-    borderColor: '#b71c1c',
+    alignItems: 'center',
     ...Theme.shadows.sm,
   },
   
-  motivoModalButtonTextCancel: {
+  modalCancelText: {
     color: Theme.colors.text.primary,
     fontWeight: Theme.typography.fontWeight.semiBold,
   },
   
-  motivoModalButtonTextConfirm: {
+  modalConfirmText: {
     color: '#ffffff',
     fontWeight: Theme.typography.fontWeight.bold,
   },
   
-  modalOverlay: {
+  imageModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'center',
@@ -964,21 +1100,61 @@ const styles = StyleSheet.create({
     height: '80%',
   },
   
-  closeButton: {
+  closeImageButton: {
     position: 'absolute',
     top: 50,
     right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   
-  closeButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Theme.colors.text.primary,
+  loadingText: {
+    marginTop: Theme.spacing.md,
+    color: Theme.colors.text.secondary,
+  },
+  
+  errorTitle: {
+    fontSize: Theme.typography.fontSize.lg,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.status.error,
+    marginTop: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
+    textAlign: 'center',
+  },
+  
+  errorText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: Theme.spacing.xl,
+  },
+  
+  retryButton: {
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.xl,
+    backgroundColor: Theme.colors.primary.main,
+    borderRadius: Theme.borderRadius.base,
+  },
+  
+  retryButtonText: {
+    color: '#ffffff',
+    fontWeight: Theme.typography.fontWeight.semiBold,
+  },
+  
+  backButton: {
+    paddingVertical: Theme.spacing.md,
+    paddingHorizontal: Theme.spacing.xl,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary.main,
+    borderRadius: Theme.borderRadius.base,
+  },
+  
+  backButtonText: {
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.semiBold,
   },
 });
