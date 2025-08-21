@@ -10,12 +10,15 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button, Card, Theme, CommonStyles } from '../../components/ui';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface InviteDetails {
   email: string;
@@ -28,6 +31,7 @@ interface InviteDetails {
 export default function AcceptInviteScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const router = useRouter();
+  const { login } = useAuth(); // Importe o método de login do contexto
 
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<InviteDetails | null>(null);
@@ -41,6 +45,10 @@ export default function AcceptInviteScreen() {
   const [cpf, setCpf] = useState('');
   const [model, setModel] = useState('');
   const [plate, setPlate] = useState('');
+  
+  // Estados para a visibilidade da senha
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -92,12 +100,25 @@ export default function AcceptInviteScreen() {
     const cleanedCpf = cpf.replace(/\D/g, '');
     const cleanedLicense = license.replace(/\D/g, '');
     const cleanedPlate = plate.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-
-    if (!name.trim() || !password || !cleanedLicense || !cleanedCpf || !model.trim() || !cleanedPlate) {
-      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos, incluindo os do veículo.');
+    
+    // Validação de campos obrigatórios
+    if (!name.trim() || !password || !confirmPassword || !cleanedLicense || !cleanedCpf || !model.trim() || !cleanedPlate) {
+      Alert.alert('Campos Obrigatórios', 'Por favor, preencha todos os campos.');
       return;
     }
-    
+
+    // Validação de tamanho CNH e CPF
+    if (cleanedLicense.length !== 11) {
+      Alert.alert('Erro de CNH', 'A CNH deve conter exatamente 11 dígitos.');
+      return;
+    }
+
+    if (cleanedCpf.length !== 11) {
+      Alert.alert('Erro de CPF', 'O CPF deve conter exatamente 11 dígitos.');
+      return;
+    }
+
+    // Validação de senha
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).*$/;
     if (password.length < 6) {
       Alert.alert('Senha Curta', 'A senha deve ter no mínimo 6 caracteres.');
@@ -114,6 +135,7 @@ export default function AcceptInviteScreen() {
 
     setIsSubmitting(true);
     try {
+      // 1. Chamada para a API de cadastro
       const response = await api.acceptInvite(token, {
         name: name.trim(),
         email: details.email,
@@ -125,11 +147,23 @@ export default function AcceptInviteScreen() {
       });
 
       if (response.success) {
-        Alert.alert(
-          'Sucesso!',
-          'Sua conta foi criada. Você será redirecionado para a tela de login.',
-          [{ text: 'OK', onPress: () => router.replace('/login') }]
-        );
+        // 2. Tenta logar o usuário automaticamente
+        const loggedIn = await login(details.email, password);
+
+        if (loggedIn) {
+            Alert.alert(
+              'Sucesso!',
+              'Sua conta foi criada e você já está logado.',
+              [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+            );
+        } else {
+            // Se o login automático falhar por algum motivo, direciona para o login
+            Alert.alert(
+              'Sucesso!',
+              'Sua conta foi criada. Por favor, faça login para continuar.',
+              [{ text: 'OK', onPress: () => router.replace('/login') }]
+            );
+        }
       } else {
         throw new Error(response.message || 'Não foi possível criar sua conta.');
       }
@@ -327,30 +361,54 @@ export default function AcceptInviteScreen() {
                 <Text style={[CommonStyles.body, styles.inputLabel]}>
                   Senha
                 </Text>
-                <TextInput
-                  style={[CommonStyles.input, styles.input]}
-                  placeholder="Crie uma senha"
-                  placeholderTextColor={Theme.colors.text.hint}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  editable={!isSubmitting}
-                />
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[CommonStyles.input, styles.input, styles.passwordInput]}
+                    placeholder="Crie uma senha"
+                    placeholderTextColor={Theme.colors.text.hint}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!passwordVisible}
+                    editable={!isSubmitting}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setPasswordVisible(!passwordVisible)}
+                    style={styles.togglePasswordButton}
+                  >
+                    <Ionicons
+                      name={passwordVisible ? 'eye-off' : 'eye'}
+                      size={24}
+                      color={Theme.colors.gray[500]}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={[CommonStyles.body, styles.inputLabel]}>
                   Confirmar Senha
                 </Text>
-                <TextInput
-                  style={[CommonStyles.input, styles.input]}
-                  placeholder="Confirme sua senha"
-                  placeholderTextColor={Theme.colors.text.hint}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  editable={!isSubmitting}
-                />
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    style={[CommonStyles.input, styles.input, styles.passwordInput]}
+                    placeholder="Confirme sua senha"
+                    placeholderTextColor={Theme.colors.text.hint}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!confirmPasswordVisible}
+                    editable={!isSubmitting}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
+                    style={styles.togglePasswordButton}
+                  >
+                    <Ionicons
+                      name={confirmPasswordVisible ? 'eye-off' : 'eye'}
+                      size={24}
+                      color={Theme.colors.gray[500]}
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <Button
@@ -461,8 +519,8 @@ const styles = StyleSheet.create({
   },
   
   expiredCard: {
-    backgroundColor: `${Theme.colors.status.error}08`, // 8% opacity
-    borderColor: `${Theme.colors.status.error}20`, // 20% opacity
+    backgroundColor: `${Theme.colors.status.error}08`,
+    borderColor: `${Theme.colors.status.error}20`,
     alignItems: 'center',
     paddingVertical: Theme.spacing.xl,
   },
@@ -495,6 +553,24 @@ const styles = StyleSheet.create({
   input: {
     fontSize: Theme.typography.fontSize.lg,
     paddingVertical: Theme.spacing.lg,
+  },
+  
+  passwordInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Theme.colors.gray[200],
+    borderRadius: Theme.borderRadius.sm,
+  },
+
+  passwordInput: {
+    flex: 1,
+    borderWidth: 0,
+    paddingHorizontal: Theme.spacing.md, // Adicionado padding horizontal para o input interno
+  },
+
+  togglePasswordButton: {
+    padding: Theme.spacing.md,
   },
   
   submitButton: {
