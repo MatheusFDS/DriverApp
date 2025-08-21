@@ -10,7 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { User } from '../types';
 import { api } from '../services/api';
-import auth from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
 import { Alert } from 'react-native';
 
 interface AuthContextType {
@@ -27,6 +28,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const auth = getAuth(getApp());
+
+  const logout = useCallback(async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      await AsyncStorage.clear();
+      await signOut(auth);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
+    } finally {
+      router.replace('/login');
+      setIsLoading(false);
+    }
+  }, [auth]);
+
   const refreshUser = useCallback(async () => {
     try {
       const profileResponse = await api.getProfile();
@@ -37,13 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         await logout();
       }
-    } catch (error) {
-      console.error("Falha ao atualizar o usuário:", error);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
       await logout();
     }
-  }, []);
+  }, [logout]);
 
-  const onAuthStateChanged = useCallback(async (firebaseUser: any) => {
+  const onAuthStateChangedCallback = useCallback(async (firebaseUser: any) => {
     setIsLoading(true);
     if (firebaseUser) {
       try {
@@ -65,8 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           throw new Error(profileResponse.message || "Falha ao buscar perfil do backend.");
         }
-      } catch (error) {
-        console.error("Erro no onAuthStateChanged:", error);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (_error) {
         await logout();
       }
     } else {
@@ -74,17 +90,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     }
     setIsLoading(false);
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    const subscriber = onAuthStateChanged(auth, onAuthStateChangedCallback);
     return subscriber;
-  }, [onAuthStateChanged]);
+  }, [auth, onAuthStateChangedCallback]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await auth().signInWithEmailAndPassword(email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       return true;
     } catch (error: any) {
       let errorMessage = 'Ocorreu um erro desconhecido.';
@@ -96,19 +112,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       Alert.alert('Erro de Login', errorMessage);
       setIsLoading(false);
       return false;
-    }
-  };
-
-  const logout = async (): Promise<void> => {
-    setIsLoading(true);
-    try {
-      await AsyncStorage.clear();
-      await auth().signOut();
-    } catch (error) {
-      console.error("Erro ao fazer logout:", error);
-    } finally {
-      router.replace('/login');
-      setIsLoading(false);
     }
   };
 

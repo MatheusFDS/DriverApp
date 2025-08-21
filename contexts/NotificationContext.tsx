@@ -11,7 +11,8 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
-import auth from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
 import { api } from '../services/api';
 import { Notification } from '../types';
 import { useAuth } from './AuthContext';
@@ -91,6 +92,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const lastLocationRef = useRef<Location.LocationObject | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  const auth = getAuth(getApp());
 
   const fetchNotifications = useCallback(async () => {
     if (!user) {
@@ -219,8 +222,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
       return true;
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error(error)
       showToast('Erro', 'Falha ao iniciar rastreamento de localização', 'error');
       return false;
     }
@@ -242,14 +245,14 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
     let freshToken: string;
     try {
-      const firebaseUser = auth().currentUser;
+      const firebaseUser = auth.currentUser;
       if (!firebaseUser) {
         return;
       }
       freshToken = await firebaseUser.getIdToken(true);
       await AsyncStorage.setItem('auth_token', freshToken);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error(error)
       return;
     }
 
@@ -283,12 +286,12 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       startLocationTracking();
       if (socketRef.current && freshToken) {
         try {
-          const firebaseUser = auth().currentUser;
+          const firebaseUser = auth.currentUser;
           if (firebaseUser) {
             socketRef.current.emit('register', firebaseUser.uid);
           }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
-          console.error(error)
           socketRef.current.emit('register', user.id);
         }
       }
@@ -354,7 +357,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     return () => {
       clearInterval(pingInterval);
     };
-  }, [user?.id, getSocketUrl, fetchNotifications, startLocationTracking]);
+  }, [user?.id, getSocketUrl, fetchNotifications, startLocationTracking, auth.currentUser]);
 
   const disconnectSocket = useCallback(() => {
     if (socketRef.current) {
@@ -410,8 +413,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         );
         setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error(error)
     }
   };
 
@@ -422,8 +425,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
         setUnreadCount(0);
       }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
-      console.error(error)
     }
   };
 
