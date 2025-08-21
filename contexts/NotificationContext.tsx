@@ -12,13 +12,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { AppState, AppStateStatus } from 'react-native';
-import { getAuth } from '@react-native-firebase/auth';
-import { getApp } from '@react-native-firebase/app';
 import { api } from '../services/api';
 import { Notification } from '../types';
 import { useAuth } from './AuthContext';
-import { currentApiConfig } from '../config/apiConfig';
 import NotificationToast from '../components/NotificationToast';
+import { currentApiConfig } from '../config/apiConfig';
+
+// ===== EXPORT SOCKET PARA TASK MANAGER =====
+export const socketRef = { current: null as Socket | null };
 
 interface LocationData {
   lat: number;
@@ -54,52 +55,42 @@ interface ToastData {
   linkTo?: string;
 }
 
-// ===== EXPORT SOCKET PARA TASK MANAGER =====
-export const socketRef = { current: null as Socket | null };
-
-const NotificationContext = createContext<NotificationContextType | undefined>(
-  undefined,
-);
-
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (!context) throw new Error('useNotifications must be used within a NotificationProvider');
-  return context;
-};
-
 // ===== TASK MANAGER PARA LOCALIZAÇÃO EM BACKGROUND =====
 const LOCATION_TASK_NAME = 'background-location-task';
 
 TaskManager.defineTask(
   LOCATION_TASK_NAME,
   async ({ data, error }: { data?: any; error?: any }): Promise<void> => {
-    if (error) {
-      console.error('Erro na task de localização:', error);
-      return;
-    }
-    if (data?.locations?.length) {
-      const location = data.locations[0];
-      const speed = location.coords.speed || 0;
-      const status = speed > 1 ? 'moving' : 'stopped';
+    if (error) return console.error('Erro na task de localização:', error);
+    if (!data?.locations?.length) return;
 
-      const payload: LocationData = {
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
-        accuracy: location.coords.accuracy || 0,
-        timestamp: new Date().toISOString(),
-        status,
-        speed,
-      };
+    const location = data.locations[0];
+    const speed = location.coords.speed || 0;
+    const status = speed > 1 ? 'moving' : 'stopped';
 
-      if (socketRef.current?.connected) {
-        socketRef.current.emit('location-update', payload);
-        console.log('Localização enviada via socket:', payload);
-      } else {
-        console.log('Socket não conectado, localização não enviada');
-      }
+    const payload: LocationData = {
+      lat: location.coords.latitude,
+      lng: location.coords.longitude,
+      accuracy: location.coords.accuracy || 0,
+      timestamp: new Date().toISOString(),
+      status,
+      speed,
+    };
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('location-update', payload);
+      console.log('Localização enviada via socket:', payload);
     }
   },
 );
+
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) throw new Error('useNotifications must be used within a NotificationProvider');
+  return context;
+};
 
 export const NotificationProvider = ({ children }: PropsWithChildren) => {
   const { user } = useAuth();
@@ -116,7 +107,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   });
 
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-  const auth = getAuth(getApp());
 
   // ==================== TOAST ====================
   const showToast = useCallback((
@@ -136,6 +126,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       setLoading(false);
       return;
     }
+
     setLoading(true);
     try {
       const response = await api.getNotifications();
@@ -181,16 +172,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   const connectSocket = useCallback(async () => {
     if (!user?.id) return;
 
-    let freshToken: string;
-    try {
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser) return;
-      freshToken = await firebaseUser.getIdToken(true);
-      await AsyncStorage.setItem('auth_token', freshToken);
-    } catch {
-      showToast('Erro', 'Não foi possível autenticar no servidor', 'error');
-      return;
-    }
+    const token = await AsyncStorage.getItem('auth_token');
+    if (!token) return showToast('Erro', 'Usuário não autenticado', 'error');
 
     if (socketRef.current?.connected) return;
 
@@ -203,15 +186,10 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     const socketUrl = getSocketUrl();
 
     socketRef.current = io(socketUrl, {
-      auth: { token: freshToken },
+      auth: { token },
       transports: ['websocket', 'polling'],
-      upgrade: true,
-      timeout: 20000,
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
       forceNew: true,
+      timeout: 20000,
     });
 
     socketRef.current.on('connect', () => {
@@ -221,7 +199,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
     socketRef.current.on('disconnect', () => setIsConnected(false));
 
-    socketRef.current.onAny((eventName: any) => {
+    socketRef.current.onAny((eventName: string) => {
       const notificationEvents = [
         'delivery-approved-for-driver',
         'delivery-needs-approval',
@@ -232,7 +210,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       ];
       if (notificationEvents.includes(eventName)) fetchNotifications();
     });
-  }, [user?.id, auth, getSocketUrl, fetchNotifications, showToast]);
+  }, [user?.id, getSocketUrl, fetchNotifications, showToast]);
 
   const disconnectSocket = useCallback(() => {
     if (socketRef.current) {
@@ -258,31 +236,27 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
   // ==================== BACKGROUND LOCATION ====================
   const startBackgroundLocationTracking = useCallback(async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return showToast('Permissão Negada', 'Localização é necessária', 'error');
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return showToast('Permissão Negada', 'Localização é necessária', 'error');
 
-      const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
-      if (backgroundStatus.status !== 'granted') showToast('Aviso', 'Permissão de background não concedida', 'warning');
+    const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
+    if (backgroundStatus.status !== 'granted') showToast('Aviso', 'Permissão de background não concedida', 'warning');
 
-      const isStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-      if (!isStarted) {
-        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 15000,
-          distanceInterval: 20,
-          showsBackgroundLocationIndicator: true,
-          foregroundService: {
-            notificationTitle: 'Rastreamento ativo',
-            notificationBody: 'Estamos atualizando sua localização',
-          },
-        });
-      }
-
-      setIsLocationActive(true);
-    } catch {
-      showToast('Erro', 'Não foi possível iniciar rastreamento', 'error');
+    const isStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+    if (!isStarted) {
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 15000,
+        distanceInterval: 20,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: 'Rastreamento ativo',
+          notificationBody: 'Estamos atualizando sua localização',
+        },
+      });
     }
+
+    setIsLocationActive(true);
   }, [showToast]);
 
   const stopBackgroundLocationTracking = useCallback(async () => {

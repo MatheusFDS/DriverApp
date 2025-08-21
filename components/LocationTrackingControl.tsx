@@ -1,9 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotifications } from '../contexts/NotificationContext';
 
@@ -18,12 +14,7 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
   showDetails = true,
   showStats = false,
 }) => {
-  const {
-    isLocationActive,
-    isConnected,
-    lastLocationUpdate,
-    locationStats,
-  } = useNotifications();
+  const { isLocationActive, isConnected } = useNotifications();
 
   const getStatusColor = () => {
     if (!isConnected) return '#f44336';
@@ -43,102 +34,17 @@ export const LocationTrackingControl: React.FC<LocationTrackingControlProps> = (
     return 'location-outline';
   };
 
-  const formatLastUpdate = () => {
-    if (!lastLocationUpdate) return 'Nunca';
-    
-    const now = new Date();
-    const lastUpdate = new Date(lastLocationUpdate);
-    const diffMinutes = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60));
-    
-    if (diffMinutes < 1) return 'Agora mesmo';
-    if (diffMinutes < 60) return `${diffMinutes}min atrás`;
-    
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h atrás`;
-    
-    return lastUpdate.toLocaleDateString();
-  };
-
-  const formatStatsTime = (timestamp: string | null) => {
-    if (!timestamp) return 'N/A';
-    
-    const time = new Date(timestamp);
-    return time.toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-  };
-
   return (
     <View style={[styles.container, style]}>
       <View style={[styles.mainButton, { backgroundColor: getStatusColor() }]}>
         <View style={styles.buttonContent}>
-          <Ionicons
-            name={getStatusIcon()}
-            size={24}
-            color="white"
-          />
-          <Text style={styles.buttonText}>
-            {getStatusText()}
-          </Text>
+          <Ionicons name={getStatusIcon()} size={24} color="white" />
+          <Text style={styles.buttonText}>{getStatusText()}</Text>
         </View>
       </View>
 
       {showDetails && (
         <View style={styles.detailsContainer}>
-          <View style={styles.statusRow}>
-            <View style={styles.statusItem}>
-              <Ionicons
-                name={isConnected ? 'wifi' : 'wifi-outline'}
-                size={16}
-                color={isConnected ? '#4caf50' : '#f44336'}
-              />
-              <Text style={[styles.statusText, { color: isConnected ? '#4caf50' : '#f44336' }]}>
-                {isConnected ? 'Conectado' : 'Desconectado'}
-              </Text>
-            </View>
-
-            <View style={styles.statusItem}>
-              <Ionicons
-                name="time-outline"
-                size={16}
-                color="#757575"
-              />
-              <Text style={styles.statusText}>
-                {formatLastUpdate()}
-              </Text>
-            </View>
-          </View>
-
-          {showStats && isLocationActive && (
-            <View style={styles.statsContainer}>
-              <Text style={styles.statsTitle}>📊 Estatísticas de Envio</Text>
-              
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Total Enviado</Text>
-                  <Text style={styles.statValue}>{locationStats.totalSent}</Text>
-                </View>
-                
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Último Sucesso</Text>
-                  <Text style={styles.statValue}>
-                    {formatStatsTime(locationStats.lastSuccess)}
-                  </Text>
-                </View>
-              </View>
-
-              {locationStats.lastError && (
-                <View style={styles.errorContainer}>
-                  <Ionicons name="warning-outline" size={14} color="#f44336" />
-                  <Text style={styles.errorText}>
-                    Último erro: {locationStats.lastError}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
           {!isConnected && (
             <View style={styles.warningContainer}>
               <Ionicons name="warning-outline" size={16} color="#ff9800" />
@@ -178,10 +84,7 @@ const styles = StyleSheet.create({
     padding: 16,
     margin: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
@@ -204,66 +107,6 @@ const styles = StyleSheet.create({
   },
   detailsContainer: {
     marginTop: 12,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  statusItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  statusText: {
-    fontSize: 14,
-    marginLeft: 4,
-    color: '#757575',
-  },
-  statsContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  statsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2196f3',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffebee',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 8,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#f44336',
-    marginLeft: 6,
-    flex: 1,
   },
   warningContainer: {
     flexDirection: 'row',
