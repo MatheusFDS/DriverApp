@@ -86,11 +86,11 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "1e2512e0-66ac-4bad-bfbe-65d7a30bdfbb"
+        "projectId": "5d97bc80-8444-4e65-b09a-e107ebc4ff5b"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/1e2512e0-66ac-4bad-bfbe-65d7a30bdfbb"
+      "url": "https://u.expo.dev/5d97bc80-8444-4e65-b09a-e107ebc4ff5b"
     }
   }
 }

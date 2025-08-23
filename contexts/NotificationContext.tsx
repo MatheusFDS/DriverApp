@@ -11,7 +11,7 @@ import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Alert } from 'react-native';
 import { api } from '../services/api';
 import { Notification } from '../types';
 import { useAuth } from './AuthContext';
@@ -55,13 +55,16 @@ interface ToastData {
   linkTo?: string;
 }
 
-// ===== TASK MANAGER PARA LOCALIZAÇÃO EM BACKGROUND =====
+// ===== TASK MANAGER PARA LOCALIZAÇÃO EM BACKGROUND (CORRIGIDO) =====
 const LOCATION_TASK_NAME = 'background-location-task';
 
 TaskManager.defineTask(
   LOCATION_TASK_NAME,
   async ({ data, error }: { data?: any; error?: any }): Promise<void> => {
-    if (error) return console.error('Erro na task de localização:', error);
+    if (error) {
+      console.error('Erro na task de localização:', error);
+      return;
+    }
     if (!data?.locations?.length) return;
 
     const location = data.locations[0];
@@ -77,9 +80,26 @@ TaskManager.defineTask(
       speed,
     };
 
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('location-update', payload);
-      console.log('Localização enviada via socket:', payload);
+    try {
+      // Tentativa de envio imediato via API (mais robusto que socket em background)
+      const response = await api.sendLocation(payload);
+      if (response.success) {
+        console.log('Localização enviada via API:', payload);
+      } else {
+        // Falha no envio, salvar na fila offline
+        const storedLocations = await AsyncStorage.getItem('offline_locations');
+        const locationsQueue = storedLocations ? JSON.parse(storedLocations) : [];
+        locationsQueue.push(payload);
+        await AsyncStorage.setItem('offline_locations', JSON.stringify(locationsQueue));
+        console.warn('Localização salva offline. Motivo:', response.message);
+      }
+    } catch (err) {
+      // Erro de rede, salvar na fila offline
+      const storedLocations = await AsyncStorage.getItem('offline_locations');
+      const locationsQueue = storedLocations ? JSON.parse(storedLocations) : [];
+      locationsQueue.push(payload);
+      await AsyncStorage.setItem('offline_locations', JSON.stringify(locationsQueue));
+      console.warn('Erro de rede, localização salva offline:', err);
     }
   },
 );
@@ -234,30 +254,72 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     return () => subscription?.remove();
   }, [connectSocket]);
 
-  // ==================== BACKGROUND LOCATION ====================
+  // ==================== BACKGROUND LOCATION (CORRIGIDO) ====================
+  const processOfflineLocations = useCallback(async () => {
+    const storedLocations = await AsyncStorage.getItem('offline_locations');
+    if (!storedLocations) return;
+
+    const locationsQueue = JSON.parse(storedLocations);
+    if (locationsQueue.length === 0) return;
+
+    try {
+      const response = await api.sendBulkLocations(locationsQueue);
+      if (response.success) {
+        console.log('Dados offline enviados com sucesso:', locationsQueue.length);
+        await AsyncStorage.removeItem('offline_locations');
+      } else {
+        console.error('Falha ao enviar dados offline:', response.message);
+      }
+    } catch (err) {
+      console.error('Erro ao processar dados offline:', err);
+    }
+  }, []);
+
   const startBackgroundLocationTracking = useCallback(async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') return showToast('Permissão Negada', 'Localização é necessária', 'error');
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permissão de Localização Necessária',
+        'Para que o aplicativo funcione corretamente, precisamos da sua permissão de localização. Por favor, conceda a permissão de localização "Sempre" nas configurações do seu dispositivo.',
+        [{ text: 'OK' }]
+      );
+      setIsLocationActive(false);
+      return;
+    }
 
     const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
-    if (backgroundStatus.status !== 'granted') showToast('Aviso', 'Permissão de background não concedida', 'warning');
+    if (backgroundStatus.status !== 'granted') {
+      Alert.alert(
+        'Permissão de Localização em Segundo Plano',
+        'Para continuar rastreando suas entregas em segundo plano, por favor, conceda a permissão de localização "Sempre". Você pode alterar isso nas configurações do seu aparelho.',
+        [{ text: 'OK' }]
+      );
+    }
 
     const isStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
     if (!isStarted) {
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 15000,
-        distanceInterval: 20,
-        showsBackgroundLocationIndicator: true,
-        foregroundService: {
-          notificationTitle: 'Rastreamento ativo',
-          notificationBody: 'Estamos atualizando sua localização',
-        },
-      });
+      try {
+        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 15000,
+          distanceInterval: 20,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: 'Rastreamento de Entrega Ativo',
+            notificationBody: 'Sua localização está sendo atualizada para a entrega',
+          },
+        });
+        setIsLocationActive(true);
+      } catch (error) {
+        console.error('Falha ao iniciar o rastreamento em segundo plano:', error);
+        setIsLocationActive(false);
+        Alert.alert(
+          'Erro ao Iniciar Rastreamento',
+          'Não foi possível iniciar o rastreamento de localização. Por favor, verifique as permissões do aplicativo e tente novamente.'
+        );
+      }
     }
-
-    setIsLocationActive(true);
-  }, [showToast]);
+  }, []);
 
   const stopBackgroundLocationTracking = useCallback(async () => {
     const isTracking = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
@@ -271,6 +333,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       fetchNotifications();
       connectSocket();
       startBackgroundLocationTracking();
+      // Processa a fila de localização offline na inicialização
+      processOfflineLocations(); 
     } else {
       disconnectSocket();
       stopBackgroundLocationTracking();
@@ -283,7 +347,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       disconnectSocket();
       stopBackgroundLocationTracking();
     };
-  }, [user?.id, fetchNotifications, connectSocket, startBackgroundLocationTracking, disconnectSocket, stopBackgroundLocationTracking]);
+  }, [user?.id, fetchNotifications, connectSocket, startBackgroundLocationTracking, disconnectSocket, stopBackgroundLocationTracking, processOfflineLocations]);
 
   const value: NotificationContextType = {
     notifications,

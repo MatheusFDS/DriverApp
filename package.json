@@ -36,6 +36,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",
     "expo-system-ui": "~5.0.10",
+    "expo-task-manager": "~13.1.6",
     "expo-updates": "~0.28.17",
     "expo-web-browser": "~14.2.0",
     "react": "19.0.0",
@@ -52,7 +53,7 @@
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "socket.io-client": "^4.8.1",
-    "expo-task-manager": "~13.1.6"
+    "expo-background-fetch": "~13.1.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

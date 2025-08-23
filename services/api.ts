@@ -8,7 +8,6 @@ import {
   StatusUpdatePayload,
   Notification,
   PaginatedNotifications,
-  AcceptInviteDto,
 } from '../types';
 import { currentApiConfig } from '../config/apiConfig';
 
@@ -241,23 +240,41 @@ class ApiService {
       return false;
     }
   }
-  
-  async getInviteDetails(token: string): Promise<ApiResponse<any>> {
-    return this.request<any>(`/invites/${token}`);
-  }
 
-  async acceptInvite(
-    token: string, 
-    payload: AcceptInviteDto,
-  ): Promise<ApiResponse<any>> {
-    return this.request<any>(`/invites/${token}/accept`, {
+  // CORREÇÃO: Adicionados métodos para envio de localização
+  async sendLocation(payload: any): Promise<ApiResponse<any>> {
+    return this.request('/location/update', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   }
 
-  async completeDriverProfile(payload: { name: string; license: string; cpf: string }): Promise<ApiResponse<any>> {
-    return this.request<any>('/drivers/complete-profile', {
+  async sendBulkLocations(payload: any[]): Promise<ApiResponse<any>> {
+    return this.request('/location/bulk-update', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // REMOVIDO: Método obsoleto após a unificação do fluxo de convite.
+  // async completeDriverProfile(payload: { name: string; license: string; cpf: string }): Promise<ApiResponse<any>> {
+  //   return this.request<any>('/drivers/complete-profile', {
+  //     method: 'POST',
+  //     body: JSON.stringify(payload),
+  //   });
+  // }
+  
+  async getInviteDetails(token: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`/invites/${token}`);
+  }
+
+  // CORREÇÃO: `acceptInvite` agora envia todos os dados necessários
+  // para o backend, incluindo os dados de motorista e veículo.
+  async acceptInvite(
+    token: string, 
+    payload: any, // Tipo pode ser mais específico, mas 'any' é suficiente por ora.
+  ): Promise<ApiResponse<any>> {
+    return this.request<any>(`/invites/${token}/accept`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });

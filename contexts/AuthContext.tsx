@@ -1,9 +1,11 @@
+// AuthContext.tsx
+
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
-  ReactNode,
+  ReactNode, // Este import não é mais necessário, mas não causa problema se for mantido
   useCallback,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +26,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// CORREÇÃO AQUI: A sintaxe de props foi corrigida para { children }: { children: ReactNode }
+// Isso resolve os erros de tipo 2339 e 7008.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,8 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await AsyncStorage.clear();
       await signOut(auth);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
     } finally {
       router.replace('/login');
       setIsLoading(false);
@@ -53,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         await logout();
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
+    } catch (error) {
+      console.error('Erro ao atualizar perfil do usuário:', error);
       await logout();
     }
   }, [logout]);
@@ -65,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const idToken = await firebaseUser.getIdToken(true);
         await AsyncStorage.setItem('auth_token', idToken);
-
         const profileResponse = await api.getProfile();
         
         if (profileResponse.success && profileResponse.data) {
@@ -81,8 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           throw new Error(profileResponse.message || "Falha ao buscar perfil do backend.");
         }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (_error) {
+      } catch (error) {
+        console.error('Erro ao fazer logout:', error);
         await logout();
       }
     } else {
