@@ -1,15 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  User,
-  ApiResponse,
-  DeliveryProof,
-  RouteMobile,
-  DeliveryItemMobile,
-  StatusUpdatePayload,
-  Notification,
-  PaginatedNotifications,
-} from '../types';
 import { currentApiConfig } from '../config/apiConfig';
+import {
+    ApiResponse,
+    DeliveryItemMobile,
+    DeliveryProof,
+    Notification,
+    PaginatedNotifications,
+    RouteMobile,
+    StatusUpdatePayload,
+    User,
+} from '../types';
 
 class ApiService {
   private baseURL: string;

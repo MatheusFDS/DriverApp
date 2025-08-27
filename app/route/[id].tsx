@@ -1,32 +1,32 @@
 // app/route/[id].tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  RefreshControl,
-  Alert,
-  ActivityIndicator,
-  SafeAreaView,
-  Dimensions,
-} from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  RouteMobile as Route,
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { CommonStyles, Theme } from '../components/ui';
+import { api } from '../services/api';
+import {
   DeliveryItemMobile as Delivery,
-  OrderMobileStatus,
-  StatusUpdatePayload,
   getAvailableOrderActions,
   getOrderMobileStatusConfig,
-  OrderActionMobile
-} from '../../types'; 
-import { api } from '../../services/api';
-import { Theme, CommonStyles } from '../../components/ui';
+  OrderActionMobile,
+  OrderMobileStatus,
+  RouteMobile as Route,
+  StatusUpdatePayload
+} from '../types';
 
 Dimensions.get('window');
 

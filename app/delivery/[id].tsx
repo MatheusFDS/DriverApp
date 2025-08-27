@@ -1,41 +1,41 @@
 // app/delivery/[id].tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  Linking,
-  RefreshControl,
-  ActivityIndicator,
-  Image,
-  Modal,
-  SafeAreaView,
-  TextInput,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import ProofUploaderModal from '../../components/ProofUploaderModal';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import ProofUploaderModal from '../components/ProofUploaderModal';
 
 import {
   DeliveryItemMobile,
-  OrderMobileStatus,
-  getOrderMobileStatusConfig,
-  getAvailableOrderActions,
-  StatusUpdatePayload,
   DeliveryProof,
-} from '../../types';
+  getAvailableOrderActions,
+  getOrderMobileStatusConfig,
+  OrderMobileStatus,
+  StatusUpdatePayload,
+} from '../types';
 
-import { api } from '../../services/api';
-import { currentApiConfig } from '@/config/apiConfig';
-import { Theme, CommonStyles } from '../../components/ui';
+import { currentApiConfig } from '../config/apiConfig';
+import { CommonStyles, Theme } from '../components/ui';
+import { api } from '../services/api';
 
 Dimensions.get('window');
 

@@ -1,23 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
+  ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   SafeAreaView,
-  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
   TouchableOpacity,
-  Image,
-  Modal,
+  View,
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { router } from 'expo-router';
-import { Button } from '../components/ui';
-import { api } from '../services/api';
 import LogoImage from '../assets/images/logo.png';
+import { useAuth } from './contexts/AuthContext';
+import { Button } from './components/ui';
+import { api } from './services/api';
 
 // Cores teal originais
 const Colors = {

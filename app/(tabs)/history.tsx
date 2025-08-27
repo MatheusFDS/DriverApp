@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  RefreshControl,
-  ActivityIndicator,
-  SafeAreaView,
-} from 'react-native';
 import { router } from 'expo-router';
-import { RouteMobile as Route } from '../../types';
-import { api } from '../../services/api';
-import { Button, Card, StatusBadge, Theme, CommonStyles } from '../../components/ui';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+import { Button, Card, CommonStyles, StatusBadge, Theme } from '../components/ui';
+import { api } from '../services/api';
+import { RouteMobile as Route } from '../types';
 
 export default function HistoryScreen() {
   const [allRoutes, setAllRoutes] = useState<Route[]>([]);

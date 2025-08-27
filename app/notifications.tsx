@@ -1,20 +1,20 @@
 // app/notifications.tsx
 
+import { router } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  RefreshControl,
   ActivityIndicator,
-  SafeAreaView,
   Alert,
+  FlatList,
+  RefreshControl,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import { useNotifications } from '../contexts/NotificationContext';
-import { router } from 'expo-router';
-import { Notification } from '../types';
-import { Button, Card, Theme, CommonStyles } from '../components/ui';
+import { useNotifications } from './contexts/NotificationContext';
+import { Button, Card, CommonStyles, Theme } from './components/ui';
+import { Notification } from './types';
 
 export default function NotificationsScreen() {
   const { 

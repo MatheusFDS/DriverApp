@@ -1,9 +1,9 @@
 // app/(tabs)/_layout.tsx
 import { Tabs, Redirect } from 'expo-router';
 import { Text, View } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext';
-import NotificationBadge from '../../components/NotificationBadge';
-import { Theme } from '../../components/ui';
+import { useAuth } from '../contexts/AuthContext';
+import NotificationBadge from '../components/NotificationBadge';
+import { Theme } from '../components/ui';
 
 export default function TabLayout() {
   const { user, isLoading } = useAuth();

@@ -13,10 +13,10 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
-import { useNotifications } from '../../contexts/NotificationContext';
-import { LocationTrackingControl } from '../../components/LocationTrackingControl';
-import { Button, Card, Theme, CommonStyles } from '../../components/ui';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
+import { LocationTrackingControl } from '../components/LocationTrackingControl';
+import { Button, Card, Theme, CommonStyles } from '../components/ui';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();

@@ -1,24 +1,24 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
-  ScrollView,
-  SafeAreaView,
-  TextInput,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { api } from '../../services/api';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Button, Card, Theme, CommonStyles } from '../../components/ui';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Button, Card, CommonStyles, Theme } from '../components/ui';
+import { api } from '../services/api';
 
 interface InviteDetails {
   email: string;

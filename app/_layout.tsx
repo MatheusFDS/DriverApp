@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider } from '../contexts/AuthContext';
-import { NotificationProvider } from '../contexts/NotificationContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Toast from 'react-native-toast-message';
-import { Theme } from '../components/ui';
+import { Theme } from './components/ui';
 
 SplashScreen.preventAutoHideAsync();
 

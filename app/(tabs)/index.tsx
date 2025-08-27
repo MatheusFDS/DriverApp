@@ -1,26 +1,26 @@
 // app/(tabs)/index.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Dimensions,
+  RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
-  RefreshControl,
-  ActivityIndicator,
-  SafeAreaView,
+  Text,
   TouchableOpacity,
-  Dimensions,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { 
-  RouteMobile as Route,
+import { CommonStyles, Theme } from '../components/ui';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
+import {
   DeliveryItemMobile,
-} from '../../types';
-import { api } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
-import { Theme, CommonStyles } from '../../components/ui';
+  RouteMobile as Route,
+} from '../types';
 
 Dimensions.get('window');
 
