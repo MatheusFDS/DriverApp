@@ -1,6 +1,6 @@
 // components/ui/Button.tsx
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
 import { Theme } from '../../constants/Theme';
 
 interface ButtonProps {

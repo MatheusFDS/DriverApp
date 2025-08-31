@@ -14,13 +14,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { CommonStyles, Theme } from '../components/ui';
-import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
 import {
   DeliveryItemMobile,
   RouteMobile as Route,
-} from '../types';
+} from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
+import { CommonStyles, Theme } from '../../components/ui';
 
 Dimensions.get('window');
 

@@ -15,9 +15,9 @@ import {
   View,
 } from 'react-native';
 import LogoImage from '../assets/images/logo.png';
-import { useAuth } from './contexts/AuthContext';
-import { Button } from './components/ui';
-import { api } from './services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { api } from '../services/api';
+import { Button } from '../components/ui';
 
 // Cores teal originais
 const Colors = {

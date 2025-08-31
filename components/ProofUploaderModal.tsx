@@ -1,19 +1,19 @@
 // src/components/ProofUploaderModal.tsx
 
+import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
-  View,
+  Alert,
+  Image,
+  Modal,
+  SafeAreaView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  Modal,
-  Image,
-  SafeAreaView,
+  View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
-import { Button, Card, Theme, CommonStyles } from './ui';
+import { Button, Card, CommonStyles, Theme } from './ui';
 
 interface ProofUploaderModalProps {
   orderId: string;
@@ -60,9 +60,9 @@ export default function ProofUploaderModal({
     try {
       const result = await launchFunction({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false, // <-- ALTERAÇÃO: Remove a etapa de edição/corte
         aspect: [4, 3],
-        quality: 0.7,
+        quality: 0.7, // <-- Otimiza a imagem para um upload mais rápido
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -88,9 +88,8 @@ export default function ProofUploaderModal({
       const response = await api.uploadDeliveryProof(orderId, file);
 
       if (response.success && response.data?.proofUrl) {
-        Alert.alert('Sucesso!', 'Comprovante enviado com sucesso!');
         onSuccess(response.data.proofUrl);
-        handleClose();
+        // O fechamento do modal e o alerta de sucesso agora são controlados pela tela pai (delivery/[id].tsx)
       } else {
         throw new Error(response.message || 'Erro desconhecido ao enviar comprovante');
       }
@@ -149,6 +148,7 @@ export default function ProofUploaderModal({
                   <TouchableOpacity
                     style={styles.changeImageButton}
                     onPress={() => setSelectedImage(null)}
+                    disabled={uploading}
                   >
                     <Text style={styles.changeImageText}>Alterar</Text>
                   </TouchableOpacity>
@@ -191,8 +191,8 @@ export default function ProofUploaderModal({
           <Button
             title="Enviar Comprovante"
             onPress={uploadProof}
-            disabled={!selectedImage || uploading}
-            loading={uploading}
+            disabled={!selectedImage || uploading} // <-- ALTERAÇÃO: Desabilita se já estiver enviando
+            loading={uploading} // <-- ALTERAÇÃO: Mostra o ActivityIndicator
             variant="success"
             fullWidth
             size="large"

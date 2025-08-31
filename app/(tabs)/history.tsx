@@ -1,3 +1,5 @@
+// app/(tabs)/history.tsx
+
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -9,9 +11,9 @@ import {
     Text,
     View,
 } from 'react-native';
-import { Button, Card, CommonStyles, StatusBadge, Theme } from '../components/ui';
-import { api } from '../services/api';
-import { RouteMobile as Route } from '../types';
+import { Button, Card, CommonStyles, StatusBadge, Theme } from '../../components/ui';
+import { api } from '../../services/api';
+import { RouteMobile as Route } from '../../types';
 
 export default function HistoryScreen() {
   const [allRoutes, setAllRoutes] = useState<Route[]>([]);
@@ -32,7 +34,6 @@ export default function HistoryScreen() {
       if (historyResponse.success && historyResponse.data) {
         const routes = historyResponse.data;
         setAllRoutes(routes);
-        // Mostrar apenas os primeiros 5
         setDisplayedRoutes(routes.slice(0, 5));
         setDisplayLimit(5);
       } else {
@@ -67,7 +68,6 @@ export default function HistoryScreen() {
     
     setLoadingMore(true);
     
-    // Simular um pequeno delay para melhor UX
     setTimeout(() => {
       const newLimit = displayLimit + 5;
       setDisplayLimit(newLimit);
@@ -84,15 +84,6 @@ export default function HistoryScreen() {
     return value.toLocaleString('pt-BR', { 
       style: 'currency', 
       currency: 'BRL' 
-    });
-  };
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric'
     });
   };
 
@@ -198,8 +189,8 @@ export default function HistoryScreen() {
                   >
                     <View style={styles.routeHeader}>
                       <View style={styles.routeMainInfo}>
-                        <Text style={[CommonStyles.bodyLarge, styles.routeDate]}>
-                          {formatDate(route.date)}
+                        <Text style={[CommonStyles.bodyLarge, styles.routeIdText]}>
+                          Roteiro: {route.code || route.id}
                         </Text>
                         <Text style={[CommonStyles.heading3, styles.routeFreightValue]}>
                           {formatCurrency(route.freightValue)}
@@ -232,7 +223,6 @@ export default function HistoryScreen() {
                 );
               })}
               
-              {/* Botão para carregar mais */}
               {hasMoreRoutes && (
                 <View style={styles.loadMoreContainer}>
                   <Button
@@ -249,7 +239,6 @@ export default function HistoryScreen() {
                 </View>
               )}
               
-              {/* Indicador de que chegou ao fim */}
               {!hasMoreRoutes && allRoutes.length > 5 && (
                 <View style={styles.endIndicator}>
                   <Text style={[CommonStyles.bodySmall, styles.endText]}>
@@ -278,177 +267,145 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  
   scrollContent: {
     paddingBottom: Theme.spacing['2xl'],
   },
-  
   loadingText: {
     marginTop: Theme.spacing.md,
     color: Theme.colors.text.secondary,
   },
-  
   errorTitle: {
     color: Theme.colors.status.error,
     marginBottom: Theme.spacing.sm,
     textAlign: 'center',
   },
-  
   errorText: {
     color: Theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: Theme.spacing.xl,
   },
-  
   retryButton: {
     minWidth: 200,
   },
-  
   summaryCard: {
     margin: Theme.spacing.lg,
     backgroundColor: Theme.colors.background.paper,
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
   },
-  
   summaryTitle: {
     color: Theme.colors.text.primary,
     textAlign: 'center',
     marginBottom: Theme.spacing.lg,
   },
-  
   summaryContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  
   summaryItem: {
     flex: 1,
     alignItems: 'center',
   },
-  
   summaryNumber: {
     color: Theme.colors.text.primary,
     fontWeight: Theme.typography.fontWeight.bold,
     marginBottom: Theme.spacing.xs,
   },
-  
   summaryLabel: {
     color: Theme.colors.text.secondary,
     textAlign: 'center',
   },
-  
   summaryDivider: {
     width: 1,
     height: 60,
     backgroundColor: Theme.colors.gray[300],
     marginHorizontal: Theme.spacing.lg,
   },
-  
   valueText: {
     color: Theme.colors.status.success,
   },
-  
   routesSection: {
     paddingHorizontal: Theme.spacing.lg,
   },
-  
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Theme.spacing.lg,
   },
-  
   sectionTitle: {
     color: Theme.colors.text.primary,
   },
-  
   counterText: {
     color: Theme.colors.text.secondary,
     fontStyle: 'italic',
   },
-  
   routeCard: {
     marginBottom: Theme.spacing.md,
     borderLeftWidth: 3,
     borderLeftColor: Theme.colors.primary.main,
   },
-  
   routeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: Theme.spacing.md,
   },
-  
   routeMainInfo: {
     flex: 1,
     marginRight: Theme.spacing.md,
   },
-  
-  routeDate: {
+  routeIdText: {
     color: Theme.colors.text.secondary,
     marginBottom: Theme.spacing.xs,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
-  
   routeFreightValue: {
     color: Theme.colors.status.success,
     fontWeight: Theme.typography.fontWeight.bold,
   },
-  
   routeStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  
   statText: {
     color: Theme.colors.text.secondary,
     flex: 1,
   },
-  
   successText: {
     color: Theme.colors.status.success,
   },
-  
   loadMoreContainer: {
     alignItems: 'center',
     marginTop: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
   },
-  
   loadMoreButton: {
     minWidth: 200,
     marginBottom: Theme.spacing.sm,
   },
-  
   loadMoreHint: {
     color: Theme.colors.text.hint,
     fontStyle: 'italic',
   },
-  
   endIndicator: {
     alignItems: 'center',
     paddingVertical: Theme.spacing.lg,
     marginTop: Theme.spacing.md,
   },
-  
   endText: {
     color: Theme.colors.status.success,
     fontStyle: 'italic',
   },
-  
   emptyState: {
     alignItems: 'center',
     paddingVertical: Theme.spacing['4xl'],
   },
-  
   emptyStateTitle: {
     color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.sm,
     textAlign: 'center',
   },
-  
   emptyStateSubtitle: {
     color: Theme.colors.text.secondary,
     textAlign: 'center',

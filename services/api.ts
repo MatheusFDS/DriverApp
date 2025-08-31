@@ -1,3 +1,4 @@
+// app/services/api.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { currentApiConfig } from '../config/apiConfig';
 import {
@@ -5,6 +6,7 @@ import {
     DeliveryItemMobile,
     DeliveryProof,
     Notification,
+    OptimizeRouteRequest,
     PaginatedNotifications,
     RouteMobile,
     StatusUpdatePayload,
@@ -149,6 +151,11 @@ class ApiService {
     return this.request<RouteMobile>(`/mobile/v1/routes/${routeId}`);
   }
 
+  // MÉTODO ADICIONADO PARA CORRIGIR O ERRO
+  async getRouteMap(routeId: string): Promise<ApiResponse<RouteMobile>> {
+    return this.request<RouteMobile>(`/routes/map/${routeId}`);
+  }
+
   async getDeliveryDetails(orderId: string): Promise<ApiResponse<DeliveryItemMobile>> {
     return this.request<DeliveryItemMobile>(`/mobile/v1/deliveries/${orderId}`);
   }
@@ -232,21 +239,42 @@ class ApiService {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     try {
-      const response = await fetch(`${this.baseURL}/health`, { method: 'GET', signal: controller.signal });
+      const token = await this.getAuthToken();
+      if (!token) return false;
+
+      const response = await fetch(`${this.baseURL}/mobile/v1/profile`, { 
+          method: 'GET', 
+          signal: controller.signal,
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+      });
       clearTimeout(timeoutId);
-      return response.ok;
+      return response.status < 500;
     } catch {
       clearTimeout(timeoutId);
       return false;
     }
   }
 
-  // CORREÇÃO: Adicionados métodos para envio de localização
   async sendLocation(payload: any): Promise<ApiResponse<any>> {
     return this.request('/location/update', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  }
+
+    // MÉTODO ADICIONADO PARA CORRIGIR O ERRO
+  async calculateSequentialRoute(data: OptimizeRouteRequest): Promise<RouteMobile> {
+    // Reutiliza a estrutura de OptimizedRouteResult que é compatível com RouteMobile
+    const response = await this.request<RouteMobile>('/routes/calculate-sequential', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Falha ao calcular a rota sequencial.');
   }
 
   async sendBulkLocations(payload: any[]): Promise<ApiResponse<any>> {
@@ -255,24 +283,14 @@ class ApiService {
       body: JSON.stringify(payload),
     });
   }
-
-  // REMOVIDO: Método obsoleto após a unificação do fluxo de convite.
-  // async completeDriverProfile(payload: { name: string; license: string; cpf: string }): Promise<ApiResponse<any>> {
-  //   return this.request<any>('/drivers/complete-profile', {
-  //     method: 'POST',
-  //     body: JSON.stringify(payload),
-  //   });
-  // }
   
   async getInviteDetails(token: string): Promise<ApiResponse<any>> {
     return this.request<any>(`/invites/${token}`);
   }
 
-  // CORREÇÃO: `acceptInvite` agora envia todos os dados necessários
-  // para o backend, incluindo os dados de motorista e veículo.
   async acceptInvite(
     token: string, 
-    payload: any, // Tipo pode ser mais específico, mas 'any' é suficiente por ora.
+    payload: any,
   ): Promise<ApiResponse<any>> {
     return this.request<any>(`/invites/${token}/accept`, {
       method: 'POST',

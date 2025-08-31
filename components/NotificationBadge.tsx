@@ -1,10 +1,10 @@
 // components/NotificationBadge.tsx
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNotifications } from '../contexts/NotificationContext';
-import { Theme } from '../components/ui';
+import { Theme } from './ui';
 
 interface NotificationBadgeProps {
   color?: string;

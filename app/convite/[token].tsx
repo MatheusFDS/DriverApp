@@ -16,9 +16,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { Button, Card, CommonStyles, Theme } from '../components/ui';
-import { api } from '../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
+import { Button, Card, CommonStyles, Theme } from '../../components/ui';
 
 interface InviteDetails {
   email: string;

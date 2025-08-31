@@ -1,4 +1,4 @@
-// types/index.ts
+// app/types/index.ts
 
 export interface LoginCredentials {
   email: string;
@@ -70,6 +70,11 @@ export interface DeliveryProof {
   createdAt: string;
 }
 
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
 export interface DeliveryItemMobile {
   id: string;
   customerName: string;
@@ -90,9 +95,26 @@ export interface DeliveryItemMobile {
   proofCount?: number;
   proofs?: DeliveryProof[];
   routeStatus?: RouteMobileStatus;
+  latitude: number;  // <-- ADICIONADO
+  longitude: number; // <-- ADICIONADO
 }
 
+export interface OptimizeRouteRequest {
+  startingPoint: string;
+  finalDestination?: string;
+  orders: {
+    id: string;
+    address: string;
+    cliente: string;
+    numero: string;
+    lat?: number | null;
+    lng?: number | null;
+  }[];
+}
+
+
 export interface RouteMobile {
+  code?: string;
   freightValue: any;
   paymentStatus: string;
   id: string;
@@ -103,6 +125,7 @@ export interface RouteMobile {
   vehicle?: string;
   driverName?: string;
   deliveries: DeliveryItemMobile[];
+  polyline?: string; // <-- ADICIONADO
 }
 
 export interface ApiResponse<T> {

@@ -22,8 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import ProofUploaderModal from '../components/ProofUploaderModal';
-
+import ProofUploaderModal from '../../components/ProofUploaderModal';
 import {
   DeliveryItemMobile,
   DeliveryProof,
@@ -31,11 +30,10 @@ import {
   getOrderMobileStatusConfig,
   OrderMobileStatus,
   StatusUpdatePayload,
-} from '../types';
-
-import { currentApiConfig } from '../config/apiConfig';
-import { CommonStyles, Theme } from '../components/ui';
-import { api } from '../services/api';
+} from '../../types';
+import { currentApiConfig } from '../../config/apiConfig';
+import { CommonStyles, Theme } from '../../components/ui';
+import { api } from '../../services/api';
 
 Dimensions.get('window');
 
@@ -46,18 +44,18 @@ export default function DeliveryDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [showProofCamera, setShowProofCamera] = useState(false);
+  const [showProofModal, setShowProofModal] = useState(false);
   const [viewingProof, setViewingProof] = useState<string | null>(null);
   const [showMotivoModal, setShowMotivoModal] = useState(false);
   const [motivoTexto, setMotivoTexto] = useState('');
-  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<{
-    status: OrderMobileStatus;
-    motivo?: string;
-  } | null>(null);
+  const [pendingStatusUpdate, setPendingStatusUpdate] = useState<OrderMobileStatus | null>(null);
 
   const loadDeliveryDetails = useCallback(async () => {
     try {
-      setLoading(true);
+      // Don't set loading to true on refresh
+      if (!refreshing) {
+        setLoading(true);
+      }
       setError('');
       
       if (!id) {
@@ -79,7 +77,7 @@ export default function DeliveryDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, refreshing]);
 
   useEffect(() => {
     if (id) {
@@ -113,7 +111,7 @@ export default function DeliveryDetailsScreen() {
         } : null);
         
         Alert.alert('Sucesso', response.data.message || `Status atualizado para: ${getOrderMobileStatusConfig(newStatus).text}`);
-        setPendingStatusUpdate(null);
+        setPendingStatusUpdate(null); // Limpa a pendência
       } else {
         throw new Error(response.message || 'Erro ao atualizar status');
       }
@@ -128,18 +126,18 @@ export default function DeliveryDetailsScreen() {
   };
 
   const confirmStatusUpdate = (targetStatus: OrderMobileStatus) => {
+    // Armazena a intenção de atualização de status
+    setPendingStatusUpdate(targetStatus);
+
     if (targetStatus === 'ENTREGUE') {
       Alert.alert(
         'Confirmar Entrega',
-        `Confirma que a entrega foi realizada com sucesso para "${deliveryItem?.customerName}"?\n\nÉ necessário anexar um comprovante da entrega.`,
+        'Para finalizar, é necessário anexar um comprovante da entrega.',
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cancelar', style: 'cancel', onPress: () => setPendingStatusUpdate(null) },
           {
-            text: 'Sim, Adicionar Comprovante',
-            onPress: () => {
-              setPendingStatusUpdate({ status: 'ENTREGUE' });
-              setShowProofCamera(true);
-            }
+            text: 'Adicionar Comprovante',
+            onPress: () => setShowProofModal(true)
           }
         ]
       );
@@ -149,16 +147,13 @@ export default function DeliveryDetailsScreen() {
     if (targetStatus === 'NAO_ENTREGUE') {
       Alert.alert(
         'Reportar Problema',
-        `Confirma que não foi possível realizar a entrega para "${deliveryItem?.customerName}"?\n\nÉ necessário anexar um comprovante e informar o motivo.`,
+        `Confirma que não foi possível realizar a entrega para "${deliveryItem?.customerName}"?\n\nPrimeiro, adicione um comprovante (foto do local, etc.).`,
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cancelar', style: 'cancel', onPress: () => setPendingStatusUpdate(null) },
           {
-            text: 'Sim, Adicionar Comprovante',
+            text: 'Adicionar Comprovante',
             style: 'destructive',
-            onPress: () => {
-              setPendingStatusUpdate({ status: 'NAO_ENTREGUE' });
-              setShowProofCamera(true);
-            }
+            onPress: () => setShowProofModal(true)
           }
         ]
       );
@@ -170,7 +165,7 @@ export default function DeliveryDetailsScreen() {
         'Iniciar Deslocamento',
         `Confirma o início do deslocamento para a entrega de "${deliveryItem?.customerName}"?`,
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cancelar', style: 'cancel', onPress: () => setPendingStatusUpdate(null) },
           { 
             text: 'Sim, Iniciar', 
             onPress: () => handleUpdateStatus(targetStatus)
@@ -193,40 +188,27 @@ export default function DeliveryDetailsScreen() {
   };
 
   const handleProofSuccess = (proofUrl: string) => {
-    Alert.alert('Comprovante Enviado', 'Comprovante anexado com sucesso.');
+    setShowProofModal(false);
     
-    loadDeliveryDetails().then(() => {
-      if (pendingStatusUpdate) {
-        const { status } = pendingStatusUpdate;
-        
-        if (status === 'NAO_ENTREGUE') {
-          Alert.alert(
-            'Comprovante Anexado',
-            'Agora informe o motivo da não entrega.',
-            [
-              {
-                text: 'Informar Motivo',
-                onPress: () => {
-                  setMotivoTexto('');
-                  setShowMotivoModal(true);
-                }
-              }
-            ]
-          );
-        } else if (status === 'ENTREGUE') {
-          Alert.alert(
-            'Comprovante Anexado',
-            'Finalizando a entrega...',
-            [
-              {
-                text: 'OK',
-                onPress: () => handleUpdateStatus('ENTREGUE')
-              }
-            ]
-          );
-        }
-      }
-    });
+    if (pendingStatusUpdate === 'ENTREGUE') {
+      Alert.alert(
+        'Comprovante Anexado',
+        'Finalizando a entrega...',
+        [{ text: 'OK', onPress: () => handleUpdateStatus('ENTREGUE') }]
+      );
+    } else if (pendingStatusUpdate === 'NAO_ENTREGUE') {
+      Alert.alert(
+        'Comprovante Anexado',
+        'Agora, por favor, informe o motivo da não entrega.',
+        [{ text: 'Informar Motivo', onPress: () => setShowMotivoModal(true) }]
+      );
+    } else {
+      Alert.alert(
+        'Sucesso',
+        'Comprovante enviado com sucesso!',
+        [{ text: 'OK', onPress: () => loadDeliveryDetails() }]
+      );
+    }
   };
 
   const callCustomer = () => {
@@ -244,7 +226,10 @@ export default function DeliveryDetailsScreen() {
       Alert.alert('Aviso', 'Endereço não disponível.');
       return;
     }
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(deliveryItem.address)}`;
+    const url = Platform.select({
+        ios: `maps:0,0?q=${encodeURIComponent(deliveryItem.address)}`,
+        android: `geo:0,0?q=${encodeURIComponent(deliveryItem.address)}`,
+    }) || '';
     Linking.openURL(url).catch(() => Alert.alert('Erro', 'Não foi possível abrir o mapa.'));
   };
 
@@ -288,7 +273,6 @@ export default function DeliveryDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header com Status */}
       <LinearGradient
         colors={[statusConfig.color, statusConfig.color + 'dd']}
         style={styles.header}
@@ -322,7 +306,6 @@ export default function DeliveryDetailsScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Card Principal - Cliente e Endereço */}
         <View style={styles.mainCard}>
           <View style={styles.customerSection}>
             <Text style={styles.customerLabel}>CLIENTE</Text>
@@ -334,7 +317,6 @@ export default function DeliveryDetailsScreen() {
             <Text style={styles.addressText}>{deliveryItem.address}</Text>
           </View>
 
-          {/* Botões de Ação Rápida */}
           <View style={styles.quickActions}>
             {deliveryItem.phone && (
               <TouchableOpacity style={styles.actionButton} onPress={callCustomer}>
@@ -356,7 +338,6 @@ export default function DeliveryDetailsScreen() {
           </View>
         </View>
 
-        {/* Informações do Pedido */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Informações do Pedido</Text>
           
@@ -380,7 +361,6 @@ export default function DeliveryDetailsScreen() {
           )}
         </View>
 
-        {/* Itens do Pedido */}
         <View style={styles.itemsCard}>
           <Text style={styles.sectionTitle}>Itens ({deliveryItem.items.length})</Text>
           {deliveryItem.items.map((item: string, index: number) => (
@@ -391,7 +371,6 @@ export default function DeliveryDetailsScreen() {
           ))}
         </View>
 
-        {/* Observações */}
         {deliveryItem.notes && (
           <View style={styles.notesCard}>
             <View style={styles.notesHeader}>
@@ -402,7 +381,6 @@ export default function DeliveryDetailsScreen() {
           </View>
         )}
 
-        {/* Status do Comprovante */}
         <View style={[styles.proofCard, hasProofs ? styles.proofCardSuccess : styles.proofCardPending]}>
           <View style={styles.proofHeader}>
             <View style={styles.proofStatus}>
@@ -412,17 +390,14 @@ export default function DeliveryDetailsScreen() {
                 color={hasProofs ? Theme.colors.status.success : Theme.colors.status.warning} 
               />
               <Text style={styles.proofTitle}>
-                {hasProofs ? 'Comprovante Anexado' : 'Comprovante Necessário'}
+                {hasProofs ? 'Comprovante(s) Anexado(s)' : 'Comprovante Necessário'}
               </Text>
             </View>
             
             <TouchableOpacity 
               style={[styles.proofButton, hasProofs && styles.proofButtonOutline]}
-              onPress={() => setShowProofCamera(true)}
+              onPress={() => setShowProofModal(true)}
             >
-              <Text style={[styles.proofButtonText, hasProofs && styles.proofButtonTextOutline]}>
-                {hasProofs ? "Ver" : "Adicionar"}
-              </Text>
             </TouchableOpacity>
           </View>
           
@@ -459,12 +434,10 @@ export default function DeliveryDetailsScreen() {
           )}
         </View>
 
-        {/* Espaçamento para zona de ação fixa */}
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* Zona de Ação Fixa */}
-      {availableActions.length > 0 && (
+      {availableActions.length > 0 && !isFinalized &&(
         <View style={styles.actionZone}>
           {availableActions.map((action) => {
             let buttonStyle = styles.primaryActionButton;
@@ -505,15 +478,12 @@ export default function DeliveryDetailsScreen() {
         </View>
       )}
 
-      {/* Modais */}
       <ProofUploaderModal
         orderId={id || ''}
-        visible={showProofCamera}
+        visible={showProofModal}
         onClose={() => {
-          setShowProofCamera(false);
-          if (!hasProofs) {
-            setPendingStatusUpdate(null);
-          }
+          setShowProofModal(false);
+          setPendingStatusUpdate(null);
         }}
         onSuccess={handleProofSuccess}
         title="Comprovante de Entrega"
@@ -606,60 +576,49 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Theme.colors.background.default,
   },
-  
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Theme.spacing.lg,
     paddingVertical: Theme.spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? Theme.spacing['3xl'] : Theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 50 : Theme.spacing.lg,
   },
-  
   headerBackButton: {
     padding: Theme.spacing.sm,
     marginRight: Theme.spacing.md,
   },
-  
   headerContent: {
     flex: 1,
   },
-  
   headerOrder: {
     fontSize: Theme.typography.fontSize.xs,
     color: 'rgba(255, 255, 255, 0.8)',
     letterSpacing: 1,
     fontWeight: Theme.typography.fontWeight.medium,
   },
-  
   headerStatus: {
     fontSize: Theme.typography.fontSize.lg,
     color: '#ffffff',
     fontWeight: Theme.typography.fontWeight.bold,
   },
-  
   headerValueContainer: {
     alignItems: 'flex-end',
   },
-  
   headerValueLabel: {
     fontSize: Theme.typography.fontSize.xs,
     color: 'rgba(255, 255, 255, 0.8)',
   },
-  
   headerValue: {
     fontSize: Theme.typography.fontSize.xl,
     color: '#ffffff',
     fontWeight: Theme.typography.fontWeight.bold,
   },
-  
   scrollView: {
     flex: 1,
   },
-  
   scrollContent: {
     paddingVertical: Theme.spacing.md,
   },
-  
   mainCard: {
     backgroundColor: Theme.colors.background.paper,
     marginHorizontal: Theme.spacing.lg,
@@ -670,49 +629,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
   },
-  
   customerSection: {
     marginBottom: Theme.spacing.lg,
   },
-  
   customerLabel: {
     fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.text.secondary,
     letterSpacing: 1,
     marginBottom: Theme.spacing.xs,
   },
-  
   customerName: {
     fontSize: Theme.typography.fontSize['2xl'],
     fontWeight: Theme.typography.fontWeight.bold,
     color: Theme.colors.text.primary,
   },
-  
   addressSection: {
     paddingTop: Theme.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: Theme.colors.divider,
   },
-  
   addressLabel: {
     fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.text.secondary,
     letterSpacing: 1,
     marginBottom: Theme.spacing.xs,
   },
-  
   addressText: {
     fontSize: Theme.typography.fontSize.base,
     color: Theme.colors.text.primary,
     lineHeight: 22,
   },
-  
   quickActions: {
     flexDirection: 'row',
     gap: Theme.spacing.md,
     marginTop: Theme.spacing.xl,
   },
-  
   actionButton: {
     flex: 1,
     backgroundColor: Theme.colors.primary.main,
@@ -721,7 +672,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Theme.shadows.sm,
   },
-  
   actionButtonIcon: {
     width: 36,
     height: 36,
@@ -731,19 +681,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Theme.spacing.xs,
   },
-  
   actionButtonText: {
     fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: '#ffffff',
   },
-  
   actionButtonSubtext: {
     fontSize: Theme.typography.fontSize.xs,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
-  
   infoCard: {
     backgroundColor: Theme.colors.background.paper,
     marginHorizontal: Theme.spacing.lg,
@@ -754,14 +701,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
   },
-  
   sectionTitle: {
     fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.md,
   },
-  
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -769,12 +714,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.gray[100],
   },
-  
   infoLabel: {
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.secondary,
   },
-  
   infoValue: {
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.primary,
@@ -783,7 +726,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Theme.spacing.md,
   },
-  
   itemsCard: {
     backgroundColor: Theme.colors.background.paper,
     marginHorizontal: Theme.spacing.lg,
@@ -794,13 +736,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Theme.colors.gray[200],
   },
-  
   itemRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: Theme.spacing.sm,
   },
-  
   itemBullet: {
     width: 6,
     height: 6,
@@ -809,14 +749,12 @@ const styles = StyleSheet.create({
     marginRight: Theme.spacing.sm,
     marginTop: 5,
   },
-  
   itemText: {
     flex: 1,
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.primary,
     lineHeight: 20,
   },
-  
   notesCard: {
     backgroundColor: Theme.colors.green[50],
     marginHorizontal: Theme.spacing.lg,
@@ -828,26 +766,22 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: Theme.colors.secondary.main,
   },
-  
   notesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Theme.spacing.sm,
   },
-  
   notesTitle: {
     fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
     marginLeft: Theme.spacing.sm,
   },
-  
   notesText: {
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.primary,
     lineHeight: 20,
   },
-  
   proofCard: {
     marginHorizontal: Theme.spacing.lg,
     marginBottom: Theme.spacing.md,
@@ -855,59 +789,49 @@ const styles = StyleSheet.create({
     padding: Theme.spacing.lg,
     borderWidth: 1,
   },
-  
   proofCardSuccess: {
     backgroundColor: Theme.colors.green[50],
     borderColor: Theme.colors.green[200],
   },
-  
   proofCardPending: {
     backgroundColor: '#fff8e1',
     borderColor: '#ffcc80',
   },
-  
   proofHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  
   proofStatus: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  
   proofTitle: {
     fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
     marginLeft: Theme.spacing.sm,
   },
-  
   proofButton: {
     backgroundColor: Theme.colors.primary.main,
     paddingHorizontal: Theme.spacing.lg,
     paddingVertical: Theme.spacing.sm,
     borderRadius: Theme.borderRadius.base,
   },
-  
   proofButtonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: Theme.colors.primary.main,
   },
-  
   proofButtonText: {
     fontSize: Theme.typography.fontSize.sm,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: '#ffffff',
   },
-  
   proofButtonTextOutline: {
     color: Theme.colors.primary.main,
   },
-  
   proofWarning: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -916,33 +840,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff3e0',
     borderRadius: Theme.borderRadius.sm,
   },
-  
   proofWarningText: {
     fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.status.warning,
     marginLeft: Theme.spacing.xs,
     flex: 1,
   },
-  
   proofsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Theme.spacing.sm,
     marginTop: Theme.spacing.md,
   },
-  
   proofThumbContainer: {
     borderRadius: Theme.borderRadius.base,
     overflow: 'hidden',
     ...Theme.shadows.sm,
   },
-  
   proofThumb: {
     width: 80,
     height: 80,
     backgroundColor: Theme.colors.gray[200],
   },
-  
   actionZone: {
     position: 'absolute',
     bottom: 0,
@@ -958,7 +877,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Theme.spacing.md,
   },
-  
   primaryActionButton: {
     flex: 1,
     backgroundColor: Theme.colors.primary.main,
@@ -970,7 +888,6 @@ const styles = StyleSheet.create({
     gap: Theme.spacing.sm,
     ...Theme.shadows.sm,
   },
-  
   successActionButton: {
     flex: 1,
     backgroundColor: Theme.colors.status.success,
@@ -982,7 +899,6 @@ const styles = StyleSheet.create({
     gap: Theme.spacing.sm,
     ...Theme.shadows.sm,
   },
-  
   dangerActionButton: {
     flex: 1,
     backgroundColor: Theme.colors.status.error,
@@ -994,18 +910,14 @@ const styles = StyleSheet.create({
     gap: Theme.spacing.sm,
     ...Theme.shadows.sm,
   },
-  
   primaryActionText: {
     fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.bold,
     color: '#ffffff',
   },
-  
   disabledButton: {
     opacity: 0.5,
   },
-  
-  // Estilos dos modais
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1013,7 +925,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Theme.spacing.lg,
   },
-  
   modalContainer: {
     backgroundColor: Theme.colors.background.paper,
     borderRadius: Theme.borderRadius.lg,
@@ -1022,27 +933,23 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     ...Theme.shadows.xl,
   },
-  
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Theme.spacing.md,
   },
-  
   modalTitle: {
     fontSize: Theme.typography.fontSize.lg,
     fontWeight: Theme.typography.fontWeight.bold,
     color: Theme.colors.text.primary,
   },
-  
   modalSubtitle: {
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.secondary,
     marginBottom: Theme.spacing.lg,
     lineHeight: 20,
   },
-  
   motivoInput: {
     borderWidth: 1,
     borderColor: Theme.colors.gray[300],
@@ -1055,12 +962,10 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: Theme.spacing.lg,
   },
-  
   modalActions: {
     flexDirection: 'row',
     gap: Theme.spacing.md,
   },
-  
   modalCancelButton: {
     flex: 1,
     paddingVertical: Theme.spacing.md,
@@ -1068,7 +973,6 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.gray[200],
     alignItems: 'center',
   },
-  
   modalConfirmButton: {
     flex: 1,
     paddingVertical: Theme.spacing.md,
@@ -1077,29 +981,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...Theme.shadows.sm,
   },
-  
   modalCancelText: {
     color: Theme.colors.text.primary,
     fontWeight: Theme.typography.fontWeight.semiBold,
   },
-  
   modalConfirmText: {
     color: '#ffffff',
     fontWeight: Theme.typography.fontWeight.bold,
   },
-  
   imageModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
   fullImage: {
     width: '90%',
     height: '80%',
   },
-  
   closeImageButton: {
     position: 'absolute',
     top: 50,
@@ -1111,12 +1010,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
   loadingText: {
     marginTop: Theme.spacing.md,
     color: Theme.colors.text.secondary,
   },
-  
   errorTitle: {
     fontSize: Theme.typography.fontSize.lg,
     fontWeight: Theme.typography.fontWeight.semiBold,
@@ -1125,26 +1022,22 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.sm,
     textAlign: 'center',
   },
-  
   errorText: {
     fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: Theme.spacing.xl,
   },
-  
   retryButton: {
     paddingVertical: Theme.spacing.md,
     paddingHorizontal: Theme.spacing.xl,
     backgroundColor: Theme.colors.primary.main,
     borderRadius: Theme.borderRadius.base,
   },
-  
   retryButtonText: {
     color: '#ffffff',
     fontWeight: Theme.typography.fontWeight.semiBold,
   },
-  
   backButton: {
     paddingVertical: Theme.spacing.md,
     paddingHorizontal: Theme.spacing.xl,
@@ -1152,7 +1045,6 @@ const styles = StyleSheet.create({
     borderColor: Theme.colors.primary.main,
     borderRadius: Theme.borderRadius.base,
   },
-  
   backButtonText: {
     color: Theme.colors.primary.main,
     fontWeight: Theme.typography.fontWeight.semiBold,

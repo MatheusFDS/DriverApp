@@ -1,6 +1,6 @@
 // components/ui/StatusBadge.tsx
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { Theme } from '../../constants/Theme';
 
 type StatusVariant = 

@@ -1,12 +1,12 @@
 // app/_layout.tsx
-import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider } from './contexts/AuthContext';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';
-import { Theme } from './components/ui';
+import { AuthProvider } from '../contexts/AuthContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
+import { Theme } from '../components/ui';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -77,6 +77,14 @@ export default function RootLayout() {
               },
               headerTintColor: Theme.colors.primary.contrastText,
             }} 
+          />
+           <Stack.Screen
+            name="route/map" // <-- NOVA ROTA DO MAPA ADICIONADA AQUI
+            options={{
+              title: 'Mapa do Roteiro',
+              headerShown: false, // Oculta o header padrão para um visual mais imersivo
+              presentation: 'modal',
+            }}
           />
           <Stack.Screen
             name="notifications"

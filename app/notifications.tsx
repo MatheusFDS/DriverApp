@@ -12,9 +12,9 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useNotifications } from './contexts/NotificationContext';
-import { Button, Card, CommonStyles, Theme } from './components/ui';
-import { Notification } from './types';
+import { Notification } from '../types';
+import { useNotifications } from '../contexts/NotificationContext';
+import { Button, Card, CommonStyles, Theme } from '../components/ui';
 
 export default function NotificationsScreen() {
   const { 

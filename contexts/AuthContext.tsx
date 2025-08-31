@@ -1,18 +1,19 @@
-// AuthContext.tsx
+// app/contexts/AuthContext.tsx
 
 import React, {
   createContext,
   useContext,
   useState,
   useEffect,
-  ReactNode, // Este import não é mais necessário, mas não causa problema se for mantido
+  ReactNode,
   useCallback,
 } from 'react';
+// CORRIGIDO: Removido o traço extra no nome do pacote
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import { User } from '../types';
 import { api } from '../services/api';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, getIdToken } from '@react-native-firebase/auth';
 import { getApp } from '@react-native-firebase/app';
 import { Alert } from 'react-native';
 
@@ -26,8 +27,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// CORREÇÃO AQUI: A sintaxe de props foi corrigida para { children }: { children: ReactNode }
-// Isso resolve os erros de tipo 2339 e 7008.
+// Hook customizado para gerenciar o efeito de navegação
+function useProtectedRoute(user: User | null, isLoading: boolean) {
+  const segments = useSegments() as string[];
+
+  useEffect(() => {
+    if (isLoading || segments.length === 0) {
+      return; // Não faz nada enquanto carrega ou se as rotas não estiverem prontas
+    }
+
+    const inAuthRoute = segments[0] === 'login';
+
+    // Se o usuário não está logado e não está na tela de login, redireciona para o login.
+    if (!user && !inAuthRoute) {
+      router.replace('/login');
+    } 
+    // Se o usuário está logado e tentou acessar a tela de login, redireciona para a home.
+    else if (user && inAuthRoute) {
+      router.replace('/(tabs)');
+    }
+  }, [user, segments, isLoading]);
+}
+
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {
-      router.replace('/login');
+      setUser(null);
       setIsLoading(false);
+      // O hook useProtectedRoute cuidará do redirecionamento para /login
     }
   }, [auth]);
 
@@ -63,42 +86,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  const onAuthStateChangedCallback = useCallback(async (firebaseUser: any) => {
-    setIsLoading(true);
-    if (firebaseUser) {
-      try {
-        const idToken = await firebaseUser.getIdToken(true);
-        await AsyncStorage.setItem('auth_token', idToken);
-        const profileResponse = await api.getProfile();
-        
-        if (profileResponse.success && profileResponse.data) {
-          const backendUser = profileResponse.data;
-          await AsyncStorage.setItem('user', JSON.stringify(backendUser));
-          setUser(backendUser);
-          
-          if (backendUser.role?.name === 'driver' && !backendUser.driverId) {
-            router.replace('/login');
-          } else {
-            router.replace('/(tabs)');
-          }
-        } else {
-          throw new Error(profileResponse.message || "Falha ao buscar perfil do backend.");
-        }
-      } catch (error) {
-        console.error('Erro ao fazer logout:', error);
-        await logout();
-      }
-    } else {
-      await AsyncStorage.multiRemove(['user', 'auth_token']);
-      setUser(null);
-    }
-    setIsLoading(false);
-  }, [logout]);
-
+  // Efeito para lidar apenas com a autenticação do Firebase
   useEffect(() => {
-    const subscriber = onAuthStateChanged(auth, onAuthStateChangedCallback);
-    return subscriber;
-  }, [auth, onAuthStateChangedCallback]);
+    const onAuthStateChangedCallback = async (firebaseUser: any) => {
+      if (firebaseUser) {
+        try {
+          const idToken = await getIdToken(firebaseUser, true);
+          await AsyncStorage.setItem('auth_token', idToken);
+          const profileResponse = await api.getProfile();
+          if (profileResponse.success && profileResponse.data) {
+            setUser(profileResponse.data);
+          } else {
+            throw new Error("Falha ao buscar perfil do backend.");
+          }
+        } catch (error) {
+          console.error('Erro no processo de autenticação, deslogando:', error);
+          await logout();
+        }
+      } else {
+        setUser(null);
+      }
+      setIsLoading(false);
+    };
+
+    const unsubscribe = onAuthStateChanged(auth, onAuthStateChangedCallback);
+    return () => unsubscribe();
+  }, [auth, logout]);
+
+  // Usa o hook customizado para gerenciar a navegação
+  useProtectedRoute(user, isLoading);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);

@@ -42,7 +42,6 @@ export default function RouteDetailsScreen() {
     inProgress: true,
     completed: false,
   });
-  const [isMapLoading, setIsMapLoading] = useState(false);
 
   const loadRouteDetails = useCallback(async () => {
     try {
@@ -55,6 +54,10 @@ export default function RouteDetailsScreen() {
       }
       const response = await api.getRouteDetails(id);
       if (response.success && response.data) {
+        
+        // ADICIONADO: Log para depuração dos dados da rota
+        console.log('Dados da rota recebidos da API:', JSON.stringify(response.data, null, 2));
+
         const sortedDeliveries = response.data.deliveries.sort((a, b) => (a.sorting || 0) - (b.sorting || 0));
         response.data.deliveries = sortedDeliveries;
         setRoute(response.data);
@@ -81,50 +84,21 @@ export default function RouteDetailsScreen() {
     setRefreshing(false);
   }, [loadRouteDetails]);
   
-  const navigateToMap = async () => {
-    if (!route || route.deliveries.length === 0) {
-      Alert.alert("Mapa indisponível", "Não há entregas neste roteiro para exibir no mapa.");
-      return;
-    }
-
-    setIsMapLoading(true);
-    try {
-      // Monta a requisição para a API de cálculo de rota sequencial
-      const payload = {
-        startingPoint: route.deliveries[0].address, // Usa o primeiro endereço como ponto de partida
-        orders: route.deliveries.map(d => ({
-          id: d.id,
-          address: d.address,
-          cliente: d.customerName,
-          numero: d.numeroPedido,
-          lat: d.latitude,
-          lng: d.longitude,
-        })),
-      };
-
-      // Chama a API para gerar a polyline sob demanda
-      const sequentialRouteResult = await api.calculateSequentialRoute(payload);
-
-      if (sequentialRouteResult && sequentialRouteResult.polyline) {
-        router.push({
-          pathname: '/route/map',
-          params: { routeId: route.id, polyline: sequentialRouteResult.polyline },
-        });
-      } else {
-        throw new Error('A API de cálculo sequencial não retornou uma polyline.');
-      }
-    } catch (err) {
-      const error = err as Error;
-      console.error("Erro ao gerar dados do mapa:", error);
-      Alert.alert(
-        "Erro ao gerar mapa",
-        `Não foi possível calcular a rota. Detalhes: ${error.message}`
-      );
-    } finally {
-      setIsMapLoading(false);
+  const navigateToMap = () => {
+    if (route && route.polyline) { // Verificação mais segura
+      router.push({
+        pathname: '/route/map',
+        params: { routeId: route.id, polyline: route.polyline },
+      });
+    } else {
+      Alert.alert("Mapa indisponível", "Não foi possível obter os dados do mapa para este roteiro. Verifique se a rota foi otimizada.");
     }
   };
 
+  // ... (o restante do arquivo permanece o mesmo, sem alterações)
+  
+  // (COLE O RESTANTE DO ARQUIVO ANTERIOR AQUI PARA MANTER A COMPLETUDE)
+  // ...
   const handleUpdateDeliveryItemStatus = async (deliveryItem: Delivery, newStatus: OrderMobileStatus, motivo?: string) => {
     try {
       setUpdatingStatusDeliveryId(deliveryItem.id);
@@ -312,6 +286,7 @@ export default function RouteDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header Fixo */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Theme.colors.text.primary} />
@@ -322,18 +297,13 @@ export default function RouteDetailsScreen() {
           <Text style={styles.headerValue}>{formatCurrency(route.totalValue)}</Text>
         </View>
         
-        <TouchableOpacity style={styles.mapButton} onPress={navigateToMap} disabled={isMapLoading}>
-          {isMapLoading ? (
-            <ActivityIndicator size="small" color={Theme.colors.primary.main} />
-          ) : (
-            <>
-              <Ionicons name="map-outline" size={24} color={Theme.colors.primary.main} />
-              <Text style={styles.mapButtonText}>Mapa</Text>
-            </>
-          )}
+        <TouchableOpacity style={styles.mapButton} onPress={navigateToMap}>
+          <Ionicons name="map-outline" size={24} color={Theme.colors.primary.main} />
+          <Text style={styles.mapButtonText}>Mapa</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Barra de Progresso */}
       <LinearGradient
         colors={[Theme.colors.primary.light, Theme.colors.primary.main]}
         style={styles.progressHeader}
@@ -580,7 +550,6 @@ const styles = StyleSheet.create({
   mapButton: {
     alignItems: 'center',
     padding: Theme.spacing.sm,
-    minWidth: 50,
   },
   mapButtonText: {
     fontSize: 10,
