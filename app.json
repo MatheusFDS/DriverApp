@@ -40,7 +40,12 @@
         "FOREGROUND_SERVICE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCb0S-pigoIlORBtD7NsSDI_nI4ysU85RQ"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

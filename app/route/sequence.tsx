@@ -2,6 +2,7 @@
 
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +15,7 @@ import {
   View,
   Keyboard,
   Animated,
+  Dimensions,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -21,6 +23,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.65;
+const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
 
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
   const poly: { latitude: number; longitude: number }[] = [];
@@ -213,9 +219,13 @@ export default function RoutePlanningScreen() {
   const [saving, setSaving] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [items, setItems] = useState<DeliveryItemMobile[]>([]);
-  const [route, setRoute] = useState<Route | null>(null); // MODIFICADO: Adicionado estado para o roteiro
+  const [route, setRoute] = useState<Route | null>(null);
   const [polyline, setPolyline] = useState<string>('');
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Estados para expansão da lista
+  const [isExpanded, setIsExpanded] = useState(false);
+  const bottomSheetHeight = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;
 
   // Estados para feedback visual
   const [operationStatus, setOperationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -248,6 +258,19 @@ export default function RoutePlanningScreen() {
   const mapRef = useRef<MapView>(null);
   const geocodeCache = useRef<Record<string, LatLng>>({});
 
+  // Função para expandir/colapsar a lista
+  const toggleExpansion = useCallback(() => {
+    const targetHeight = isExpanded ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT;
+    
+    Animated.timing(bottomSheetHeight, {
+      toValue: targetHeight,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+    
+    setIsExpanded(!isExpanded);
+  }, [isExpanded, bottomSheetHeight]);
+
   // Função otimizada para mostrar status temporário
   const showStatus = useCallback((status: 'loading' | 'success' | 'error', message: string, duration = 2000) => {
     setOperationStatus(status);
@@ -261,7 +284,7 @@ export default function RoutePlanningScreen() {
     }
   }, []);
 
-  // Função para enquadrar mapa uma única vez
+  // Função para verificar se itens podem ser otimizados
   const canOptimizeItems = useCallback((itemsToCheck: DeliveryItemMobile[]) => {
     const allowedStatuses = ['SEM_ROTA', 'EM_ROTA_AGUARDANDO_LIBERACAO', 'EM_ROTA'];
     const unoptimizableItems = itemsToCheck.filter(item => 
@@ -275,36 +298,37 @@ export default function RoutePlanningScreen() {
     };
   }, []);
 
-  // Função para obter localização atual
+  // Função para obter localização atual usando expo-location
   const getCurrentLocation = useCallback(async () => {
     setIsGettingLocation(true);
     showStatus('loading', 'Obtendo sua localização...');
     
     try {
-      // Verificar se geolocation está disponível
-      if (!navigator.geolocation) {
-        throw new Error('Geolocalização não é suportada neste dispositivo');
+      // Solicita permissões de localização
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        throw new Error('Permissão de localização negada');
       }
 
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
-          }
-        );
+      // Obtém a localização atual
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000,
       });
 
-      const { latitude, longitude } = position.coords;
+      const { latitude, longitude } = location.coords;
       
       // Fazer geocodificação reversa para obter o endereço
       try {
-        const response = await api.geocodeAddress(`${latitude},${longitude}`);
-        if (response.success && response.data?.[0]?.success) {
-          const address = response.data[0].formattedAddress;
+        const reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        if (reverseGeocode && reverseGeocode.length > 0) {
+          const addr = reverseGeocode[0];
+          const address = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.district || ''}, ${addr.city || ''} - ${addr.region || ''}`.trim();
+          
           setStartInput(address);
           setStartPoint(address);
           setStartMarker({ lat: latitude, lng: longitude });
@@ -331,17 +355,11 @@ export default function RoutePlanningScreen() {
     } catch (error) {
       let errorMessage = 'Não foi possível obter sua localização';
       
-      if (error instanceof GeolocationPositionError) {
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Permissão de localização negada';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Localização indisponível';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Tempo limite para obter localização';
-            break;
+      if (error instanceof Error) {
+        if (error.message.includes('permission')) {
+          errorMessage = 'Permissão de localização necessária';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Erro de conexão ao obter localização';
         }
       }
       
@@ -372,6 +390,8 @@ export default function RoutePlanningScreen() {
       totalStops: result.optimizedWaypoints.length
     };
   }, []);
+
+  // Função para enquadrar mapa
   const fitMapToRoute = useCallback(() => {
     if (!mapRef.current) return;
 
@@ -396,13 +416,17 @@ export default function RoutePlanningScreen() {
       }
 
       if (coordinates.length > 0) {
+        const edgePadding = isExpanded 
+          ? { top: 100, right: 50, bottom: EXPANDED_HEIGHT + 50, left: 50 }
+          : { top: 100, right: 50, bottom: COLLAPSED_HEIGHT + 50, left: 50 };
+          
         mapRef.current?.fitToCoordinates(coordinates, {
-          edgePadding: { top: 100, right: 50, bottom: 450, left: 50 },
+          edgePadding,
           animated: true,
         });
       }
     }, 500);
-  }, [items, startMarker, endMarker]);
+  }, [items, startMarker, endMarker, isExpanded]);
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
@@ -413,7 +437,7 @@ export default function RoutePlanningScreen() {
       
       const response = await api.getRouteDetails(id);
       if (response.success && response.data) {
-        setRoute(response.data); // MODIFICADO: Salva o roteiro completo
+        setRoute(response.data);
         const sorted = response.data.deliveries.sort((a, b) => (a.sorting || 0) - (b.sorting || 0));
         setItems(sorted);
         setStartInput('');
@@ -435,6 +459,7 @@ export default function RoutePlanningScreen() {
   }, [id, showStatus]);
 
   useFocusEffect(useCallback(() => { loadInitialData(); }, [loadInitialData]));
+
   const handleGeocode = useCallback(async (address: string, type: 'start' | 'end') => {
     Keyboard.dismiss();
     const setLoadingState = type === 'start' ? setIsGeocodingStart : setIsGeocodingEnd;
@@ -549,7 +574,7 @@ export default function RoutePlanningScreen() {
         
         showStatus('success', `Rota otimizada! ${routeInformation.distance} em ${routeInformation.duration}`);
         
-        // Enquadra o mapa uma única vez após otimização
+        // Enquadra o mapa após otimização
         fitMapToRoute();
       } else {
         throw new Error('Não foi possível otimizar a rota.');
@@ -592,7 +617,6 @@ export default function RoutePlanningScreen() {
       setSaving(false);
     }
   }, [items, id, showStatus]);
-
 
   // Função otimizada para reordenação com feedback visual
   const handleDragEnd = useCallback(({ data }: { data: DeliveryItemMobile[] }) => {
@@ -702,8 +726,23 @@ export default function RoutePlanningScreen() {
         {/* Overlay de processamento */}
         <ProcessingOverlay visible={optimizing} />
 
-        <View style={styles.bottomSheet}>
+        <Animated.View style={[styles.bottomSheet, { height: bottomSheetHeight }]}>
           <View style={styles.handleBar} />
+
+          {/* Botão de expansão */}
+          <TouchableOpacity 
+            style={styles.expandButton} 
+            onPress={toggleExpansion}
+          >
+            <Text style={styles.expandButtonText}>
+              {isExpanded ? 'Minimizar Lista' : 'Expandir Lista'}
+            </Text>
+            <Ionicons 
+              name={isExpanded ? "chevron-down" : "chevron-up"} 
+              size={20} 
+              color={Theme.colors.primary.main} 
+            />
+          </TouchableOpacity>
 
           {/* Container de endpoints com melhor UX */}
           <View style={styles.endpointsContainer}>
@@ -831,7 +870,7 @@ export default function RoutePlanningScreen() {
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -923,7 +962,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '65%',
     backgroundColor: Theme.colors.background.paper,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -937,7 +975,22 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.gray[300],
     borderRadius: 3,
     alignSelf: 'center',
-    marginBottom: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
+  },
+  expandButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Theme.spacing.sm,
+    marginBottom: Theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.gray[100],
+  },
+  expandButtonText: {
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.primary.main,
+    marginRight: Theme.spacing.xs,
   },
   endpointsContainer: {
     marginBottom: Theme.spacing.lg,
