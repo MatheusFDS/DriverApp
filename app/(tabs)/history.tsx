@@ -18,12 +18,37 @@ import { RouteMobile as Route } from '../../types';
 export default function HistoryScreen() {
   const [allRoutes, setAllRoutes] = useState<Route[]>([]);
   const [displayedRoutes, setDisplayedRoutes] = useState<Route[]>([]);
-  const [totalReceivable, setTotalReceivable] = useState<number>(0);
+  const [totals, setTotals] = useState<{
+    totalValue: number;
+    paidValue: number;
+    pendingValue: number;
+  }>({
+    totalValue: 0,
+    paidValue: 0,
+    pendingValue: 0
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string>('');
   const [displayLimit, setDisplayLimit] = useState(5);
+
+  // Função para calcular totais baseado nos roteiros
+  const calculateTotals = useCallback((routes: Route[]) => {
+    const totalValue = routes.reduce((sum, route) => sum + route.freightValue, 0);
+    const paidValue = routes
+      .filter(route => route.paymentStatus === 'pago')
+      .reduce((sum, route) => sum + route.freightValue, 0);
+    const pendingValue = routes
+      .filter(route => route.paymentStatus !== 'pago')
+      .reduce((sum, route) => sum + route.freightValue, 0);
+
+    setTotals({
+      totalValue,
+      paidValue,
+      pendingValue
+    });
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -36,13 +61,11 @@ export default function HistoryScreen() {
         setAllRoutes(routes);
         setDisplayedRoutes(routes.slice(0, 5));
         setDisplayLimit(5);
+        
+        // Calcular totais baseado nos roteiros carregados
+        calculateTotals(routes);
       } else {
         setError(historyResponse.message || 'Erro ao carregar histórico');
-      }
-
-      const receivablesResponse = await api.getDriverReceivables();
-      if (receivablesResponse.success && receivablesResponse.data) {
-        setTotalReceivable(receivablesResponse.data.totalAmount);
       }
 
     } catch (err) {
@@ -51,7 +74,7 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [calculateTotals]);
 
   useEffect(() => {
     loadData();
@@ -136,7 +159,7 @@ export default function HistoryScreen() {
         {/* Card de Resumo */}
         <Card style={styles.summaryCard}>
           <Text style={[CommonStyles.heading3, styles.summaryTitle]}>
-            Resumo
+            Resumo Financeiro
           </Text>
           
           <View style={styles.summaryContent}>
@@ -153,10 +176,26 @@ export default function HistoryScreen() {
             
             <View style={styles.summaryItem}>
               <Text style={[CommonStyles.heading1, styles.summaryNumber, styles.valueText]}>
-                {formatCurrency(totalReceivable)}
+                {formatCurrency(totals.totalValue)}
               </Text>
               <Text style={[CommonStyles.body, styles.summaryLabel]}>
-                Total a Receber
+                Valor Total
+              </Text>
+            </View>
+          </View>
+
+          {/* Detalhamento dos valores */}
+          <View style={styles.detailsContainer}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Já Recebido:</Text>
+              <Text style={[styles.detailValue, styles.paidValue]}>
+                {formatCurrency(totals.paidValue)}
+              </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>A Receber:</Text>
+              <Text style={[styles.detailValue, styles.pendingValue]}>
+                {formatCurrency(totals.pendingValue)}
               </Text>
             </View>
           </View>
@@ -301,6 +340,7 @@ const styles = StyleSheet.create({
   summaryContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: Theme.spacing.lg,
   },
   summaryItem: {
     flex: 1,
@@ -323,6 +363,32 @@ const styles = StyleSheet.create({
   },
   valueText: {
     color: Theme.colors.status.success,
+  },
+  detailsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: Theme.colors.gray[200],
+    paddingTop: Theme.spacing.md,
+    gap: Theme.spacing.sm,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.text.secondary,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  detailValue: {
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
+  paidValue: {
+    color: Theme.colors.status.success,
+  },
+  pendingValue: {
+    color: Theme.colors.status.warning,
   },
   routesSection: {
     paddingHorizontal: Theme.spacing.lg,

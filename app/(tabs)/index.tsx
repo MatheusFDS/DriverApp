@@ -1,6 +1,5 @@
 // app/(tabs)/index.tsx
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -170,55 +169,26 @@ export default function DashboardScreen() {
           })}</Text>
         </View>
 
-        {/* Card de Entrega Ativa */}
+        {/* Card de Entrega Ativa Simplificado */}
         {activeDelivery && (
           <TouchableOpacity 
-            activeOpacity={0.95}
+            style={styles.activeDeliveryCard}
             onPress={() => navigateToDelivery(activeDelivery.delivery.id)}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={[Theme.colors.primary.main, Theme.colors.primary.dark]}
-              style={styles.activeDeliveryCard}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.activeDeliveryHeader}>
-                <View style={styles.pulsingDot} />
+            <View style={styles.activeDeliveryContent}>
+              <View style={styles.pulsingDot} />
+              <View style={styles.activeDeliveryInfo}>
                 <Text style={styles.activeDeliveryLabel}>ENTREGA EM ANDAMENTO</Text>
-              </View>
-              
-              <View style={styles.activeDeliveryContent}>
-                <Text style={styles.activeCustomerName}>
+                <Text style={styles.activeCustomerName} numberOfLines={1}>
+                  {activeDelivery.delivery.numeroPedido}
+                </Text>
+                <Text style={styles.activeCustomerName} numberOfLines={1}>
                   {activeDelivery.delivery.customerName}
                 </Text>
-                <Text style={styles.activeAddress} numberOfLines={2}>
-                  {activeDelivery.delivery.address}
-                </Text>
-                
-                <View style={styles.activeDeliveryActions}>
-                  <View style={styles.activeDeliveryInfo}>
-                    <Text style={styles.activeInfoLabel}>Valor</Text>
-                    <Text style={styles.activeInfoValue}>
-                      {formatCurrency(activeDelivery.delivery.value)}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.activeDeliveryInfo}>
-                    <Text style={styles.activeInfoLabel}>Pedido</Text>
-                    <Text style={styles.activeInfoValue}>
-                      #{activeDelivery.delivery.numeroPedido}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.activeButtonContainer}>
-                  <Text style={styles.activeButtonText}>
-                    Toque para gerenciar entrega
-                  </Text>
-                  <Ionicons name="arrow-forward" size={20} color="#ffffff" />
-                </View>
               </View>
-            </LinearGradient>
+              <Ionicons name="chevron-forward" size={24} color={Theme.colors.text.secondary} />
+            </View>
           </TouchableOpacity>
         )}
 
@@ -280,6 +250,7 @@ export default function DashboardScreen() {
                 >
                   <View style={styles.routeHeader}>
                     <View>
+                      <Text style={styles.routeIdText}>Roteiro #{route.code}</Text>
                       <Text style={styles.routeDate}>{formatDate(route.date)}</Text>
                       <Text style={styles.routeValue}>{formatCurrency(route.totalValue)}</Text>
                     </View>
@@ -398,91 +369,47 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   
-  // Card de Entrega Ativa
+  // Card de Entrega Ativa Simplificado
   activeDeliveryCard: {
+    backgroundColor: Theme.colors.background.paper,
     marginHorizontal: Theme.spacing.lg,
     marginVertical: Theme.spacing.md,
-    borderRadius: Theme.borderRadius.lg,
-    padding: Theme.spacing.lg,
-    ...Theme.shadows.lg,
-  },
-  
-  activeDeliveryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.lg,
-  },
-  
-  pulsingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#ffffff',
-    marginRight: Theme.spacing.sm,
-  },
-  
-  activeDeliveryLabel: {
-    color: '#ffffff',
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.bold,
-    letterSpacing: 1,
+    borderRadius: Theme.borderRadius.base,
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
+    ...Theme.shadows.sm,
   },
   
   activeDeliveryContent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: Theme.borderRadius.base,
-    padding: Theme.spacing.md,
-  },
-  
-  activeCustomerName: {
-    color: '#ffffff',
-    fontSize: Theme.typography.fontSize.xl,
-    fontWeight: Theme.typography.fontWeight.bold,
-    marginBottom: Theme.spacing.xs,
-  },
-  
-  activeAddress: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: Theme.typography.fontSize.base,
-    lineHeight: 20,
-    marginBottom: Theme.spacing.lg,
-  },
-  
-  activeDeliveryActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: Theme.spacing.lg,
+    alignItems: 'center',
+    padding: Theme.spacing.lg,
+  },
+  
+  pulsingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Theme.colors.primary.main,
+    marginRight: Theme.spacing.md,
   },
   
   activeDeliveryInfo: {
     flex: 1,
   },
   
-  activeInfoLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
+  activeDeliveryLabel: {
     fontSize: Theme.typography.fontSize.xs,
-    marginBottom: Theme.spacing.xs / 2,
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.bold,
+    letterSpacing: 0.5,
+    marginBottom: Theme.spacing.xs,
   },
   
-  activeInfoValue: {
-    color: '#ffffff',
-    fontSize: Theme.typography.fontSize.lg,
-    fontWeight: Theme.typography.fontWeight.semiBold,
-  },
-  
-  activeButtonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: Theme.borderRadius.base,
-    padding: Theme.spacing.md,
-  },
-  
-  activeButtonText: {
-    color: '#ffffff',
+  activeCustomerName: {
     fontSize: Theme.typography.fontSize.base,
-    fontWeight: Theme.typography.fontWeight.medium,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
   },
   
   // Cards de Estatísticas
@@ -686,5 +613,12 @@ const styles = StyleSheet.create({
     color: Theme.colors.text.secondary,
     textAlign: 'center',
     paddingHorizontal: Theme.spacing.xl,
+  },
+
+  routeIdText: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.text.secondary,
+    fontWeight: Theme.typography.fontWeight.medium,
+    marginBottom: Theme.spacing.xs / 2,
   },
 });

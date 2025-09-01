@@ -107,49 +107,62 @@ export default function NotificationsScreen() {
     }
   };
 
-  const renderNotificationItem = ({ item }: { item: Notification }) => (
-    <Card
-      style={StyleSheet.flatten([
-        styles.notificationCard,
-        ...(item.isRead ? [] : [styles.unreadCard])
-      ])}
-      onPress={() => handleNotificationPress(item)}
-    >
-      <View style={styles.notificationContent}>
-        <View style={styles.statusContainer}>
-          <View style={[
-            styles.statusIndicator,
-            !item.isRead && styles.unreadIndicator
-          ]} />
-          {!item.isRead && <View style={styles.unreadDot} />}
+  const renderNotificationItem = ({ item }: { item: Notification }) => {
+    // Regex para encontrar um código de roteiro como (ROT-000123) na mensagem
+    const routeCodeRegex = /\((ROT-\d+)\)/;
+    const match = item.message.match(routeCodeRegex);
+    const routeCode = match ? match[1] : null;
+    const message = routeCode ? item.message.replace(routeCodeRegex, '').replace('()', '').trim() : item.message;
+
+    return (
+      <Card
+        style={StyleSheet.flatten([
+          styles.notificationCard,
+          ...(item.isRead ? [] : [styles.unreadCard])
+        ])}
+        onPress={() => handleNotificationPress(item)}
+      >
+        <View style={styles.notificationContent}>
+          <View style={styles.statusContainer}>
+            <View style={[
+              styles.statusIndicator,
+              !item.isRead && styles.unreadIndicator
+            ]} />
+            {!item.isRead && <View style={styles.unreadDot} />}
+          </View>
+          
+          <View style={styles.textContainer}>
+            <Text style={[
+              CommonStyles.bodySmall,
+              styles.typeText,
+              !item.isRead && styles.unreadTypeText
+            ]}>
+              {getNotificationTypeText(item.type)}
+            </Text>
+            <Text style={[
+              CommonStyles.body,
+              styles.message,
+              !item.isRead && styles.unreadMessage
+            ]}>
+              {message}
+            </Text>
+            {routeCode && (
+              <View style={styles.codeContainer}>
+                <Text style={styles.codeText}>{routeCode}</Text>
+              </View>
+            )}
+            <Text style={[CommonStyles.bodySmall, styles.date]}>
+              {formatDate(item.createdAt)}
+            </Text>
+          </View>
+          
+          <View style={styles.arrowContainer}>
+            <Text style={styles.arrow}>›</Text>
+          </View>
         </View>
-        
-        <View style={styles.textContainer}>
-          <Text style={[
-            CommonStyles.bodySmall,
-            styles.typeText,
-            !item.isRead && styles.unreadTypeText
-          ]}>
-            {getNotificationTypeText(item.type)}
-          </Text>
-          <Text style={[
-            CommonStyles.body,
-            styles.message,
-            !item.isRead && styles.unreadMessage
-          ]}>
-            {item.message}
-          </Text>
-          <Text style={[CommonStyles.bodySmall, styles.date]}>
-            {formatDate(item.createdAt)}
-          </Text>
-        </View>
-        
-        <View style={styles.arrowContainer}>
-          <Text style={styles.arrow}>›</Text>
-        </View>
-      </View>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   const renderHeader = () => (
     <View style={styles.header}>
@@ -352,6 +365,22 @@ const styles = StyleSheet.create({
   
   date: {
     color: Theme.colors.text.secondary,
+  },
+
+  codeContainer: {
+    backgroundColor: Theme.colors.gray[100],
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: Theme.borderRadius.sm,
+    alignSelf: 'flex-start',
+    marginBottom: Theme.spacing.sm,
+  },
+
+  codeText: {
+    fontFamily: 'monospace',
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.bold,
   },
   
   arrowContainer: {

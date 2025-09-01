@@ -82,7 +82,7 @@ export default function RootLayout() {
             name="route/sequence" // Rota para a tela de planejamento
             options={{
               title: 'Planejar Rota',
-              headerShown: false, 
+              headerShown: true, 
               presentation: 'modal', // Apresenta como um modal
             }}
           />

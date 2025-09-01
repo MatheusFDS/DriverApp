@@ -1,6 +1,6 @@
 // app/(tabs)/profile.tsx
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -20,15 +19,7 @@ import { Button, Card, CommonStyles, Theme } from '../../components/ui';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();
-  const { 
-    isConnected  } = useNotifications();
-  
-  const [notifications, setNotifications] = useState({
-    newRoutes: true,
-    deliveryReminders: true,
-    paymentUpdates: true,
-    systemMessages: false,
-  });
+  const { isConnected } = useNotifications();
 
   const handleLogout = () => {
     Alert.alert(
@@ -41,10 +32,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const updateNotificationSetting = (key: keyof typeof notifications, value: boolean) => {
-    setNotifications(prev => ({ ...prev, [key]: value }));
-  };
-
   const openSupport = () => {
     Alert.alert(
       'Suporte', 
@@ -55,10 +42,6 @@ export default function ProfileScreen() {
         { text: 'Email', onPress: () => Linking.openURL('mailto:suporte@rotei.com.br') }
       ]
     );
-  };
-
-  const openEditProfile = () => {
-    Alert.alert("Editar Perfil", "Funcionalidade a ser implementada.");
   };
 
   if (authLoading) {
@@ -88,13 +71,6 @@ export default function ProfileScreen() {
     }
     return '?';
   };
-
-  const notificationSettings = [
-    { key: 'newRoutes', label: 'Novos Roteiros' },
-    { key: 'deliveryReminders', label: 'Lembretes de Entrega' },
-    { key: 'paymentUpdates', label: 'Atualizações de Pagamento' },
-    { key: 'systemMessages', label: 'Mensagens do Sistema' },
-  ];
 
   return (
     <SafeAreaView style={CommonStyles.container}>
@@ -130,9 +106,12 @@ export default function ProfileScreen() {
 
         {/* Card de Rastreamento de Localização */}
         <Card style={styles.sectionCard}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📍 Rastreamento de Localização
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="location" size={20} color={Theme.colors.primary.main} />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Rastreamento de Localização
+            </Text>
+          </View>
           
           <LocationTrackingControl 
             style={styles.locationControl}
@@ -154,17 +133,23 @@ export default function ProfileScreen() {
 
         {/* Card de Status da Conexão */}
         <Card style={styles.sectionCard}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            🌐 Status da Conexão
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons 
+              name={isConnected ? 'cloud-done' : 'cloud-offline'} 
+              size={20} 
+              color={isConnected ? Theme.colors.status.success : Theme.colors.status.error} 
+            />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Status da Conexão
+            </Text>
+          </View>
           
           <View style={styles.connectionStatus}>
             <View style={styles.statusIndicator}>
-              <Ionicons
-                name={isConnected ? 'cloud-done-outline' : 'cloud-offline-outline'}
-                size={24}
-                color={isConnected ? Theme.colors.status.success : Theme.colors.status.error}
-              />
+              <View style={[
+                styles.statusDot, 
+                { backgroundColor: isConnected ? Theme.colors.status.success : Theme.colors.status.error }
+              ]} />
               <Text style={[
                 CommonStyles.body, 
                 styles.statusText,
@@ -184,9 +169,13 @@ export default function ProfileScreen() {
 
         {/* Card do Veículo */}
         <Card style={styles.sectionCard}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            🚛 Veículo
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="car" size={20} color={Theme.colors.primary.main} />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Informações do Veículo
+            </Text>
+          </View>
+          
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
               <Text style={[CommonStyles.body, styles.infoLabel]}>Modelo:</Text>
@@ -203,12 +192,16 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        {/* Card da Empresa */}
+        {/* Card da Empresa (se existir) */}
         {user.companyName && (
           <Card style={styles.sectionCard}>
-            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-              🏢 Empresa
-            </Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="business" size={20} color={Theme.colors.primary.main} />
+              <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+                Empresa
+              </Text>
+            </View>
+            
             <View style={styles.infoList}>
               <View style={styles.infoRow}>
                 <Text style={[CommonStyles.body, styles.infoLabel]}>Nome:</Text>
@@ -216,84 +209,55 @@ export default function ProfileScreen() {
                   {user.companyName}
                 </Text>
               </View>
-              <View style={styles.infoRow}>
-                <Text style={[CommonStyles.body, styles.infoLabel]}>CNPJ:</Text>
-                <Text style={[CommonStyles.body, styles.infoValue]}>
-                  {user.companyCnpj || 'Não informado'}
-                </Text>
-              </View>
+              {user.companyCnpj && (
+                <View style={styles.infoRow}>
+                  <Text style={[CommonStyles.body, styles.infoLabel]}>CNPJ:</Text>
+                  <Text style={[CommonStyles.body, styles.infoValue]}>
+                    {user.companyCnpj}
+                  </Text>
+                </View>
+              )}
             </View>
           </Card>
         )}
 
-        {/* Card de Notificações */}
+        {/* Card de Suporte */}
         <Card style={styles.sectionCard}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            🔔 Notificações
-          </Text>
-          <View style={styles.settingsList}>
-            {notificationSettings.map((setting) => (
-              <View key={setting.key} style={styles.settingItem}>
-                <Text style={[CommonStyles.body, styles.settingLabel]}>
-                  {setting.label}
+          <View style={styles.sectionHeader}>
+            <Ionicons name="help-circle" size={20} color={Theme.colors.primary.main} />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Ajuda e Suporte
+            </Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.supportButton} 
+            onPress={openSupport}
+            activeOpacity={0.7}
+          >
+            <View style={styles.supportContent}>
+              <View style={styles.supportInfo}>
+                <Text style={[CommonStyles.body, styles.supportLabel]}>
+                  Entre em contato
                 </Text>
-                <Switch
-                  value={notifications[setting.key as keyof typeof notifications]}
-                  onValueChange={(value) => updateNotificationSetting(setting.key as keyof typeof notifications, value)}
-                  trackColor={{ 
-                    false: Theme.colors.gray[300], 
-                    true: Theme.colors.primary.light 
-                  }}
-                  thumbColor={
-                    notifications[setting.key as keyof typeof notifications] 
-                      ? Theme.colors.primary.main 
-                      : Theme.colors.gray[400]
-                  }
-                />
+                <Text style={[CommonStyles.bodySmall, styles.supportDescription]}>
+                  WhatsApp ou Email para suporte técnico
+                </Text>
               </View>
-            ))}
-          </View>
-        </Card>
-
-        {/* Card de Configurações */}
-        <Card style={styles.sectionCard}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            ⚙️ Configurações
-          </Text>
-          <View style={styles.actionsList}>
-            <TouchableOpacity 
-              style={styles.actionItem} 
-              onPress={openEditProfile}
-              activeOpacity={0.7}
-            >
-              <Text style={[CommonStyles.body, styles.actionLabel]}>
-                Editar Perfil
-              </Text>
-              <Text style={[CommonStyles.bodySmall, styles.actionDescription]}>
-                Alterar dados pessoais
-              </Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionItem} 
-              onPress={openSupport}
-              activeOpacity={0.7}
-            >
-              <Text style={[CommonStyles.body, styles.actionLabel]}>
-                Suporte
-              </Text>
-              <Text style={[CommonStyles.bodySmall, styles.actionDescription]}>
-                Entre em contato conosco
-              </Text>
-            </TouchableOpacity>
-          </View>
+              <Ionicons name="chevron-forward" size={20} color={Theme.colors.text.secondary} />
+            </View>
+          </TouchableOpacity>
         </Card>
 
         {/* Card de Informações do App */}
         <Card style={styles.sectionCard}>
-          <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
-            📱 Informações do App
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="phone-portrait" size={20} color={Theme.colors.primary.main} />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Informações do App
+            </Text>
+          </View>
+          
           <View style={styles.infoList}>
             <View style={styles.infoRow}>
               <Text style={[CommonStyles.body, styles.infoLabel]}>
@@ -386,9 +350,15 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.lg,
   },
   
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.lg,
+  },
+  
   sectionTitle: {
     color: Theme.colors.text.primary,
-    marginBottom: Theme.spacing.lg,
+    marginLeft: Theme.spacing.sm,
   },
   
   // Estilos para o controle de localização
@@ -426,14 +396,21 @@ const styles = StyleSheet.create({
     marginBottom: Theme.spacing.sm,
   },
   
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: Theme.spacing.sm,
+  },
+  
   statusText: {
-    marginLeft: Theme.spacing.sm,
     fontWeight: Theme.typography.fontWeight.medium,
   },
   
   connectionWarning: {
     color: Theme.colors.text.secondary,
     marginTop: Theme.spacing.xs,
+    fontStyle: 'italic',
   },
   
   infoList: {
@@ -459,47 +436,40 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     flex: 1,
     marginLeft: Theme.spacing.md,
-  },
-  
-  settingsList: {
-    gap: Theme.spacing.md,
-  },
-  
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Theme.spacing.sm,
-  },
-  
-  settingLabel: {
     fontWeight: Theme.typography.fontWeight.medium,
-    color: Theme.colors.text.primary,
+  },
+  
+  // Estilos para suporte
+  supportButton: {
+    borderRadius: Theme.borderRadius.base,
+    backgroundColor: Theme.colors.gray[50],
+    borderWidth: 1,
+    borderColor: Theme.colors.gray[200],
+  },
+  
+  supportContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Theme.spacing.md,
+  },
+  
+  supportInfo: {
     flex: 1,
   },
   
-  actionsList: {
-    gap: Theme.spacing.sm,
-  },
-  
-  actionItem: {
-    paddingVertical: Theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.gray[100],
-  },
-  
-  actionLabel: {
+  supportLabel: {
     fontWeight: Theme.typography.fontWeight.medium,
     color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.xs / 2,
   },
   
-  actionDescription: {
+  supportDescription: {
     color: Theme.colors.text.secondary,
   },
   
   logoutSection: {
     paddingHorizontal: Theme.spacing.lg,
     marginTop: Theme.spacing.md,
+    marginBottom: Theme.spacing.lg,
   },
 });

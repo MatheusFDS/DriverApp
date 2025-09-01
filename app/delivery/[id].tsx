@@ -1,7 +1,6 @@
 // app/delivery/[id].tsx
 
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -205,11 +204,14 @@ export default function DeliveryDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={[statusConfig.color, statusConfig.color + 'dd']} style={styles.header}>
-        <TouchableOpacity style={styles.headerBackButton} onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color="#ffffff" /></TouchableOpacity>
-        <View style={styles.headerContent}><Text style={styles.headerStatus}>{statusConfig.text}</Text></View>
-        <View style={styles.headerValueContainer}><Text style={styles.headerValueLabel}>Valor</Text><Text style={styles.headerValue}>{deliveryItem.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</Text></View>
-      </LinearGradient>
+      <View style={styles.statusHeader}>
+        <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
+          <Text style={styles.statusText}>{statusConfig.text}</Text>
+        </View>
+        <Text style={styles.headerValue}>
+          {deliveryItem.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </Text>
+      </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={false} onRefresh={() => loadDeliveryDetails(false)} colors={[Theme.colors.primary.main]} />}>
         <View style={styles.mainCard}>
@@ -295,12 +297,26 @@ export default function DeliveryDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background.default },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Theme.spacing.lg, paddingVertical: Theme.spacing.md, paddingTop: Platform.OS === 'ios' ? 50 : Theme.spacing.md },
-  headerBackButton: { padding: Theme.spacing.sm, marginRight: Theme.spacing.md },
-  headerContent: { flex: 1 },
-  headerStatus: { fontSize: Theme.typography.fontSize.lg, color: '#ffffff', fontWeight: Theme.typography.fontWeight.bold },
-  headerValueContainer: { alignItems: 'flex-end' },
-  headerValueLabel: { fontSize: Theme.typography.fontSize.xs, color: 'rgba(255, 255, 255, 0.8)' },
+ statusHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingHorizontal: Theme.spacing.lg,
+    paddingVertical: Theme.spacing.md,
+    backgroundColor: Theme.colors.background.paper,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.colors.divider
+  },
+  statusBadge: {
+    paddingHorizontal: Theme.spacing.md,
+    paddingVertical: Theme.spacing.sm,
+    borderRadius: Theme.borderRadius.full,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
   headerValue: { fontSize: Theme.typography.fontSize.xl, color: '#ffffff', fontWeight: Theme.typography.fontWeight.bold },
   scrollView: { flex: 1 },
   scrollContent: { padding: Theme.spacing.lg },

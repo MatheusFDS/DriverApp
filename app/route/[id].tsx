@@ -228,20 +228,6 @@ export default function RouteDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Theme.colors.text.primary} />
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerDate}>{formatDate(route.date)}</Text>
-          <Text style={styles.headerValue}>{formatCurrency(route.totalValue)}</Text>
-        </View>
-        <TouchableOpacity style={styles.planButton} onPress={navigateToPlanning}>
-          <Ionicons name="options-outline" size={20} color={Theme.colors.primary.main} />
-          <Text style={styles.planButtonText}>Planejar</Text>
-        </TouchableOpacity>
-      </View>
-
       <LinearGradient
         colors={[Theme.colors.primary.light, Theme.colors.primary.main]}
         style={styles.progressHeader}
@@ -258,6 +244,18 @@ export default function RouteDetailsScreen() {
           </View>
         </View>
       </LinearGradient>
+
+           <View style={styles.routeHeader}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerCode}>Roteiro #{route.code}</Text>
+          <Text style={styles.headerDate}>{formatDate(route.date)}</Text>
+          <Text style={styles.headerValue}>{formatCurrency(route.totalValue)}</Text>
+        </View>
+        <TouchableOpacity style={styles.planButton} onPress={navigateToPlanning}>
+          <Ionicons name="options-outline" size={20} color={Theme.colors.primary.main} />
+          <Text style={styles.planButtonText}>Planejar</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView 
         style={styles.scrollView}
@@ -345,9 +343,18 @@ function DeliveryCard({ delivery, index, onPress, onLongPress, isUpdating, isCom
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background.default },
-  header: { flexDirection: 'row', alignItems: 'center', backgroundColor: Theme.colors.background.paper, paddingHorizontal: Theme.spacing.lg, paddingVertical: Theme.spacing.md, borderBottomWidth: 1, borderBottomColor: Theme.colors.divider, ...Theme.shadows.sm },
-  backButton: { padding: Theme.spacing.sm, marginRight: Theme.spacing.md },
+  routeHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: Theme.colors.background.paper, 
+    paddingHorizontal: Theme.spacing.lg, 
+    paddingVertical: Theme.spacing.md, 
+    borderBottomWidth: 1, 
+    borderBottomColor: Theme.colors.divider, 
+    ...Theme.shadows.sm 
+  },
   headerContent: { flex: 1 },
+  headerCode: { fontSize: Theme.typography.fontSize.base, fontWeight: 'bold', color: Theme.colors.primary.main, marginBottom: 4 },
   headerDate: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.secondary, textTransform: 'capitalize' },
   headerValue: { fontSize: Theme.typography.fontSize.xl, fontWeight: Theme.typography.fontWeight.bold, color: Theme.colors.status.success },
   planButton: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, backgroundColor: Theme.colors.gray[100], paddingVertical: Theme.spacing.sm, paddingHorizontal: Theme.spacing.md, borderRadius: Theme.borderRadius.full },

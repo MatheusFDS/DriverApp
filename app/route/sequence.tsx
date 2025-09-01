@@ -20,7 +20,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Theme } from '../../components/ui';
 import { api } from '../../services/api';
-import { DeliveryItemMobile, LatLng } from '../../types';
+import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
 
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
   const poly: { latitude: number; longitude: number }[] = [];
@@ -213,6 +213,7 @@ export default function RoutePlanningScreen() {
   const [saving, setSaving] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [items, setItems] = useState<DeliveryItemMobile[]>([]);
+  const [route, setRoute] = useState<Route | null>(null); // MODIFICADO: Adicionado estado para o roteiro
   const [polyline, setPolyline] = useState<string>('');
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -233,11 +234,144 @@ export default function RoutePlanningScreen() {
   // Geocodificação
   const [isGeocodingStart, setIsGeocodingStart] = useState(false);
   const [isGeocodingEnd, setIsGeocodingEnd] = useState(false);
+  
+  // Geolocalização
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  
+  // Informações da rota
+  const [routeInfo, setRouteInfo] = useState<{
+    distance: string;
+    duration: string;
+    totalStops: number;
+  } | null>(null);
 
   const mapRef = useRef<MapView>(null);
   const geocodeCache = useRef<Record<string, LatLng>>({});
 
+  // Função otimizada para mostrar status temporário
+  const showStatus = useCallback((status: 'loading' | 'success' | 'error', message: string, duration = 2000) => {
+    setOperationStatus(status);
+    setStatusMessage(message);
+    
+    if (status !== 'loading') {
+      setTimeout(() => {
+        setOperationStatus('idle');
+        setStatusMessage('');
+      }, duration);
+    }
+  }, []);
+
   // Função para enquadrar mapa uma única vez
+  const canOptimizeItems = useCallback((itemsToCheck: DeliveryItemMobile[]) => {
+    const allowedStatuses = ['SEM_ROTA', 'EM_ROTA_AGUARDANDO_LIBERACAO', 'EM_ROTA'];
+    const unoptimizableItems = itemsToCheck.filter(item => 
+      !allowedStatuses.includes(item.status || 'SEM_ROTA')
+    );
+    
+    return {
+      canOptimize: unoptimizableItems.length === 0,
+      unoptimizableCount: unoptimizableItems.length,
+      unoptimizableItems
+    };
+  }, []);
+
+  // Função para obter localização atual
+  const getCurrentLocation = useCallback(async () => {
+    setIsGettingLocation(true);
+    showStatus('loading', 'Obtendo sua localização...');
+    
+    try {
+      // Verificar se geolocation está disponível
+      if (!navigator.geolocation) {
+        throw new Error('Geolocalização não é suportada neste dispositivo');
+      }
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
+          }
+        );
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // Fazer geocodificação reversa para obter o endereço
+      try {
+        const response = await api.geocodeAddress(`${latitude},${longitude}`);
+        if (response.success && response.data?.[0]?.success) {
+          const address = response.data[0].formattedAddress;
+          setStartInput(address);
+          setStartPoint(address);
+          setStartMarker({ lat: latitude, lng: longitude });
+          
+          geocodeCache.current[address] = { lat: latitude, lng: longitude };
+          showStatus('success', 'Localização atual definida como ponto de partida!');
+        } else {
+          // Se não conseguir o endereço, usar as coordenadas
+          const coords = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          setStartInput(coords);
+          setStartPoint(coords);
+          setStartMarker({ lat: latitude, lng: longitude });
+          showStatus('success', 'Coordenadas atuais definidas como ponto de partida!');
+        }
+      } catch {
+        // Fallback para coordenadas se a geocodificação falhar
+        const coords = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        setStartInput(coords);
+        setStartPoint(coords);
+        setStartMarker({ lat: latitude, lng: longitude });
+        showStatus('success', 'Localização atual definida!');
+      }
+      
+    } catch (error) {
+      let errorMessage = 'Não foi possível obter sua localização';
+      
+      if (error instanceof GeolocationPositionError) {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Permissão de localização negada';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Localização indisponível';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Tempo limite para obter localização';
+            break;
+        }
+      }
+      
+      showStatus('error', errorMessage);
+      Alert.alert('Erro de Localização', errorMessage);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  }, [showStatus]);
+
+  // Função para formatar informações da rota
+  const formatRouteInfo = useCallback((result: any) => {
+    const distanceKm = (result.totalDistanceInMeters / 1000).toFixed(1);
+    const durationMinutes = Math.round(result.totalDurationInSeconds / 60);
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    
+    let durationText = '';
+    if (hours > 0) {
+      durationText = `${hours}h ${minutes}min`;
+    } else {
+      durationText = `${minutes}min`;
+    }
+    
+    return {
+      distance: `${distanceKm} km`,
+      duration: durationText,
+      totalStops: result.optimizedWaypoints.length
+    };
+  }, []);
   const fitMapToRoute = useCallback(() => {
     if (!mapRef.current) return;
 
@@ -270,19 +404,6 @@ export default function RoutePlanningScreen() {
     }, 500);
   }, [items, startMarker, endMarker]);
 
-  // Função otimizada para mostrar status temporário
-  const showStatus = useCallback((status: 'loading' | 'success' | 'error', message: string, duration = 2000) => {
-    setOperationStatus(status);
-    setStatusMessage(message);
-    
-    if (status !== 'loading') {
-      setTimeout(() => {
-        setOperationStatus('idle');
-        setStatusMessage('');
-      }, duration);
-    }
-  }, []);
-
   const loadInitialData = useCallback(async () => {
     setLoading(true);
     showStatus('loading', 'Carregando roteiro...');
@@ -292,6 +413,7 @@ export default function RoutePlanningScreen() {
       
       const response = await api.getRouteDetails(id);
       if (response.success && response.data) {
+        setRoute(response.data); // MODIFICADO: Salva o roteiro completo
         const sorted = response.data.deliveries.sort((a, b) => (a.sorting || 0) - (b.sorting || 0));
         setItems(sorted);
         setStartInput('');
@@ -313,8 +435,6 @@ export default function RoutePlanningScreen() {
   }, [id, showStatus]);
 
   useFocusEffect(useCallback(() => { loadInitialData(); }, [loadInitialData]));
-
-  // Função otimizada para geocodificação
   const handleGeocode = useCallback(async (address: string, type: 'start' | 'end') => {
     Keyboard.dismiss();
     const setLoadingState = type === 'start' ? setIsGeocodingStart : setIsGeocodingEnd;
@@ -372,6 +492,25 @@ export default function RoutePlanningScreen() {
       return;
     }
 
+    // Verificar se os pedidos podem ser otimizados
+    const optimization = canOptimizeItems(items);
+    if (!optimization.canOptimize) {
+      Alert.alert(
+        'Pedidos Não Podem Ser Otimizados',
+        `${optimization.unoptimizableCount} pedido(s) já foram iniciados e não podem ser reordenados. Apenas pedidos com status "Sem Rota", "Em Rota Aguardando Liberação" ou "Em Rota" podem ser otimizados.`,
+        [
+          { text: 'Ver Detalhes', onPress: () => {
+            const itemsList = optimization.unoptimizableItems
+              .map(item => `• ${item.customerName} - Status: ${item.status || 'N/A'}`)
+              .join('\n');
+            Alert.alert('Pedidos Não Otimizáveis', itemsList);
+          }},
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
+      return;
+    }
+
     setOptimizing(true);
     
     try {
@@ -404,7 +543,11 @@ export default function RoutePlanningScreen() {
           setPolyline(routeResult.polyline);
         }
         
-        showStatus('success', 'Rota otimizada com sucesso!');
+        // Atualiza informações da rota
+        const routeInformation = formatRouteInfo(response);
+        setRouteInfo(routeInformation);
+        
+        showStatus('success', `Rota otimizada! ${routeInformation.distance} em ${routeInformation.duration}`);
         
         // Enquadra o mapa uma única vez após otimização
         fitMapToRoute();
@@ -417,7 +560,7 @@ export default function RoutePlanningScreen() {
     } finally {
       setOptimizing(false);
     }
-  }, [items, startPoint, endPoint, showStatus, fitMapToRoute]);
+  }, [items, startPoint, endPoint, showStatus, fitMapToRoute, canOptimizeItems, formatRouteInfo]);
 
   const handleSaveSequence = useCallback(async () => {
     setSaving(true);
@@ -450,6 +593,7 @@ export default function RoutePlanningScreen() {
     }
   }, [items, id, showStatus]);
 
+
   // Função otimizada para reordenação com feedback visual
   const handleDragEnd = useCallback(({ data }: { data: DeliveryItemMobile[] }) => {
     setItems(data);
@@ -474,7 +618,7 @@ export default function RoutePlanningScreen() {
       );
     }).filter(Boolean);
   }, [items]);
-
+  
   const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<DeliveryItemMobile>) => {
     const index = getIndex();
     return (
@@ -552,11 +696,6 @@ export default function RoutePlanningScreen() {
           )}
         </MapView>
 
-        {/* Botão de voltar no canto superior esquerdo */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={Theme.colors.text.primary} />
-        </TouchableOpacity>
-
         {/* Indicador de status */}
         <StatusIndicator status={operationStatus} text={statusMessage} />
 
@@ -571,6 +710,17 @@ export default function RoutePlanningScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Pontos de Referência</Text>
               <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.locationButton]} 
+                  onPress={getCurrentLocation}
+                  disabled={isGettingLocation}
+                >
+                  {isGettingLocation ? (
+                    <ActivityIndicator size="small" color={Theme.colors.primary.main} />
+                  ) : (
+                    <Ionicons name="location" size={20} color={Theme.colors.primary.main} />
+                  )}
+                </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.actionButton, styles.fitButton]} 
                   onPress={fitMapToRoute}
@@ -614,10 +764,34 @@ export default function RoutePlanningScreen() {
             />
           </View>
 
+          {/* Informações da rota otimizada */}
+          {routeInfo && (
+            <View style={styles.routeInfoContainer}>
+              <View style={styles.routeInfoHeader}>
+                <Ionicons name="information-circle" size={20} color={Theme.colors.primary.main} />
+                <Text style={styles.routeInfoTitle}>Informações da Rota</Text>
+              </View>
+              <View style={styles.routeInfoStats}>
+                <View style={styles.routeInfoStat}>
+                  <Ionicons name="speedometer" size={16} color={Theme.colors.text.secondary} />
+                  <Text style={styles.routeInfoStatText}>{routeInfo.distance}</Text>
+                </View>
+                <View style={styles.routeInfoStat}>
+                  <Ionicons name="time" size={16} color={Theme.colors.text.secondary} />
+                  <Text style={styles.routeInfoStatText}>{routeInfo.duration}</Text>
+                </View>
+                <View style={styles.routeInfoStat}>
+                  <Ionicons name="location" size={16} color={Theme.colors.text.secondary} />
+                  <Text style={styles.routeInfoStatText}>{routeInfo.totalStops} paradas</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Lista de paradas com melhor feedback */}
           <View style={styles.deliveriesContainer}>
             <View style={styles.deliveriesHeader}>
-              <Text style={styles.sectionTitle}>Sequência de Entregas</Text>
+              <Text style={styles.sectionTitle}>Sequência de Entregas {route?.code ? `(#${route.code})` : ''}</Text>
               <Text style={styles.deliveriesCount}>{items.length} paradas</Text>
             </View>
             
@@ -682,22 +856,9 @@ const styles = StyleSheet.create({
   map: { 
     ...StyleSheet.absoluteFillObject 
   },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: Theme.spacing.md,
-    width: 44,
-    height: 44,
-    backgroundColor: Theme.colors.background.paper,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Theme.shadows.base,
-    zIndex: 1000,
-  },
   statusIndicator: {
     position: 'absolute',
-    top: 120,
+    top: 20,
     left: Theme.spacing.md,
     right: Theme.spacing.md,
     flexDirection: 'row',
@@ -806,6 +967,11 @@ const styles = StyleSheet.create({
   fitButton: {
     backgroundColor: Theme.colors.gray[100],
   },
+  locationButton: {
+    backgroundColor: Theme.colors.primary.main + '15',
+    borderWidth: 1,
+    borderColor: Theme.colors.primary.main + '30',
+  },
   optimizeButton: {
     backgroundColor: Theme.colors.primary.main,
     ...Theme.shadows.sm,
@@ -845,6 +1011,42 @@ const styles = StyleSheet.create({
   },
   geocodeButtonDisabled: {
     opacity: 0.5,
+  },
+  routeInfoContainer: {
+    backgroundColor: Theme.colors.primary.main + '10',
+    borderRadius: Theme.borderRadius.lg,
+    padding: Theme.spacing.md,
+    marginBottom: Theme.spacing.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: Theme.colors.primary.main,
+  },
+  routeInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Theme.spacing.sm,
+  },
+  routeInfoTitle: {
+    fontSize: Theme.typography.fontSize.base,
+    fontWeight: Theme.typography.fontWeight.semiBold,
+    color: Theme.colors.text.primary,
+    marginLeft: Theme.spacing.sm,
+  },
+  routeInfoStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  routeInfoStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  routeInfoStatText: {
+    fontSize: Theme.typography.fontSize.sm,
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.primary,
+    marginLeft: Theme.spacing.xs,
   },
   deliveriesContainer: {
     flex: 1,
