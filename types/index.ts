@@ -75,6 +75,17 @@ export interface LatLng {
   lng: number;
 }
 
+// --- ADICIONADO ---
+export interface GeocodeResult {
+  originalAddress: string;
+  formattedAddress: string;
+  lat: number;
+  lng: number;
+  success: boolean;
+  error?: string;
+}
+
+
 export interface DeliveryItemMobile {
   id: string;
   customerName: string;
@@ -95,8 +106,8 @@ export interface DeliveryItemMobile {
   proofCount?: number;
   proofs?: DeliveryProof[];
   routeStatus?: RouteMobileStatus;
-  latitude: number;  // <-- ADICIONADO
-  longitude: number; // <-- ADICIONADO
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface OptimizeRouteRequest {
@@ -112,6 +123,25 @@ export interface OptimizeRouteRequest {
   }[];
 }
 
+export interface OptimizedRouteResult {
+  optimizedWaypoints: {
+    id: string;
+    address: string;
+    clientName?: string;
+    orderNumber?: string;
+    order: number;
+    distanceFromPreviousInMeters: number;
+    durationFromPreviousInSeconds: number;
+    lat?: number;
+    lng?: number;
+  }[];
+  totalDistanceInMeters: number;
+  totalDurationInSeconds: number;
+  polyline: string;
+  hasTolls: boolean;
+  mapUrl?: string;
+}
+
 
 export interface RouteMobile {
   code?: string;
@@ -125,7 +155,7 @@ export interface RouteMobile {
   vehicle?: string;
   driverName?: string;
   deliveries: DeliveryItemMobile[];
-  polyline?: string; // <-- ADICIONADO
+  polyline?: string;
 }
 
 export interface ApiResponse<T> {

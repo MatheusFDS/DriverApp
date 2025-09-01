@@ -5,7 +5,9 @@ import {
     ApiResponse,
     DeliveryItemMobile,
     DeliveryProof,
+    GeocodeResult,
     Notification,
+    OptimizedRouteResult,
     OptimizeRouteRequest,
     PaginatedNotifications,
     RouteMobile,
@@ -151,7 +153,6 @@ class ApiService {
     return this.request<RouteMobile>(`/mobile/v1/routes/${routeId}`);
   }
 
-  // MÉTODO ADICIONADO PARA CORRIGIR O ERRO
   async getRouteMap(routeId: string): Promise<ApiResponse<RouteMobile>> {
     return this.request<RouteMobile>(`/routes/map/${routeId}`);
   }
@@ -264,17 +265,38 @@ class ApiService {
     });
   }
 
-    // MÉTODO ADICIONADO PARA CORRIGIR O ERRO
-  async calculateSequentialRoute(data: OptimizeRouteRequest): Promise<RouteMobile> {
-    // Reutiliza a estrutura de OptimizedRouteResult que é compatível com RouteMobile
-    const response = await this.request<RouteMobile>('/routes/calculate-sequential', {
+  async calculateSequentialRoute(data: OptimizeRouteRequest): Promise<OptimizedRouteResult> {
+    const response = await this.request<OptimizedRouteResult>('/routes/calculate-sequential', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    if (response.data) {
+
+    if (response.success && response.data) {
       return response.data;
     }
     throw new Error(response.message || 'Falha ao calcular a rota sequencial.');
+  }
+
+  async optimizeRoute(data: OptimizeRouteRequest): Promise<OptimizedRouteResult> {
+    const response = await this.request<OptimizedRouteResult>('/routes/optimize', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || 'Falha ao otimizar a rota.');
+  }
+
+  async updateDeliverySequence(
+    routeId: string, 
+    updates: { orderId: string; sorting: number }[]
+  ): Promise<ApiResponse<any>> {
+    return this.request(`/mobile/v1/routes/${routeId}/sequence`, {
+      method: 'PATCH',
+      body: JSON.stringify({ updates }),
+    });
   }
 
   async sendBulkLocations(payload: any[]): Promise<ApiResponse<any>> {
@@ -295,6 +317,13 @@ class ApiService {
     return this.request<any>(`/invites/${token}/accept`, {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+  
+  async geocodeAddress(address: string): Promise<ApiResponse<GeocodeResult[]>> {
+    return this.request<GeocodeResult[]>('/routes/geocode', {
+      method: 'POST',
+      body: JSON.stringify({ addresses: [address] }),
     });
   }
 }

@@ -79,11 +79,11 @@ export default function RootLayout() {
             }} 
           />
            <Stack.Screen
-            name="route/map" // <-- NOVA ROTA DO MAPA ADICIONADA AQUI
+            name="route/sequence" // Rota para a tela de planejamento
             options={{
-              title: 'Mapa do Roteiro',
-              headerShown: false, // Oculta o header padrão para um visual mais imersivo
-              presentation: 'modal',
+              title: 'Planejar Rota',
+              headerShown: false, 
+              presentation: 'modal', // Apresenta como um modal
             }}
           />
           <Stack.Screen
