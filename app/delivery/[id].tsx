@@ -36,6 +36,19 @@ import { api } from '../../services/api';
 
 Dimensions.get('window');
 
+// Enum de motivos comuns para não entrega
+const MOTIVOS_NAO_ENTREGA = [
+  'Cliente ausente',
+  'Endereço incorreto',
+  'Estabelecimento fechado',
+  'Recusou receber',
+  'Problemas com documentação',
+  'Mercadoria em falta',
+  'Problemas com pagamento',
+  'Fora do horário de entrega',
+  'Outro motivo'
+];
+
 export default function DeliveryDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [deliveryItem, setDeliveryItem] = useState<DeliveryItemMobile | null>(null);
@@ -46,6 +59,7 @@ export default function DeliveryDetailsScreen() {
   const [viewingProof, setViewingProof] = useState<string | null>(null);
   const [showMotivoModal, setShowMotivoModal] = useState(false);
   const [motivoTexto, setMotivoTexto] = useState('');
+  const [selectedMotivo, setSelectedMotivo] = useState('');
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState<OrderMobileStatus | null>(null);
 
   const loadDeliveryDetails = useCallback(async (showLoading = true) => {
@@ -57,6 +71,7 @@ export default function DeliveryDetailsScreen() {
         if (showLoading) setLoading(false);
         return;
       }
+      
       const response = await api.getDeliveryDetails(id);
       if (response.success && response.data) {
         setDeliveryItem(response.data);
@@ -91,7 +106,7 @@ export default function DeliveryDetailsScreen() {
       
       if (response.success && response.data) {
         Alert.alert('Sucesso', `Entrega marcada como ${getOrderMobileStatusConfig(newStatus).text}.`, [
-          { text: 'OK', onPress: () => router.back() } // Volta para a tela anterior
+          { text: 'OK', onPress: () => router.back() }
         ]);
       } else {
         throw new Error(response.message || 'Erro ao atualizar status');
@@ -101,10 +116,12 @@ export default function DeliveryDetailsScreen() {
     } finally {
       setUpdatingStatus(false);
       setPendingStatusUpdate(null);
+      setSelectedMotivo('');
+      setMotivoTexto('');
     }
   };
 
-  const confirmStatusUpdate = (targetStatus: OrderMobileStatus) => {
+  const confirmStatusUpdate = async (targetStatus: OrderMobileStatus) => {
     setPendingStatusUpdate(targetStatus);
 
     if (targetStatus === 'ENTREGUE') {
@@ -113,7 +130,7 @@ export default function DeliveryDetailsScreen() {
     }
     
     if (targetStatus === 'NAO_ENTREGUE') {
-      setShowProofModal(true);
+      setShowMotivoModal(true);
       return;
     }
     
@@ -126,12 +143,18 @@ export default function DeliveryDetailsScreen() {
   };
   
   const submitMotivoNaoEntrega = () => {
-    if (motivoTexto.trim() === '') {
-      Alert.alert('Atenção', 'O motivo é obrigatório para reportar um problema.');
+    const motivoFinal = selectedMotivo === 'Outro motivo' ? motivoTexto : selectedMotivo;
+    
+    if (!motivoFinal || motivoFinal.trim() === '') {
+      Alert.alert('Atenção', 'Selecione ou informe o motivo da não entrega.');
       return;
     }
+    
     setShowMotivoModal(false);
-    handleUpdateStatus('NAO_ENTREGUE', motivoTexto.trim());
+    
+    // Para não entregue, primeiro pede o motivo, depois o comprovante
+    setPendingStatusUpdate('NAO_ENTREGUE');
+    setShowProofModal(true);
   };
 
   const handleProofSuccess = () => {
@@ -140,8 +163,16 @@ export default function DeliveryDetailsScreen() {
     if (pendingStatusUpdate === 'ENTREGUE') {
       handleUpdateStatus('ENTREGUE');
     } else if (pendingStatusUpdate === 'NAO_ENTREGUE') {
-      setShowMotivoModal(true);
+      // Já temos o motivo, então atualiza o status
+      const motivoFinal = selectedMotivo === 'Outro motivo' ? motivoTexto : selectedMotivo;
+      handleUpdateStatus('NAO_ENTREGUE', motivoFinal);
     }
+  };
+
+  const handleProofCancel = () => {
+    setShowProofModal(false);
+    setPendingStatusUpdate(null);
+    // Não altera o status se o usuário cancelar o envio do comprovante
   };
 
   const callCustomer = () => {
@@ -261,25 +292,106 @@ export default function DeliveryDetailsScreen() {
             let buttonStyle = styles.primaryActionButton;
             if (action.targetStatus === 'ENTREGUE') buttonStyle = styles.successActionButton;
             else if (action.targetStatus === 'NAO_ENTREGUE') buttonStyle = styles.dangerActionButton;
+            else if (action.targetStatus === 'EM_ROTA') buttonStyle = styles.warningActionButton;
+            
             return (
-              <TouchableOpacity key={action.id} style={[buttonStyle, updatingStatus && styles.disabledButton]} onPress={() => confirmStatusUpdate(action.targetStatus)} disabled={updatingStatus}>
-                {updatingStatus ? <ActivityIndicator color="#ffffff" /> : (<><Ionicons name={action.targetStatus === 'ENTREGUE' ? 'checkmark-circle' : action.targetStatus === 'NAO_ENTREGUE' ? 'close-circle' : 'arrow-forward-circle'} size={24} color="#ffffff" /><Text style={styles.primaryActionText}>{action.label.replace(/[^\w\s]/g, '').trim()}</Text></>)}
+              <TouchableOpacity 
+                key={action.id} 
+                style={[buttonStyle, updatingStatus && styles.disabledButton]} 
+                onPress={() => confirmStatusUpdate(action.targetStatus)} 
+                disabled={updatingStatus}
+              >
+                {updatingStatus ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons 
+                      name={
+                        action.targetStatus === 'ENTREGUE' ? 'checkmark-circle' : 
+                        action.targetStatus === 'NAO_ENTREGUE' ? 'close-circle' : 
+                        action.targetStatus === 'EM_ROTA' ? 'arrow-forward-circle' :
+                        'arrow-forward-circle'
+                      } 
+                      size={24} 
+                      color="#ffffff" 
+                    />
+                    <Text style={styles.primaryActionText}>{action.label.replace(/[^\w\s]/g, '').trim()}</Text>
+                  </>
+                )}
               </TouchableOpacity>
             );
           })}
         </View>
       )}
 
-      <ProofUploaderModal orderId={id || ''} visible={showProofModal} onClose={() => { setShowProofModal(false); setPendingStatusUpdate(null); }} onSuccess={handleProofSuccess} title="Anexar Comprovante" />
+      <ProofUploaderModal 
+        orderId={id || ''} 
+        visible={showProofModal} 
+        onClose={handleProofCancel} 
+        onSuccess={handleProofSuccess} 
+        title={pendingStatusUpdate === 'NAO_ENTREGUE' ? "Anexar Comprovante de Tentativa" : "Anexar Comprovante"} 
+      />
+      
       <Modal visible={showMotivoModal} transparent={true} animationType="fade" onRequestClose={() => setShowMotivoModal(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Motivo da Não Entrega</Text>
-            <Text style={styles.modalSubtitle}>Descreva em poucas palavras o motivo da falha na entrega.</Text>
-            <TextInput style={styles.motivoInput} multiline value={motivoTexto} onChangeText={setMotivoTexto} placeholder="Ex: Cliente ausente, endereço incorreto..." placeholderTextColor={Theme.colors.text.hint} autoFocus />
+            <Text style={styles.modalSubtitle}>Selecione o motivo principal da falha na entrega:</Text>
+            
+            <ScrollView style={styles.motivosList} showsVerticalScrollIndicator={false}>
+              {MOTIVOS_NAO_ENTREGA.map((motivo) => (
+                <TouchableOpacity
+                  key={motivo}
+                  style={[
+                    styles.motivoItem,
+                    selectedMotivo === motivo && styles.motivoItemSelected
+                  ]}
+                  onPress={() => setSelectedMotivo(motivo)}
+                >
+                  <Ionicons 
+                    name={selectedMotivo === motivo ? "radio-button-on" : "radio-button-off"} 
+                    size={25} 
+                    color={selectedMotivo === motivo ? Theme.colors.primary.main : Theme.colors.text.secondary} 
+                  />
+                  <Text style={styles.motivoText}>{motivo}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {selectedMotivo === 'Outro motivo' && (
+              <TextInput 
+                style={styles.motivoInput} 
+                multiline 
+                value={motivoTexto} 
+                onChangeText={setMotivoTexto} 
+                placeholder="Descreva o motivo..." 
+                placeholderTextColor={Theme.colors.text.hint} 
+                autoFocus 
+              />
+            )}
+
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelButton} onPress={() => { setShowMotivoModal(false); setMotivoTexto(''); setPendingStatusUpdate(null); }}><Text style={styles.modalCancelText}>Cancelar</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirmButton} onPress={submitMotivoNaoEntrega}><Text style={styles.modalConfirmText}>Confirmar Falha</Text></TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.modalCancelButton} 
+                onPress={() => { 
+                  setShowMotivoModal(false); 
+                  setMotivoTexto(''); 
+                  setSelectedMotivo('');
+                  setPendingStatusUpdate(null); 
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.modalConfirmButton, 
+                  !selectedMotivo && styles.modalConfirmButtonDisabled
+                ]} 
+                onPress={submitMotivoNaoEntrega}
+                disabled={!selectedMotivo}
+              >
+                <Text style={styles.modalConfirmText}>Continuar</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -288,7 +400,9 @@ export default function DeliveryDetailsScreen() {
       <Modal visible={!!viewingProof} transparent={true} onRequestClose={() => setViewingProof(null)}>
         <SafeAreaView style={styles.imageModalOverlay}>
           <Image source={{ uri: viewingProof || '' }} style={styles.fullImage} resizeMode="contain" />
-          <TouchableOpacity style={styles.closeImageButton} onPress={() => setViewingProof(null)}><Ionicons name="close" size={30} color="#ffffff" /></TouchableOpacity>
+          <TouchableOpacity style={styles.closeImageButton} onPress={() => setViewingProof(null)}>
+            <Ionicons name="close" size={30} color="#ffffff" />
+          </TouchableOpacity>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -297,7 +411,7 @@ export default function DeliveryDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background.default },
- statusHeader: { 
+  statusHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
@@ -343,16 +457,22 @@ const styles = StyleSheet.create({
   primaryActionButton: { flex: 1, backgroundColor: Theme.colors.primary.main, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
   successActionButton: { flex: 1, backgroundColor: Theme.colors.status.success, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
   dangerActionButton: { flex: 1, backgroundColor: Theme.colors.status.error, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
+  warningActionButton: { flex: 1, backgroundColor: Theme.colors.status.warning, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
   primaryActionText: { fontSize: Theme.typography.fontSize.base, fontWeight: Theme.typography.fontWeight.bold, color: '#ffffff' },
   disabledButton: { opacity: 0.5 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Theme.spacing.xl },
-  modalContainer: { backgroundColor: Theme.colors.background.paper, borderRadius: Theme.borderRadius.lg, padding: Theme.spacing.xl, ...Theme.shadows.xl },
+  modalContainer: { backgroundColor: Theme.colors.background.paper, borderRadius: Theme.borderRadius.lg, padding: Theme.spacing.xl, maxHeight: '80%' },
   modalTitle: { fontSize: Theme.typography.fontSize.xl, fontWeight: Theme.typography.fontWeight.bold, color: Theme.colors.text.primary, textAlign: 'center' },
   modalSubtitle: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.secondary, marginBottom: Theme.spacing.lg, lineHeight: 20, textAlign: 'center', marginTop: Theme.spacing.sm },
-  motivoInput: { borderWidth: 1, borderColor: Theme.colors.gray[300], borderRadius: Theme.borderRadius.base, padding: Theme.spacing.md, fontSize: Theme.typography.fontSize.base, color: Theme.colors.text.primary, backgroundColor: Theme.colors.background.default, minHeight: 100, textAlignVertical: 'top', marginBottom: Theme.spacing.xl },
+  motivosList: { maxHeight: 500, marginBottom: Theme.spacing.md },
+  motivoItem: { flexDirection: 'row', alignItems: 'center', padding: Theme.spacing.sm, borderRadius: Theme.borderRadius.base, marginBottom: Theme.spacing.xs },
+  motivoItemSelected: { backgroundColor: Theme.colors.primary.main + '10' },
+  motivoText: { marginLeft: Theme.spacing.sm, fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.primary },
+  motivoInput: { borderWidth: 1, borderColor: Theme.colors.gray[300], borderRadius: Theme.borderRadius.base, padding: Theme.spacing.md, fontSize: Theme.typography.fontSize.base, color: Theme.colors.text.primary, backgroundColor: Theme.colors.background.default, minHeight: 80, textAlignVertical: 'top', marginBottom: Theme.spacing.lg },
   modalActions: { flexDirection: 'row', gap: Theme.spacing.md },
   modalCancelButton: { flex: 1, paddingVertical: Theme.spacing.md, borderRadius: Theme.borderRadius.base, backgroundColor: Theme.colors.gray[200], alignItems: 'center' },
   modalConfirmButton: { flex: 1, paddingVertical: Theme.spacing.md, borderRadius: Theme.borderRadius.base, backgroundColor: Theme.colors.status.error, alignItems: 'center' },
+  modalConfirmButtonDisabled: { backgroundColor: Theme.colors.gray[400] },
   modalCancelText: { color: Theme.colors.text.primary, fontWeight: Theme.typography.fontWeight.semiBold },
   modalConfirmText: { color: '#ffffff', fontWeight: Theme.typography.fontWeight.bold },
   imageModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },

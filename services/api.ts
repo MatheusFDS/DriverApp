@@ -326,6 +326,13 @@ class ApiService {
       body: JSON.stringify({ addresses: [address] }),
     });
   }
+
+    async registerPushToken(token: string): Promise<ApiResponse<any>> {
+    return this.request('/users/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
 }
 
 export const api = new ApiService();

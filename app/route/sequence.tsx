@@ -1,7 +1,7 @@
 // app/route/sequence.tsx
 
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
@@ -16,17 +16,20 @@ import {
   Keyboard,
   Animated,
   Dimensions,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LatLng as MapLatLng } from 'react-native-maps';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.65;
-const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.85;
+const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.5;
+const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.90;
+const LATITUDE_OFFSET = 0.0090; 
 
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
   const poly: { latitude: number; longitude: number }[] = [];
@@ -144,9 +147,9 @@ const AddressInput = ({
         {isGeocoding ? (
           <ActivityIndicator size="small" color={Theme.colors.primary.main} />
         ) : hasResult ? (
-          <Ionicons name="checkmark-circle" size={24} color={Theme.colors.status.success} />
+          <Ionicons name="checkmark-circle" size={20} color={Theme.colors.status.success} />
         ) : (
-          <Ionicons name="location" size={24} color={value.trim().length >= 5 ? Theme.colors.primary.main : Theme.colors.gray[300]} />
+          <Ionicons name="location" size={20} color={value.trim().length >= 5 ? Theme.colors.primary.main : Theme.colors.gray[300]} />
         )}
       </TouchableOpacity>
     </View>
@@ -219,6 +222,7 @@ export default function RoutePlanningScreen() {
   const [saving, setSaving] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [items, setItems] = useState<DeliveryItemMobile[]>([]);
+  const [filteredItems, setFilteredItems] = useState<DeliveryItemMobile[]>([]);
   const [route, setRoute] = useState<Route | null>(null);
   const [polyline, setPolyline] = useState<string>('');
   const [hasChanges, setHasChanges] = useState(false);
@@ -258,6 +262,12 @@ export default function RoutePlanningScreen() {
   const mapRef = useRef<MapView>(null);
   const geocodeCache = useRef<Record<string, LatLng>>({});
 
+  // Filtrar apenas pedidos com status EM_ROTA
+  useEffect(() => {
+    const filtered = items.filter(item => item.status === 'EM_ROTA');
+    setFilteredItems(filtered);
+  }, [items]);
+
   // Função para expandir/colapsar a lista
   const toggleExpansion = useCallback(() => {
     const targetHeight = isExpanded ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT;
@@ -282,20 +292,6 @@ export default function RoutePlanningScreen() {
         setStatusMessage('');
       }, duration);
     }
-  }, []);
-
-  // Função para verificar se itens podem ser otimizados
-  const canOptimizeItems = useCallback((itemsToCheck: DeliveryItemMobile[]) => {
-    const allowedStatuses = ['SEM_ROTA', 'EM_ROTA_AGUARDANDO_LIBERACAO', 'EM_ROTA'];
-    const unoptimizableItems = itemsToCheck.filter(item => 
-      !allowedStatuses.includes(item.status || 'SEM_ROTA')
-    );
-    
-    return {
-      canOptimize: unoptimizableItems.length === 0,
-      unoptimizableCount: unoptimizableItems.length,
-      unoptimizableItems
-    };
   }, []);
 
   // Função para obter localização atual usando expo-location
@@ -396,7 +392,7 @@ export default function RoutePlanningScreen() {
     if (!mapRef.current) return;
 
     setTimeout(() => {
-      const coordinates: { latitude: number; longitude: number }[] = [];
+      const coordinates: MapLatLng[] = [];
       
       // Adiciona ponto inicial se existir
       if (startMarker) {
@@ -404,7 +400,7 @@ export default function RoutePlanningScreen() {
       }
       
       // Adiciona todas as entregas
-      items.forEach(item => {
+      filteredItems.forEach(item => {
         if (item.latitude && item.longitude) {
           coordinates.push({ latitude: item.latitude, longitude: item.longitude });
         }
@@ -417,8 +413,8 @@ export default function RoutePlanningScreen() {
 
       if (coordinates.length > 0) {
         const edgePadding = isExpanded 
-          ? { top: 100, right: 50, bottom: EXPANDED_HEIGHT + 50, left: 50 }
-          : { top: 100, right: 50, bottom: COLLAPSED_HEIGHT + 50, left: 50 };
+          ? { top: 50, right: 30, bottom: EXPANDED_HEIGHT + 30, left: 30 }
+          : { top: 50, right: 30, bottom: COLLAPSED_HEIGHT + 30, left: 30 };
           
         mapRef.current?.fitToCoordinates(coordinates, {
           edgePadding,
@@ -426,9 +422,9 @@ export default function RoutePlanningScreen() {
         });
       }
     }, 500);
-  }, [items, startMarker, endMarker, isExpanded]);
+  }, [filteredItems, startMarker, endMarker, isExpanded]);
 
-  const loadInitialData = useCallback(async () => {
+const loadInitialData = useCallback(async () => {
     setLoading(true);
     showStatus('loading', 'Carregando roteiro...');
     
@@ -447,6 +443,27 @@ export default function RoutePlanningScreen() {
         setPolyline('');
         
         showStatus('success', 'Roteiro carregado com sucesso!');
+        
+        // NOVO: Encontra o primeiro item com status 'EM_ROTA'
+        const firstInRouteItem = sorted.find(item => item.status === 'EM_ROTA');
+
+        // NOVO: Adiciona um temporizador para garantir que o mapa esteja pronto
+        setTimeout(() => {
+          // NOVO: Se encontrou um item e ele tem coordenadas, foca nele
+          if (firstInRouteItem && firstInRouteItem.latitude && firstInRouteItem.longitude) {
+            mapRef.current?.animateCamera({
+              center: {
+                latitude: firstInRouteItem.latitude - LATITUDE_OFFSET,
+                longitude: firstInRouteItem.longitude,
+              },
+              zoom: 15, // Um bom nível de zoom para visualização de rua
+            });
+          } else {
+            // Se não encontrar, apenas ajusta o mapa para todos os pontos como antes
+            fitMapToRoute();
+          }
+        }, 1000); // 1 segundo de delay para garantir a renderização
+
       } else {
         throw new Error(response.message || 'Erro ao carregar roteiro');
       }
@@ -456,9 +473,12 @@ export default function RoutePlanningScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, showStatus]);
+  }, [id, showStatus, fitMapToRoute]);
 
-  useFocusEffect(useCallback(() => { loadInitialData(); }, [loadInitialData]));
+  useEffect(() => {
+  loadInitialData();
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [id]); // Dependa apenas do 'id' para recarregar os dados
 
   const handleGeocode = useCallback(async (address: string, type: 'start' | 'end') => {
     Keyboard.dismiss();
@@ -508,30 +528,27 @@ export default function RoutePlanningScreen() {
   }, [showStatus]);
 
   // Função principal de otimização
+// Função principal de otimização ATUALIZADA
   const handleOptimize = useCallback(async () => {
     if (!startPoint || !endPoint) {
       Alert.alert(
         'Pontos de Referência Obrigatórios', 
-        'Por favor, defina tanto o ponto de PARTIDA quanto o ponto de CHEGADA antes de otimizar a rota.'
+        'Por favor, defina tanto o ponto de PARTIDA quanto o de CHEGADA antes de otimizar a rota.'
       );
       return;
     }
 
-    // Verificar se os pedidos podem ser otimizados
-    const optimization = canOptimizeItems(items);
-    if (!optimization.canOptimize) {
+    // NOVO: Filtra a lista principal para pegar apenas os itens que podem ser otimizados
+    const allowedStatuses = ['SEM_ROTA', 'EM_ROTA_AGUARDANDO_LIBERACAO', 'EM_ROTA'];
+    const itemsToOptimize = items.filter(item => 
+      allowedStatuses.includes(item.status || 'SEM_ROTA')
+    );
+
+    // NOVO: Verifica se há itens para otimizar após o filtro
+    if (itemsToOptimize.length === 0) {
       Alert.alert(
-        'Pedidos Não Podem Ser Otimizados',
-        `${optimization.unoptimizableCount} pedido(s) já foram iniciados e não podem ser reordenados. Apenas pedidos com status "Sem Rota", "Em Rota Aguardando Liberação" ou "Em Rota" podem ser otimizados.`,
-        [
-          { text: 'Ver Detalhes', onPress: () => {
-            const itemsList = optimization.unoptimizableItems
-              .map(item => `• ${item.customerName} - Status: ${item.status || 'N/A'}`)
-              .join('\n');
-            Alert.alert('Pedidos Não Otimizáveis', itemsList);
-          }},
-          { text: 'OK', style: 'cancel' }
-        ]
+        'Nenhum Pedido para Otimizar',
+        'Não há pedidos com status pendente para serem incluídos na otimização.'
       );
       return;
     }
@@ -539,13 +556,13 @@ export default function RoutePlanningScreen() {
     setOptimizing(true);
     
     try {
-      // Simula processamento por 2-3 segundos
       await new Promise(resolve => setTimeout(resolve, 2500));
       
       const payload = {
         startingPoint: startPoint,
         finalDestination: endPoint,
-        orders: items.map(item => ({
+        // ATENÇÃO: Usamos 'itemsToOptimize' aqui, e não 'filteredItems'
+        orders: itemsToOptimize.map(item => ({ 
           id: item.id,
           address: item.address,
           cliente: item.customerName,
@@ -557,24 +574,32 @@ export default function RoutePlanningScreen() {
       
       const response = await api.optimizeRoute(payload);
       if (response?.optimizedWaypoints) {
-        const optimizedOrder = response.optimizedWaypoints.map(wp => wp.id);
-        const newItems = optimizedOrder.map(id => items.find(item => item.id === id)).filter(Boolean) as DeliveryItemMobile[];
+        const optimizedOrderMap = new Map(response.optimizedWaypoints.map((wp, index) => [wp.id, index]));
+        
+        // Mantém os itens não otimizados (ex: entregues) em suas posições originais (no topo/final)
+        const newItems = [...items].sort((a, b) => {
+          const aOptimizable = optimizedOrderMap.has(a.id);
+          const bOptimizable = optimizedOrderMap.has(b.id);
+
+          if (aOptimizable && !bOptimizable) return 1; // Item otimizável vai para o final
+          if (!aOptimizable && bOptimizable) return -1; // Item não otimizável fica no início
+          if (!aOptimizable && !bOptimizable) return 0; // Mantém a ordem entre não otimizáveis
+          
+          return (optimizedOrderMap.get(a.id) ?? 0) - (optimizedOrderMap.get(b.id) ?? 0);
+        });
+
         setItems(newItems);
         setHasChanges(true);
         
-        // Calcula polyline da rota otimizada
         const routeResult = await api.calculateSequentialRoute(payload);
         if (routeResult?.polyline) {
           setPolyline(routeResult.polyline);
         }
         
-        // Atualiza informações da rota
         const routeInformation = formatRouteInfo(response);
         setRouteInfo(routeInformation);
         
         showStatus('success', `Rota otimizada! ${routeInformation.distance} em ${routeInformation.duration}`);
-        
-        // Enquadra o mapa após otimização
         fitMapToRoute();
       } else {
         throw new Error('Não foi possível otimizar a rota.');
@@ -585,37 +610,53 @@ export default function RoutePlanningScreen() {
     } finally {
       setOptimizing(false);
     }
-  }, [items, startPoint, endPoint, showStatus, fitMapToRoute, canOptimizeItems, formatRouteInfo]);
+  }, [items, startPoint, endPoint, showStatus, fitMapToRoute, formatRouteInfo]);
 
   const handleSaveSequence = useCallback(async () => {
-    setSaving(true);
-    showStatus('loading', 'Salvando alterações...');
-    
-    try {
-      const updates = items.map((item, index) => ({
-        orderId: item.id,
-        sorting: index + 1,
-      }));
-      
-      const response = await api.updateDeliverySequence(id!, updates);
-      if (response.success) {
-        setHasChanges(false);
-        showStatus('success', 'Alterações salvas!');
-        
-        setTimeout(() => {
-          Alert.alert('Sucesso', 'A nova sequência foi salva.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
-        }, 1000);
-      } else {
-        throw new Error(response.message || 'Erro ao salvar sequência');
-      }
-    } catch (error) {
-      showStatus('error', 'Erro ao salvar');
-      Alert.alert('Erro', (error as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    // Confirmação antes de salvar
+    Alert.alert(
+      'Confirmar Alterações',
+      'Tem certeza que deseja salvar a nova sequência de entregas?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Salvar',
+          onPress: async () => {
+            setSaving(true);
+            showStatus('loading', 'Salvando alterações...');
+            
+            try {
+              const updates = items.map((item, index) => ({
+                orderId: item.id,
+                sorting: index + 1,
+              }));
+              
+              const response = await api.updateDeliverySequence(id!, updates);
+              if (response.success) {
+                setHasChanges(false);
+                showStatus('success', 'Alterações salvas!');
+                
+                setTimeout(() => {
+                  Alert.alert('Sucesso', 'A nova sequência foi salva.', [
+                    { text: 'OK', onPress: () => router.back() },
+                  ]);
+                }, 1000);
+              } else {
+                throw new Error(response.message || 'Erro ao salvar sequência');
+              }
+            } catch (error) {
+              showStatus('error', 'Erro ao salvar');
+              Alert.alert('Erro', (error as Error).message);
+            } finally {
+              setSaving(false);
+            }
+          }
+        }
+      ]
+    );
   }, [items, id, showStatus]);
 
   // Função otimizada para reordenação com feedback visual
@@ -627,13 +668,23 @@ export default function RoutePlanningScreen() {
 
   // Memorização dos marcadores para evitar re-renderizações
   const deliveryMarkers = useMemo(() => {
-    return items.map((item, index) => {
+    return filteredItems.map((item, index) => {
       if (!item.latitude || !item.longitude) return null;
       
       return (
         <Marker 
           key={`delivery-${item.id}`} 
           coordinate={{ latitude: item.latitude, longitude: item.longitude }}
+          onPress={() => {
+            // Focar no marcador quando pressionado
+            mapRef.current?.animateCamera({
+              center: {
+                latitude: item.latitude!,
+                longitude: item.longitude!
+              },
+              zoom: 15,
+            });
+          }}
         >
           <View style={styles.marker}>
             <Text style={styles.markerText}>{index + 1}</Text>
@@ -641,7 +692,7 @@ export default function RoutePlanningScreen() {
         </Marker>
       );
     }).filter(Boolean);
-  }, [items]);
+  }, [filteredItems]);
   
   const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<DeliveryItemMobile>) => {
     const index = getIndex();
@@ -659,7 +710,7 @@ export default function RoutePlanningScreen() {
           <View style={styles.stopInfo}>
             <MaterialIcons 
               name="drag-handle" 
-              size={24} 
+              size={20} 
               color={isActive ? Theme.colors.primary.main : Theme.colors.gray[400]} 
               style={styles.dragHandle} 
             />
@@ -671,7 +722,15 @@ export default function RoutePlanningScreen() {
             <View style={styles.stopDetails}>
               <Text style={styles.stopName} numberOfLines={1}>{item.customerName}</Text>
               <Text style={styles.stopAddress} numberOfLines={1}>{item.address}</Text>
-              <Text style={styles.orderNumber}>Pedido: #{item.numeroPedido}</Text>
+              <View style={styles.orderInfo}>
+                <Text style={styles.orderNumber}>Pedido: #{item.numeroPedido}</Text>
+                <Text style={[
+                  styles.orderStatus,
+                  item.status === 'EM_ROTA' && styles.statusInRoute
+                ]}>
+                  {item.status === 'EM_ROTA' ? 'Em Rota' : item.status}
+                </Text>
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -691,7 +750,17 @@ export default function RoutePlanningScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
-        <MapView ref={mapRef} style={styles.map} provider={PROVIDER_GOOGLE}>
+        <MapView 
+          ref={mapRef} 
+          style={styles.map} 
+          provider={PROVIDER_GOOGLE}
+          initialRegion={{
+            latitude: -23.5505,
+            longitude: -46.6333,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }}
+        >
           {polyline && (
             <Polyline 
               coordinates={decodePolyline(polyline)} 
@@ -704,17 +773,41 @@ export default function RoutePlanningScreen() {
           {deliveryMarkers}
           
           {startMarker && (
-            <Marker coordinate={{ latitude: startMarker.lat, longitude: startMarker.lng }} zIndex={99}>
+            <Marker 
+              coordinate={{ latitude: startMarker.lat, longitude: startMarker.lng }} 
+              zIndex={99}
+              onPress={() => {
+                mapRef.current?.animateCamera({
+                  center: {
+                    latitude: startMarker.lat,
+                    longitude: startMarker.lng
+                  },
+                  zoom: 15,
+                });
+              }}
+            >
               <View style={styles.endpointMarker}>
-                <Ionicons name="rocket" size={20} color="#fff" />
+                <Ionicons name="rocket" size={16} color="#fff" />
               </View>
             </Marker>
           )}
           
           {endMarker && (
-            <Marker coordinate={{ latitude: endMarker.lat, longitude: endMarker.lng }} zIndex={99}>
+            <Marker 
+              coordinate={{ latitude: endMarker.lat, longitude: endMarker.lng }} 
+              zIndex={99}
+              onPress={() => {
+                mapRef.current?.animateCamera({
+                  center: {
+                    latitude: endMarker.lat,
+                    longitude: endMarker.lng
+                  },
+                  zoom: 15,
+                });
+              }}
+            >
               <View style={[styles.endpointMarker, styles.endMarker]}>
-                <Ionicons name="flag" size={20} color="#fff" />
+                <Ionicons name="flag" size={16} color="#fff" />
               </View>
             </Marker>
           )}
@@ -739,137 +832,146 @@ export default function RoutePlanningScreen() {
             </Text>
             <Ionicons 
               name={isExpanded ? "chevron-down" : "chevron-up"} 
-              size={20} 
+              size={16} 
               color={Theme.colors.primary.main} 
             />
           </TouchableOpacity>
 
-          {/* Container de endpoints com melhor UX */}
-          <View style={styles.endpointsContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Pontos de Referência</Text>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.locationButton]} 
-                  onPress={getCurrentLocation}
-                  disabled={isGettingLocation}
-                >
-                  {isGettingLocation ? (
-                    <ActivityIndicator size="small" color={Theme.colors.primary.main} />
-                  ) : (
-                    <Ionicons name="location" size={20} color={Theme.colors.primary.main} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.actionButton, styles.fitButton]} 
-                  onPress={fitMapToRoute}
-                >
-                  <MaterialIcons name="center-focus-strong" size={20} color={Theme.colors.text.primary} />
-                </TouchableOpacity>
+          <ScrollView 
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Container de endpoints com melhor UX */}
+            <View style={styles.endpointsContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Pontos de Referência</Text>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.locationButton]} 
+                    onPress={getCurrentLocation}
+                    disabled={isGettingLocation}
+                  >
+                    {isGettingLocation ? (
+                      <ActivityIndicator size="small" color={Theme.colors.primary.main} />
+                    ) : (
+                      <Ionicons name="location" size={16} color={Theme.colors.primary.main} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.fitButton]} 
+                    onPress={fitMapToRoute}
+                  >
+                    <MaterialIcons name="center-focus-strong" size={16} color={Theme.colors.text.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[
+                      styles.actionButton, 
+                      styles.optimizeButton,
+                      (!startPoint || !endPoint || optimizing || saving) && styles.actionButtonDisabled
+                    ]} 
+                    onPress={handleOptimize} 
+                    disabled={!startPoint || !endPoint || optimizing || saving}
+                  >
+                    {optimizing ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <MaterialIcons name="auto-fix-high" size={16} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <AddressInput
+                placeholder="Ponto de partida (obrigatório)"
+                value={startInput}
+                onChangeText={setStartInput}
+                onGeocode={() => handleGeocode(startInput, 'start')}
+                isGeocoding={isGeocodingStart}
+                hasResult={!!startMarker}
+              />
+              
+              <AddressInput
+                placeholder="Ponto de chegada (obrigatório)"
+                value={endInput}
+                onChangeText={setEndInput}
+                onGeocode={() => handleGeocode(endInput, 'end')}
+                isGeocoding={isGeocodingEnd}
+                hasResult={!!endMarker}
+              />
+            </View>
+
+            {/* Informações da rota otimizada */}
+            {routeInfo && (
+              <View style={styles.routeInfoContainer}>
+                <View style={styles.routeInfoHeader}>
+                  <Ionicons name="information-circle" size={16} color={Theme.colors.primary.main} />
+                  <Text style={styles.routeInfoTitle}>Informações da Rota</Text>
+                </View>
+                <View style={styles.routeInfoStats}>
+                  <View style={styles.routeInfoStat}>
+                    <Ionicons name="speedometer" size={14} color={Theme.colors.text.secondary} />
+                    <Text style={styles.routeInfoStatText}>{routeInfo.distance}</Text>
+                  </View>
+                  <View style={styles.routeInfoStat}>
+                    <Ionicons name="time" size={14} color={Theme.colors.text.secondary} />
+                    <Text style={styles.routeInfoStatText}>{routeInfo.duration}</Text>
+                  </View>
+                  <View style={styles.routeInfoStat}>
+                    <Ionicons name="location" size={14} color={Theme.colors.text.secondary} />
+                    <Text style={styles.routeInfoStatText}>{routeInfo.totalStops} paradas</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Lista de paradas com melhor feedback */}
+            <View style={styles.deliveriesContainer}>
+              <View style={styles.deliveriesHeader}>
+                <Text style={styles.sectionTitle}>
+                  Sequência de Entregas {route?.code ? `(#${route.code})` : ''}
+                  <Text style={styles.statusFilterNote}> (apenas EM_ROTA)</Text>
+                </Text>
+                <Text style={styles.deliveriesCount}>{filteredItems.length} paradas</Text>
+              </View>
+              
+              <DraggableFlatList
+                data={filteredItems}
+                onDragEnd={handleDragEnd}
+                keyExtractor={(item) => item.id}
+                renderItem={renderItem}
+                containerStyle={styles.flatListContainer}
+                showsVerticalScrollIndicator={false}
+                scrollEnabled={false}
+              />
+            </View>
+
+            {/* Botão de salvar com melhor estado visual */}
+            {hasChanges && (
+              <View style={styles.saveContainer}>
                 <TouchableOpacity 
                   style={[
-                    styles.actionButton, 
-                    styles.optimizeButton,
-                    (!startPoint || !endPoint || optimizing || saving) && styles.actionButtonDisabled
+                    styles.saveButton, 
+                    saving && styles.saveButtonDisabled,
+                    hasChanges && styles.saveButtonActive
                   ]} 
-                  onPress={handleOptimize} 
-                  disabled={!startPoint || !endPoint || optimizing || saving}
+                  onPress={handleSaveSequence} 
+                  disabled={saving}
                 >
-                  {optimizing ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                  {saving ? (
+                    <View style={styles.saveButtonContent}>
+                      <ActivityIndicator color="#fff" size="small" />
+                      <Text style={styles.saveButtonText}>Salvando...</Text>
+                    </View>
                   ) : (
-                    <MaterialIcons name="auto-fix-high" size={20} color="#fff" />
+                    <View style={styles.saveButtonContent}>
+                      <Ionicons name="save" size={16} color="#fff" />
+                      <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+                    </View>
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
-            
-            <AddressInput
-              placeholder="Ponto de partida (obrigatório)"
-              value={startInput}
-              onChangeText={setStartInput}
-              onGeocode={() => handleGeocode(startInput, 'start')}
-              isGeocoding={isGeocodingStart}
-              hasResult={!!startMarker}
-            />
-            
-            <AddressInput
-              placeholder="Ponto de chegada (obrigatório)"
-              value={endInput}
-              onChangeText={setEndInput}
-              onGeocode={() => handleGeocode(endInput, 'end')}
-              isGeocoding={isGeocodingEnd}
-              hasResult={!!endMarker}
-            />
-          </View>
-
-          {/* Informações da rota otimizada */}
-          {routeInfo && (
-            <View style={styles.routeInfoContainer}>
-              <View style={styles.routeInfoHeader}>
-                <Ionicons name="information-circle" size={20} color={Theme.colors.primary.main} />
-                <Text style={styles.routeInfoTitle}>Informações da Rota</Text>
-              </View>
-              <View style={styles.routeInfoStats}>
-                <View style={styles.routeInfoStat}>
-                  <Ionicons name="speedometer" size={16} color={Theme.colors.text.secondary} />
-                  <Text style={styles.routeInfoStatText}>{routeInfo.distance}</Text>
-                </View>
-                <View style={styles.routeInfoStat}>
-                  <Ionicons name="time" size={16} color={Theme.colors.text.secondary} />
-                  <Text style={styles.routeInfoStatText}>{routeInfo.duration}</Text>
-                </View>
-                <View style={styles.routeInfoStat}>
-                  <Ionicons name="location" size={16} color={Theme.colors.text.secondary} />
-                  <Text style={styles.routeInfoStatText}>{routeInfo.totalStops} paradas</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Lista de paradas com melhor feedback */}
-          <View style={styles.deliveriesContainer}>
-            <View style={styles.deliveriesHeader}>
-              <Text style={styles.sectionTitle}>Sequência de Entregas {route?.code ? `(#${route.code})` : ''}</Text>
-              <Text style={styles.deliveriesCount}>{items.length} paradas</Text>
-            </View>
-            
-            <DraggableFlatList
-              data={items}
-              onDragEnd={handleDragEnd}
-              keyExtractor={(item) => item.id}
-              renderItem={renderItem}
-              containerStyle={styles.flatListContainer}
-              showsVerticalScrollIndicator={false}
-            />
-          </View>
-
-          {/* Botão de salvar com melhor estado visual */}
-          {hasChanges && (
-            <View style={styles.saveContainer}>
-              <TouchableOpacity 
-                style={[
-                  styles.saveButton, 
-                  saving && styles.saveButtonDisabled,
-                  hasChanges && styles.saveButtonActive
-                ]} 
-                onPress={handleSaveSequence} 
-                disabled={saving}
-              >
-                {saving ? (
-                  <View style={styles.saveButtonContent}>
-                    <ActivityIndicator color="#fff" size="small" />
-                    <Text style={styles.saveButtonText}>Salvando...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.saveButtonContent}>
-                    <Ionicons name="save" size={20} color="#fff" />
-                    <Text style={styles.saveButtonText}>Salvar Alterações</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </ScrollView>
         </Animated.View>
       </SafeAreaView>
     </GestureHandlerRootView>
@@ -888,30 +990,30 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.background.default
   },
   infoText: { 
-    marginTop: Theme.spacing.lg, 
+    marginTop: Theme.spacing.md, 
     color: Theme.colors.text.secondary,
-    fontSize: Theme.typography.fontSize.base
+    fontSize: Theme.typography.fontSize.sm
   },
   map: { 
     ...StyleSheet.absoluteFillObject 
   },
   statusIndicator: {
     position: 'absolute',
-    top: 20,
-    left: Theme.spacing.md,
-    right: Theme.spacing.md,
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: Theme.spacing.sm,
+    right: Theme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
     borderRadius: Theme.borderRadius.base,
     zIndex: 1000,
   },
   statusText: {
     color: '#fff',
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: Theme.typography.fontSize.xs,
     fontWeight: Theme.typography.fontWeight.medium,
-    marginLeft: Theme.spacing.sm,
+    marginLeft: Theme.spacing.xs,
   },
   processingOverlay: {
     position: 'absolute',
@@ -926,28 +1028,28 @@ const styles = StyleSheet.create({
   },
   processingContainer: {
     backgroundColor: Theme.colors.background.paper,
-    padding: Theme.spacing.xl,
+    padding: Theme.spacing.lg,
     borderRadius: Theme.borderRadius.lg,
     alignItems: 'center',
-    minWidth: 280,
+    minWidth: 250,
     ...Theme.shadows.lg,
   },
   processingTitle: {
-    fontSize: Theme.typography.fontSize.lg,
+    fontSize: Theme.typography.fontSize.base,
     fontWeight: Theme.typography.fontWeight.bold,
     color: Theme.colors.text.primary,
-    marginTop: Theme.spacing.md,
-    marginBottom: Theme.spacing.sm,
+    marginTop: Theme.spacing.sm,
+    marginBottom: Theme.spacing.xs,
   },
   processingSubtitle: {
-    fontSize: Theme.typography.fontSize.base,
+    fontSize: Theme.typography.fontSize.sm,
     color: Theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
   },
   progressBar: {
     width: '100%',
-    height: 4,
+    height: 3,
     backgroundColor: Theme.colors.gray[200],
     borderRadius: 2,
     overflow: 'hidden',
@@ -963,57 +1065,61 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: Theme.colors.background.paper,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: Theme.spacing.lg,
-    paddingTop: Theme.spacing.sm,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: Theme.spacing.md,
+    paddingTop: Theme.spacing.xs,
     ...Theme.shadows.lg,
+    overflow: 'hidden',
+  },
+  scrollView: {
+    flex: 1,
   },
   handleBar: {
     width: 40,
-    height: 5,
+    height: 4,
     backgroundColor: Theme.colors.gray[300],
-    borderRadius: 3,
+    borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
   },
   expandButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: Theme.spacing.sm,
-    marginBottom: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.gray[100],
   },
   expandButtonText: {
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: Theme.typography.fontSize.xs,
     fontWeight: Theme.typography.fontWeight.medium,
     color: Theme.colors.primary.main,
     marginRight: Theme.spacing.xs,
   },
   endpointsContainer: {
-    marginBottom: Theme.spacing.lg,
+    marginBottom: Theme.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
   },
   sectionTitle: {
-    fontSize: Theme.typography.fontSize.base,
+    fontSize: Theme.typography.fontSize.sm,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: Theme.spacing.sm,
+    gap: Theme.spacing.xs,
   },
   actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1036,11 +1142,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Theme.colors.gray[50],
-    borderRadius: Theme.borderRadius.lg,
-    borderWidth: 2,
+    borderRadius: Theme.borderRadius.base,
+    borderWidth: 1,
     borderColor: Theme.colors.gray[200],
-    marginBottom: Theme.spacing.sm,
-    minHeight: 52,
+    marginBottom: Theme.spacing.xs,
+    minHeight: 40,
   },
   inputWrapperFocused: {
     borderColor: Theme.colors.primary.main,
@@ -1052,13 +1158,13 @@ const styles = StyleSheet.create({
   },
   endpointInput: {
     flex: 1,
-    paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.md,
-    fontSize: Theme.typography.fontSize.base,
+    paddingVertical: Theme.spacing.xs,
+    paddingHorizontal: Theme.spacing.sm,
+    fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.text.primary,
   },
   geocodeButton: {
-    padding: Theme.spacing.md,
+    padding: Theme.spacing.sm,
     borderRadius: Theme.borderRadius.base,
     marginRight: Theme.spacing.xs,
   },
@@ -1067,22 +1173,22 @@ const styles = StyleSheet.create({
   },
   routeInfoContainer: {
     backgroundColor: Theme.colors.primary.main + '10',
-    borderRadius: Theme.borderRadius.lg,
-    padding: Theme.spacing.md,
-    marginBottom: Theme.spacing.lg,
-    borderLeftWidth: 4,
+    borderRadius: Theme.borderRadius.base,
+    padding: Theme.spacing.sm,
+    marginBottom: Theme.spacing.md,
+    borderLeftWidth: 3,
     borderLeftColor: Theme.colors.primary.main,
   },
   routeInfoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Theme.spacing.sm,
+    marginBottom: Theme.spacing.xs,
   },
   routeInfoTitle: {
-    fontSize: Theme.typography.fontSize.base,
+    fontSize: Theme.typography.fontSize.sm,
     fontWeight: Theme.typography.fontWeight.semiBold,
     color: Theme.colors.text.primary,
-    marginLeft: Theme.spacing.sm,
+    marginLeft: Theme.spacing.xs,
   },
   routeInfoStats: {
     flexDirection: 'row',
@@ -1096,24 +1202,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   routeInfoStatText: {
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: Theme.typography.fontSize.xs,
     fontWeight: Theme.typography.fontWeight.medium,
     color: Theme.colors.text.primary,
     marginLeft: Theme.spacing.xs,
   },
   deliveriesContainer: {
-    flex: 1,
+    marginBottom: Theme.spacing.md,
   },
   deliveriesHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Theme.spacing.md,
+    marginBottom: Theme.spacing.sm,
   },
   deliveriesCount: {
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.text.secondary,
     fontWeight: Theme.typography.fontWeight.medium,
+  },
+  statusFilterNote: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.normal,
   },
   flatListContainer: {
     flex: 1,
@@ -1122,8 +1233,8 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.background.paper,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Theme.spacing.md,
-    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    paddingHorizontal: Theme.spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.gray[100],
     borderRadius: Theme.borderRadius.base,
@@ -1131,19 +1242,19 @@ const styles = StyleSheet.create({
   },
   stopItemChanged: {
     backgroundColor: Theme.colors.primary.main + '05',
-    borderLeftWidth: 3,
+    borderLeftWidth: 2,
     borderLeftColor: Theme.colors.primary.main,
   },
   draggingItem: {
     backgroundColor: '#fff',
     opacity: 0.95,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
-    borderRadius: Theme.borderRadius.lg,
-    transform: [{ scale: 1.02 }],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 6,
+    borderRadius: Theme.borderRadius.base,
+    transform: [{ scale: 1.01 }],
   },
   stopInfo: { 
     flexDirection: 'row', 
@@ -1151,23 +1262,23 @@ const styles = StyleSheet.create({
     flex: 1 
   },
   dragHandle: { 
-    marginRight: Theme.spacing.sm, 
-    padding: 4 
+    marginRight: Theme.spacing.xs, 
+    padding: 2 
   },
   stopIndex: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: Theme.colors.gray[100],
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: Theme.spacing.md,
+    marginRight: Theme.spacing.sm,
   },
   stopIndexActive: {
     backgroundColor: Theme.colors.primary.main,
   },
   stopIndexText: {
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: Theme.typography.fontSize.xs,
     fontWeight: Theme.typography.fontWeight.bold,
     color: Theme.colors.text.secondary,
   },
@@ -1180,30 +1291,48 @@ const styles = StyleSheet.create({
   stopName: { 
     fontWeight: Theme.typography.fontWeight.semiBold, 
     color: Theme.colors.text.primary, 
-    marginBottom: 2,
-    fontSize: Theme.typography.fontSize.base
+    marginBottom: 1,
+    fontSize: Theme.typography.fontSize.sm
   },
   stopAddress: { 
-    fontSize: Theme.typography.fontSize.sm, 
+    fontSize: Theme.typography.fontSize.xs, 
     color: Theme.colors.text.secondary,
     marginBottom: 2
+  },
+  orderInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   orderNumber: {
     fontSize: Theme.typography.fontSize.xs,
     color: Theme.colors.primary.main,
     fontWeight: Theme.typography.fontWeight.medium,
   },
+  orderStatus: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.text.secondary,
+    fontWeight: Theme.typography.fontWeight.medium,
+    paddingHorizontal: Theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: Theme.borderRadius.sm,
+    backgroundColor: Theme.colors.gray[100],
+  },
+  statusInRoute: {
+    color: Theme.colors.status.success,
+    backgroundColor: Theme.colors.status.success + '15',
+  },
   saveContainer: {
-    paddingTop: Theme.spacing.md,
-    paddingBottom: Theme.spacing.lg,
+    paddingTop: Theme.spacing.sm,
+    paddingBottom: Theme.spacing.md,
   },
   saveButton: {
     backgroundColor: Theme.colors.gray[400],
-    paddingVertical: Theme.spacing.lg,
-    borderRadius: Theme.borderRadius.lg,
+    paddingVertical: Theme.spacing.md,
+    borderRadius: Theme.borderRadius.base,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
+    minHeight: 48,
   },
   saveButtonActive: {
     backgroundColor: Theme.colors.primary.main,
@@ -1218,36 +1347,36 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: Theme.typography.fontSize.base,
+    fontSize: Theme.typography.fontSize.sm,
     fontWeight: Theme.typography.fontWeight.semiBold,
-    marginLeft: Theme.spacing.sm,
+    marginLeft: Theme.spacing.xs,
   },
   marker: {
     backgroundColor: Theme.colors.primary.main,
-    borderRadius: 20,
-    width: 32,
-    height: 32,
+    borderRadius: 16,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#fff',
-    ...Theme.shadows.base,
+    ...Theme.shadows.sm,
   },
   markerText: {
     color: '#fff',
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: Theme.typography.fontSize.xs,
     fontWeight: Theme.typography.fontWeight.bold,
   },
   endpointMarker: {
     backgroundColor: Theme.colors.status.success,
-    borderRadius: 20,
-    width: 32,
-    height: 32,
+    borderRadius: 16,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#fff',
-    ...Theme.shadows.base,
+    ...Theme.shadows.sm,
   },
   endMarker: {
     backgroundColor: Theme.colors.status.error,

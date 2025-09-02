@@ -1,5 +1,3 @@
-// app/contexts/AuthContext.tsx
-
 import React, {
   createContext,
   useContext,
@@ -8,7 +6,6 @@ import React, {
   ReactNode,
   useCallback,
 } from 'react';
-// CORRIGIDO: Removido o traço extra no nome do pacote
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useSegments } from 'expo-router';
 import { User } from '../types';
@@ -27,28 +24,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Hook customizado para gerenciar o efeito de navegação
 function useProtectedRoute(user: User | null, isLoading: boolean) {
   const segments = useSegments() as string[];
 
   useEffect(() => {
     if (isLoading || segments.length === 0) {
-      return; // Não faz nada enquanto carrega ou se as rotas não estiverem prontas
+      return;
     }
 
-    const inAuthRoute = segments[0] === 'login';
+    const isPublicRoute = segments[0] === 'login' || segments[0] === 'invite';
 
-    // Se o usuário não está logado e não está na tela de login, redireciona para o login.
-    if (!user && !inAuthRoute) {
+    if (!user && !isPublicRoute) {
       router.replace('/login');
-    } 
-    // Se o usuário está logado e tentou acessar a tela de login, redireciona para a home.
-    else if (user && inAuthRoute) {
+    } else if (user && isPublicRoute) {
       router.replace('/(tabs)');
     }
   }, [user, segments, isLoading]);
 }
-
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -59,14 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
-      await AsyncStorage.clear();
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('auth_token');
       await signOut(auth);
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {
       setUser(null);
       setIsLoading(false);
-      // O hook useProtectedRoute cuidará do redirecionamento para /login
     }
   }, [auth]);
 
@@ -81,39 +73,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await logout();
       }
     } catch (error) {
-      console.error('Erro ao atualizar perfil do usuário:', error);
+      console.warn('Falha ao atualizar o perfil do usuário em background:', error);
       await logout();
     }
   }, [logout]);
 
-  // Efeito para lidar apenas com a autenticação do Firebase
   useEffect(() => {
-    const onAuthStateChangedCallback = async (firebaseUser: any) => {
-      if (firebaseUser) {
-        try {
-          const idToken = await getIdToken(firebaseUser, true);
-          await AsyncStorage.setItem('auth_token', idToken);
-          const profileResponse = await api.getProfile();
-          if (profileResponse.success && profileResponse.data) {
-            setUser(profileResponse.data);
-          } else {
-            throw new Error("Falha ao buscar perfil do backend.");
+    const bootstrapAsync = async () => {
+      let userJson: string | null = null;
+      try {
+        userJson = await AsyncStorage.getItem('user');
+        if (userJson) {
+          setUser(JSON.parse(userJson));
+        }
+      } catch {
+        // Silently fail on storage read error
+      }
+
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          try {
+            const idToken = await getIdToken(firebaseUser, true);
+            await AsyncStorage.setItem('auth_token', idToken);
+            await refreshUser();
+          } catch (error) {
+            console.warn("Falha ao atualizar a sessão em background, o usuário continuará logado com dados locais.", error);
           }
-        } catch (error) {
-          console.error('Erro no processo de autenticação, deslogando:', error);
+        } else {
           await logout();
         }
-      } else {
-        setUser(null);
-      }
-      setIsLoading(false);
+        setIsLoading(false);
+      });
+
+      return () => unsubscribe();
     };
 
-    const unsubscribe = onAuthStateChanged(auth, onAuthStateChangedCallback);
-    return () => unsubscribe();
-  }, [auth, logout]);
+    bootstrapAsync();
+  }, [auth, logout, refreshUser]);
 
-  // Usa o hook customizado para gerenciar a navegação
   useProtectedRoute(user, isLoading);
 
   const login = async (email: string, password: string): Promise<boolean> => {

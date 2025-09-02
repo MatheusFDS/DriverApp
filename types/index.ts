@@ -209,7 +209,7 @@ export const getOrderMobileStatusConfig = (status: OrderMobileStatus): StatusCon
     'EM_ROTA': { color: '#90CAF9', text: 'PENDENTE', icon: '🎯', description: 'Pronto para entrega. Toque para iniciar.' },
     'EM_ENTREGA': { color: '#2196F3', text: 'EM ENTREGA', icon: '🚚', description: 'Motorista a caminho do cliente.' },
     'ENTREGUE': { color: '#4CAF50', text: 'ENTREGUE', icon: '📦✅', description: 'Entrega realizada com sucesso!' },
-    'NAO_ENTREGUE': { color: '#EF5350', text: 'NÃO ENTREGUE', icon: '⚠️', description: 'Problema na entrega.' }
+    'NAO_ENTREGUE': { color: '#EF5350', text: 'NAO ENTREGUE', icon: '⚠️', description: 'Problema na entrega.' }
   };
   return configs[status] || { color: '#757575', text: String(status).toUpperCase(), icon: '❓', description: 'Status desconhecido.'};
 };
@@ -235,7 +235,7 @@ export const getAvailableOrderActions = (currentStatus: OrderMobileStatus, route
       },
       { 
         id: 'reportar_nao_entrega', 
-        label: '⚠️ Não Entregue', 
+        label: '⚠️ Nao Entregue', 
         targetStatus: 'NAO_ENTREGUE', 
         style: 'warning', 
         requiresReason: true, 
