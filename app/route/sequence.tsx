@@ -29,7 +29,7 @@ import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.5;
 const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.90;
-const LATITUDE_OFFSET = 0.0090; 
+const LATITUDE_OFFSET = 0.0090;
 
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
   const poly: { latitude: number; longitude: number }[] = [];
@@ -106,13 +106,13 @@ const StatusIndicator = ({ status, text }: { status: 'idle' | 'loading' | 'succe
 };
 
 // Componente para input de endereço com melhor UX
-const AddressInput = ({ 
-  placeholder, 
-  value, 
-  onChangeText, 
-  onGeocode, 
-  isGeocoding, 
-  hasResult 
+const AddressInput = ({
+  placeholder,
+  value,
+  onChangeText,
+  onGeocode,
+  isGeocoding,
+  hasResult
 }: {
   placeholder: string;
   value: string;
@@ -122,26 +122,26 @@ const AddressInput = ({
   hasResult: boolean;
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  
+
   return (
     <View style={[
-      styles.inputWrapper, 
+      styles.inputWrapper,
       isFocused && styles.inputWrapperFocused,
       hasResult && styles.inputWrapperSuccess
     ]}>
-      <TextInput 
-        style={styles.endpointInput} 
-        placeholder={placeholder} 
-        value={value} 
+      <TextInput
+        style={styles.endpointInput}
+        placeholder={placeholder}
+        value={value}
         onChangeText={onChangeText}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         returnKeyType="done"
         onSubmitEditing={onGeocode}
       />
-      <TouchableOpacity 
-        style={[styles.geocodeButton, value.trim().length < 5 && styles.geocodeButtonDisabled]} 
-        onPress={onGeocode} 
+      <TouchableOpacity
+        style={[styles.geocodeButton, value.trim().length < 5 && styles.geocodeButtonDisabled]}
+        onPress={onGeocode}
         disabled={isGeocoding || value.trim().length < 5}
       >
         {isGeocoding ? (
@@ -195,10 +195,10 @@ const ProcessingOverlay = ({ visible }: { visible: boolean }) => {
   if (!visible) return null;
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.processingOverlay, 
-        { 
+        styles.processingOverlay,
+        {
           opacity: fadeAnim,
           transform: [{ scale: scaleAnim }]
         }
@@ -248,10 +248,10 @@ export default function RoutePlanningScreen() {
   // Geocodificação
   const [isGeocodingStart, setIsGeocodingStart] = useState(false);
   const [isGeocodingEnd, setIsGeocodingEnd] = useState(false);
-  
+
   // Geolocalização
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  
+
   // Informações da rota
   const [routeInfo, setRouteInfo] = useState<{
     distance: string;
@@ -271,13 +271,13 @@ export default function RoutePlanningScreen() {
   // Função para expandir/colapsar a lista
   const toggleExpansion = useCallback(() => {
     const targetHeight = isExpanded ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT;
-    
+
     Animated.timing(bottomSheetHeight, {
       toValue: targetHeight,
       duration: 300,
       useNativeDriver: false,
     }).start();
-    
+
     setIsExpanded(!isExpanded);
   }, [isExpanded, bottomSheetHeight]);
 
@@ -285,7 +285,7 @@ export default function RoutePlanningScreen() {
   const showStatus = useCallback((status: 'loading' | 'success' | 'error', message: string, duration = 2000) => {
     setOperationStatus(status);
     setStatusMessage(message);
-    
+
     if (status !== 'loading') {
       setTimeout(() => {
         setOperationStatus('idle');
@@ -298,7 +298,7 @@ export default function RoutePlanningScreen() {
   const getCurrentLocation = useCallback(async () => {
     setIsGettingLocation(true);
     showStatus('loading', 'Obtendo sua localização...');
-    
+
     try {
       // Solicita permissões de localização
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -313,7 +313,7 @@ export default function RoutePlanningScreen() {
       });
 
       const { latitude, longitude } = location.coords;
-      
+
       // Fazer geocodificação reversa para obter o endereço
       try {
         const reverseGeocode = await Location.reverseGeocodeAsync({
@@ -324,11 +324,11 @@ export default function RoutePlanningScreen() {
         if (reverseGeocode && reverseGeocode.length > 0) {
           const addr = reverseGeocode[0];
           const address = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.district || ''}, ${addr.city || ''} - ${addr.region || ''}`.trim();
-          
+
           setStartInput(address);
           setStartPoint(address);
           setStartMarker({ lat: latitude, lng: longitude });
-          
+
           geocodeCache.current[address] = { lat: latitude, lng: longitude };
           showStatus('success', 'Localização atual definida como ponto de partida!');
         } else {
@@ -347,10 +347,10 @@ export default function RoutePlanningScreen() {
         setStartMarker({ lat: latitude, lng: longitude });
         showStatus('success', 'Localização atual definida!');
       }
-      
+
     } catch (error) {
       let errorMessage = 'Não foi possível obter sua localização';
-      
+
       if (error instanceof Error) {
         if (error.message.includes('permission')) {
           errorMessage = 'Permissão de localização necessária';
@@ -358,7 +358,7 @@ export default function RoutePlanningScreen() {
           errorMessage = 'Erro de conexão ao obter localização';
         }
       }
-      
+
       showStatus('error', errorMessage);
       Alert.alert('Erro de Localização', errorMessage);
     } finally {
@@ -372,14 +372,14 @@ export default function RoutePlanningScreen() {
     const durationMinutes = Math.round(result.totalDurationInSeconds / 60);
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
-    
+
     let durationText = '';
     if (hours > 0) {
       durationText = `${hours}h ${minutes}min`;
     } else {
       durationText = `${minutes}min`;
     }
-    
+
     return {
       distance: `${distanceKm} km`,
       duration: durationText,
@@ -393,29 +393,29 @@ export default function RoutePlanningScreen() {
 
     setTimeout(() => {
       const coordinates: MapLatLng[] = [];
-      
+
       // Adiciona ponto inicial se existir
       if (startMarker) {
         coordinates.push({ latitude: startMarker.lat, longitude: startMarker.lng });
       }
-      
+
       // Adiciona todas as entregas
       filteredItems.forEach(item => {
         if (item.latitude && item.longitude) {
           coordinates.push({ latitude: item.latitude, longitude: item.longitude });
         }
       });
-      
+
       // Adiciona ponto final se existir
       if (endMarker) {
         coordinates.push({ latitude: endMarker.lat, longitude: endMarker.lng });
       }
 
       if (coordinates.length > 0) {
-        const edgePadding = isExpanded 
+        const edgePadding = isExpanded
           ? { top: 50, right: 30, bottom: EXPANDED_HEIGHT + 30, left: 30 }
           : { top: 50, right: 30, bottom: COLLAPSED_HEIGHT + 30, left: 30 };
-          
+
         mapRef.current?.fitToCoordinates(coordinates, {
           edgePadding,
           animated: true,
@@ -424,13 +424,13 @@ export default function RoutePlanningScreen() {
     }, 500);
   }, [filteredItems, startMarker, endMarker, isExpanded]);
 
-const loadInitialData = useCallback(async () => {
+  const loadInitialData = useCallback(async () => {
     setLoading(true);
     showStatus('loading', 'Carregando roteiro...');
-    
+
     try {
       if (!id) throw new Error('ID do roteiro não fornecido.');
-      
+
       const response = await api.getRouteDetails(id);
       if (response.success && response.data) {
         setRoute(response.data);
@@ -441,9 +441,9 @@ const loadInitialData = useCallback(async () => {
         setStartPoint('');
         setEndPoint('');
         setPolyline('');
-        
+
         showStatus('success', 'Roteiro carregado com sucesso!');
-        
+
         // NOVO: Encontra o primeiro item com status 'EM_ROTA'
         const firstInRouteItem = sorted.find(item => item.status === 'EM_ROTA');
 
@@ -476,9 +476,9 @@ const loadInitialData = useCallback(async () => {
   }, [id, showStatus, fitMapToRoute]);
 
   useEffect(() => {
-  loadInitialData();
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, [id]); // Dependa apenas do 'id' para recarregar os dados
+    loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Dependa apenas do 'id' para recarregar os dados
 
   const handleGeocode = useCallback(async (address: string, type: 'start' | 'end') => {
     Keyboard.dismiss();
@@ -503,7 +503,7 @@ const loadInitialData = useCallback(async () => {
     setLoadingState(true);
     setMarker(null);
     showStatus('loading', `Buscando ${type === 'start' ? 'ponto de partida' : 'ponto de chegada'}...`);
-    
+
     try {
       const response = await api.geocodeAddress(address);
       if (response.success && response.data?.[0]?.success) {
@@ -527,12 +527,11 @@ const loadInitialData = useCallback(async () => {
     }
   }, [showStatus]);
 
-  // Função principal de otimização
-// Função principal de otimização ATUALIZADA
+  // Função principal de otimização ATUALIZADA
   const handleOptimize = useCallback(async () => {
     if (!startPoint || !endPoint) {
       Alert.alert(
-        'Pontos de Referência Obrigatórios', 
+        'Pontos de Referência Obrigatórios',
         'Por favor, defina tanto o ponto de PARTIDA quanto o de CHEGADA antes de otimizar a rota.'
       );
       return;
@@ -540,7 +539,7 @@ const loadInitialData = useCallback(async () => {
 
     // NOVO: Filtra a lista principal para pegar apenas os itens que podem ser otimizados
     const allowedStatuses = ['SEM_ROTA', 'EM_ROTA_AGUARDANDO_LIBERACAO', 'EM_ROTA'];
-    const itemsToOptimize = items.filter(item => 
+    const itemsToOptimize = items.filter(item =>
       allowedStatuses.includes(item.status || 'SEM_ROTA')
     );
 
@@ -554,15 +553,15 @@ const loadInitialData = useCallback(async () => {
     }
 
     setOptimizing(true);
-    
+
     try {
       await new Promise(resolve => setTimeout(resolve, 2500));
-      
+
       const payload = {
         startingPoint: startPoint,
         finalDestination: endPoint,
         // ATENÇÃO: Usamos 'itemsToOptimize' aqui, e não 'filteredItems'
-        orders: itemsToOptimize.map(item => ({ 
+        orders: itemsToOptimize.map(item => ({
           id: item.id,
           address: item.address,
           cliente: item.customerName,
@@ -571,11 +570,11 @@ const loadInitialData = useCallback(async () => {
           lng: item.longitude,
         })),
       };
-      
+
       const response = await api.optimizeRoute(payload);
       if (response?.optimizedWaypoints) {
         const optimizedOrderMap = new Map(response.optimizedWaypoints.map((wp, index) => [wp.id, index]));
-        
+
         // Mantém os itens não otimizados (ex: entregues) em suas posições originais (no topo/final)
         const newItems = [...items].sort((a, b) => {
           const aOptimizable = optimizedOrderMap.has(a.id);
@@ -584,21 +583,21 @@ const loadInitialData = useCallback(async () => {
           if (aOptimizable && !bOptimizable) return 1; // Item otimizável vai para o final
           if (!aOptimizable && bOptimizable) return -1; // Item não otimizável fica no início
           if (!aOptimizable && !bOptimizable) return 0; // Mantém a ordem entre não otimizáveis
-          
+
           return (optimizedOrderMap.get(a.id) ?? 0) - (optimizedOrderMap.get(b.id) ?? 0);
         });
 
         setItems(newItems);
         setHasChanges(true);
-        
+
         const routeResult = await api.calculateSequentialRoute(payload);
         if (routeResult?.polyline) {
           setPolyline(routeResult.polyline);
         }
-        
+
         const routeInformation = formatRouteInfo(response);
         setRouteInfo(routeInformation);
-        
+
         showStatus('success', `Rota otimizada! ${routeInformation.distance} em ${routeInformation.duration}`);
         fitMapToRoute();
       } else {
@@ -627,18 +626,18 @@ const loadInitialData = useCallback(async () => {
           onPress: async () => {
             setSaving(true);
             showStatus('loading', 'Salvando alterações...');
-            
+
             try {
               const updates = items.map((item, index) => ({
                 orderId: item.id,
                 sorting: index + 1,
               }));
-              
+
               const response = await api.updateDeliverySequence(id!, updates);
               if (response.success) {
                 setHasChanges(false);
                 showStatus('success', 'Alterações salvas!');
-                
+
                 setTimeout(() => {
                   Alert.alert('Sucesso', 'A nova sequência foi salva.', [
                     { text: 'OK', onPress: () => router.back() },
@@ -670,10 +669,10 @@ const loadInitialData = useCallback(async () => {
   const deliveryMarkers = useMemo(() => {
     return filteredItems.map((item, index) => {
       if (!item.latitude || !item.longitude) return null;
-      
+
       return (
-        <Marker 
-          key={`delivery-${item.id}`} 
+        <Marker
+          key={`delivery-${item.id}`}
           coordinate={{ latitude: item.latitude, longitude: item.longitude }}
           onPress={() => {
             // Focar no marcador quando pressionado
@@ -693,26 +692,26 @@ const loadInitialData = useCallback(async () => {
       );
     }).filter(Boolean);
   }, [filteredItems]);
-  
+
   const renderItem = useCallback(({ item, drag, isActive, getIndex }: RenderItemParams<DeliveryItemMobile>) => {
     const index = getIndex();
     return (
       <ScaleDecorator>
-        <TouchableOpacity 
-          onLongPress={drag} 
-          disabled={isActive} 
+        <TouchableOpacity
+          onLongPress={drag}
+          disabled={isActive}
           style={[
-            styles.stopItem, 
+            styles.stopItem,
             isActive && styles.draggingItem,
             hasChanges && styles.stopItemChanged
           ]}
         >
           <View style={styles.stopInfo}>
-            <MaterialIcons 
-              name="drag-handle" 
-              size={20} 
-              color={isActive ? Theme.colors.primary.main : Theme.colors.gray[400]} 
-              style={styles.dragHandle} 
+            <MaterialIcons
+              name="drag-handle"
+              size={20}
+              color={isActive ? Theme.colors.primary.main : Theme.colors.gray[400]}
+              style={styles.dragHandle}
             />
             <View style={[styles.stopIndex, isActive && styles.stopIndexActive]}>
               <Text style={[styles.stopIndexText, isActive && styles.stopIndexTextActive]}>
@@ -750,9 +749,9 @@ const loadInitialData = useCallback(async () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
-        <MapView 
-          ref={mapRef} 
-          style={styles.map} 
+        <MapView
+          ref={mapRef}
+          style={styles.map}
           provider={PROVIDER_GOOGLE}
           initialRegion={{
             latitude: -23.5505,
@@ -762,19 +761,19 @@ const loadInitialData = useCallback(async () => {
           }}
         >
           {polyline && (
-            <Polyline 
-              coordinates={decodePolyline(polyline)} 
-              strokeColor={Theme.colors.primary.main} 
-              strokeWidth={4} 
-              zIndex={1} 
+            <Polyline
+              coordinates={decodePolyline(polyline)}
+              strokeColor={Theme.colors.primary.main}
+              strokeWidth={4}
+              zIndex={1}
             />
           )}
-          
+
           {deliveryMarkers}
-          
+
           {startMarker && (
-            <Marker 
-              coordinate={{ latitude: startMarker.lat, longitude: startMarker.lng }} 
+            <Marker
+              coordinate={{ latitude: startMarker.lat, longitude: startMarker.lng }}
               zIndex={99}
               onPress={() => {
                 mapRef.current?.animateCamera({
@@ -791,10 +790,10 @@ const loadInitialData = useCallback(async () => {
               </View>
             </Marker>
           )}
-          
+
           {endMarker && (
-            <Marker 
-              coordinate={{ latitude: endMarker.lat, longitude: endMarker.lng }} 
+            <Marker
+              coordinate={{ latitude: endMarker.lat, longitude: endMarker.lng }}
               zIndex={99}
               onPress={() => {
                 mapRef.current?.animateCamera({
@@ -816,28 +815,25 @@ const loadInitialData = useCallback(async () => {
         {/* Indicador de status */}
         <StatusIndicator status={operationStatus} text={statusMessage} />
 
-        {/* Overlay de processamento */}
-        <ProcessingOverlay visible={optimizing} />
-
         <Animated.View style={[styles.bottomSheet, { height: bottomSheetHeight }]}>
           <View style={styles.handleBar} />
 
           {/* Botão de expansão */}
-          <TouchableOpacity 
-            style={styles.expandButton} 
+          <TouchableOpacity
+            style={styles.expandButton}
             onPress={toggleExpansion}
           >
             <Text style={styles.expandButtonText}>
               {isExpanded ? 'Minimizar Lista' : 'Expandir Lista'}
             </Text>
-            <Ionicons 
-              name={isExpanded ? "chevron-down" : "chevron-up"} 
-              size={16} 
-              color={Theme.colors.primary.main} 
+            <Ionicons
+              name={isExpanded ? "chevron-down" : "chevron-up"}
+              size={16}
+              color={Theme.colors.primary.main}
             />
           </TouchableOpacity>
 
-          <ScrollView 
+          <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
           >
@@ -846,8 +842,8 @@ const loadInitialData = useCallback(async () => {
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Pontos de Referência</Text>
                 <View style={styles.actionButtons}>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.locationButton]} 
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.locationButton]}
                     onPress={getCurrentLocation}
                     disabled={isGettingLocation}
                   >
@@ -857,19 +853,19 @@ const loadInitialData = useCallback(async () => {
                       <Ionicons name="location" size={16} color={Theme.colors.primary.main} />
                     )}
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.fitButton]} 
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.fitButton]}
                     onPress={fitMapToRoute}
                   >
                     <MaterialIcons name="center-focus-strong" size={16} color={Theme.colors.text.primary} />
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
-                      styles.actionButton, 
+                      styles.actionButton,
                       styles.optimizeButton,
                       (!startPoint || !endPoint || optimizing || saving) && styles.actionButtonDisabled
-                    ]} 
-                    onPress={handleOptimize} 
+                    ]}
+                    onPress={handleOptimize}
                     disabled={!startPoint || !endPoint || optimizing || saving}
                   >
                     {optimizing ? (
@@ -880,7 +876,7 @@ const loadInitialData = useCallback(async () => {
                   </TouchableOpacity>
                 </View>
               </View>
-              
+
               <AddressInput
                 placeholder="Ponto de partida (obrigatório)"
                 value={startInput}
@@ -889,7 +885,7 @@ const loadInitialData = useCallback(async () => {
                 isGeocoding={isGeocodingStart}
                 hasResult={!!startMarker}
               />
-              
+
               <AddressInput
                 placeholder="Ponto de chegada (obrigatório)"
                 value={endInput}
@@ -933,7 +929,7 @@ const loadInitialData = useCallback(async () => {
                 </Text>
                 <Text style={styles.deliveriesCount}>{filteredItems.length} paradas</Text>
               </View>
-              
+
               <DraggableFlatList
                 data={filteredItems}
                 onDragEnd={handleDragEnd}
@@ -948,13 +944,13 @@ const loadInitialData = useCallback(async () => {
             {/* Botão de salvar com melhor estado visual */}
             {hasChanges && (
               <View style={styles.saveContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
-                    styles.saveButton, 
+                    styles.saveButton,
                     saving && styles.saveButtonDisabled,
                     hasChanges && styles.saveButtonActive
-                  ]} 
-                  onPress={handleSaveSequence} 
+                  ]}
+                  onPress={handleSaveSequence}
                   disabled={saving}
                 >
                   {saving ? (
@@ -973,412 +969,416 @@ const loadInitialData = useCallback(async () => {
             )}
           </ScrollView>
         </Animated.View>
+
+        {/* *** CORREÇÃO: Mover o Overlay para ser o último filho *** */}
+        <ProcessingOverlay visible={optimizing} />
+
       </SafeAreaView>
     </GestureHandlerRootView>
   );
 }
-
+// Estilos... (o restante do arquivo permanece o mesmo)
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: Theme.colors.background.default 
-  },
-  centeredContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    backgroundColor: Theme.colors.background.default
-  },
-  infoText: { 
-    marginTop: Theme.spacing.md, 
-    color: Theme.colors.text.secondary,
-    fontSize: Theme.typography.fontSize.sm
-  },
-  map: { 
-    ...StyleSheet.absoluteFillObject 
-  },
-  statusIndicator: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
-    left: Theme.spacing.sm,
-    right: Theme.spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Theme.spacing.sm,
-    paddingVertical: Theme.spacing.xs,
-    borderRadius: Theme.borderRadius.base,
-    zIndex: 1000,
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.medium,
-    marginLeft: Theme.spacing.xs,
-  },
-  processingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2000,
-  },
-  processingContainer: {
-    backgroundColor: Theme.colors.background.paper,
-    padding: Theme.spacing.lg,
-    borderRadius: Theme.borderRadius.lg,
-    alignItems: 'center',
-    minWidth: 250,
-    ...Theme.shadows.lg,
-  },
-  processingTitle: {
-    fontSize: Theme.typography.fontSize.base,
-    fontWeight: Theme.typography.fontWeight.bold,
-    color: Theme.colors.text.primary,
-    marginTop: Theme.spacing.sm,
-    marginBottom: Theme.spacing.xs,
-  },
-  processingSubtitle: {
-    fontSize: Theme.typography.fontSize.sm,
-    color: Theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: Theme.spacing.md,
-  },
-  progressBar: {
-    width: '100%',
-    height: 3,
-    backgroundColor: Theme.colors.gray[200],
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Theme.colors.primary.main,
-    width: '100%',
-  },
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: Theme.colors.background.paper,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: Theme.spacing.md,
-    paddingTop: Theme.spacing.xs,
-    ...Theme.shadows.lg,
-    overflow: 'hidden',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: Theme.colors.gray[300],
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: Theme.spacing.sm,
-  },
-  expandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Theme.spacing.sm,
-    marginBottom: Theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.gray[100],
-  },
-  expandButtonText: {
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.medium,
-    color: Theme.colors.primary.main,
-    marginRight: Theme.spacing.xs,
-  },
-  endpointsContainer: {
-    marginBottom: Theme.spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: Theme.typography.fontSize.sm,
-    fontWeight: Theme.typography.fontWeight.semiBold,
-    color: Theme.colors.text.primary,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: Theme.spacing.xs,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fitButton: {
-    backgroundColor: Theme.colors.gray[100],
-  },
-  locationButton: {
-    backgroundColor: Theme.colors.primary.main + '15',
-    borderWidth: 1,
-    borderColor: Theme.colors.primary.main + '30',
-  },
-  optimizeButton: {
-    backgroundColor: Theme.colors.primary.main,
-    ...Theme.shadows.sm,
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Theme.colors.gray[50],
-    borderRadius: Theme.borderRadius.base,
-    borderWidth: 1,
-    borderColor: Theme.colors.gray[200],
-    marginBottom: Theme.spacing.xs,
-    minHeight: 40,
-  },
-  inputWrapperFocused: {
-    borderColor: Theme.colors.primary.main,
-    backgroundColor: '#fff',
-  },
-  inputWrapperSuccess: {
-    borderColor: Theme.colors.status.success,
-    backgroundColor: Theme.colors.status.success + '10',
-  },
-  endpointInput: {
-    flex: 1,
-    paddingVertical: Theme.spacing.xs,
-    paddingHorizontal: Theme.spacing.sm,
-    fontSize: Theme.typography.fontSize.xs,
-    color: Theme.colors.text.primary,
-  },
-  geocodeButton: {
-    padding: Theme.spacing.sm,
-    borderRadius: Theme.borderRadius.base,
-    marginRight: Theme.spacing.xs,
-  },
-  geocodeButtonDisabled: {
-    opacity: 0.5,
-  },
-  routeInfoContainer: {
-    backgroundColor: Theme.colors.primary.main + '10',
-    borderRadius: Theme.borderRadius.base,
-    padding: Theme.spacing.sm,
-    marginBottom: Theme.spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: Theme.colors.primary.main,
-  },
-  routeInfoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.xs,
-  },
-  routeInfoTitle: {
-    fontSize: Theme.typography.fontSize.sm,
-    fontWeight: Theme.typography.fontWeight.semiBold,
-    color: Theme.colors.text.primary,
-    marginLeft: Theme.spacing.xs,
-  },
-  routeInfoStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  routeInfoStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  routeInfoStatText: {
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.medium,
-    color: Theme.colors.text.primary,
-    marginLeft: Theme.spacing.xs,
-  },
-  deliveriesContainer: {
-    marginBottom: Theme.spacing.md,
-  },
-  deliveriesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.sm,
-  },
-  deliveriesCount: {
-    fontSize: Theme.typography.fontSize.xs,
-    color: Theme.colors.text.secondary,
-    fontWeight: Theme.typography.fontWeight.medium,
-  },
-  statusFilterNote: {
-    fontSize: Theme.typography.fontSize.xs,
-    color: Theme.colors.primary.main,
-    fontWeight: Theme.typography.fontWeight.normal,
-  },
-  flatListContainer: {
-    flex: 1,
-  },
-  stopItem: {
-    backgroundColor: Theme.colors.background.paper,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Theme.spacing.xs,
-    paddingHorizontal: Theme.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.gray[100],
-    borderRadius: Theme.borderRadius.base,
-    marginBottom: Theme.spacing.xs,
-  },
-  stopItemChanged: {
-    backgroundColor: Theme.colors.primary.main + '05',
-    borderLeftWidth: 2,
-    borderLeftColor: Theme.colors.primary.main,
-  },
-  draggingItem: {
-    backgroundColor: '#fff',
-    opacity: 0.95,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 6,
-    borderRadius: Theme.borderRadius.base,
-    transform: [{ scale: 1.01 }],
-  },
-  stopInfo: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    flex: 1 
-  },
-  dragHandle: { 
-    marginRight: Theme.spacing.xs, 
-    padding: 2 
-  },
-  stopIndex: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Theme.colors.gray[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: Theme.spacing.sm,
-  },
-  stopIndexActive: {
-    backgroundColor: Theme.colors.primary.main,
-  },
-  stopIndexText: {
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.bold,
-    color: Theme.colors.text.secondary,
-  },
-  stopIndexTextActive: {
-    color: '#fff',
-  },
-  stopDetails: {
-    flex: 1,
-  },
-  stopName: { 
-    fontWeight: Theme.typography.fontWeight.semiBold, 
-    color: Theme.colors.text.primary, 
-    marginBottom: 1,
-    fontSize: Theme.typography.fontSize.sm
-  },
-  stopAddress: { 
-    fontSize: Theme.typography.fontSize.xs, 
-    color: Theme.colors.text.secondary,
-    marginBottom: 2
-  },
-  orderInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  orderNumber: {
-    fontSize: Theme.typography.fontSize.xs,
-    color: Theme.colors.primary.main,
-    fontWeight: Theme.typography.fontWeight.medium,
-  },
-  orderStatus: {
-    fontSize: Theme.typography.fontSize.xs,
-    color: Theme.colors.text.secondary,
-    fontWeight: Theme.typography.fontWeight.medium,
-    paddingHorizontal: Theme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: Theme.borderRadius.sm,
-    backgroundColor: Theme.colors.gray[100],
-  },
-  statusInRoute: {
-    color: Theme.colors.status.success,
-    backgroundColor: Theme.colors.status.success + '15',
-  },
-  saveContainer: {
-    paddingTop: Theme.spacing.sm,
-    paddingBottom: Theme.spacing.md,
-  },
-  saveButton: {
-    backgroundColor: Theme.colors.gray[400],
-    paddingVertical: Theme.spacing.md,
-    borderRadius: Theme.borderRadius.base,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-  },
-  saveButtonActive: {
-    backgroundColor: Theme.colors.primary.main,
-    ...Theme.shadows.base,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: Theme.typography.fontSize.sm,
-    fontWeight: Theme.typography.fontWeight.semiBold,
-    marginLeft: Theme.spacing.xs,
-  },
-  marker: {
-    backgroundColor: Theme.colors.primary.main,
-    borderRadius: 16,
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-    ...Theme.shadows.sm,
-  },
-  markerText: {
-    color: '#fff',
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.bold,
-  },
-  endpointMarker: {
-    backgroundColor: Theme.colors.status.success,
-    borderRadius: 16,
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-    ...Theme.shadows.sm,
-  },
-  endMarker: {
-    backgroundColor: Theme.colors.status.error,
-  },
+    container: {
+        flex: 1,
+        backgroundColor: Theme.colors.background.default
+    },
+    centeredContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: Theme.colors.background.default
+    },
+    infoText: {
+        marginTop: Theme.spacing.md,
+        color: Theme.colors.text.secondary,
+        fontSize: Theme.typography.fontSize.sm
+    },
+    map: {
+        ...StyleSheet.absoluteFillObject
+    },
+    statusIndicator: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 20,
+        left: Theme.spacing.sm,
+        right: Theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Theme.spacing.sm,
+        paddingVertical: Theme.spacing.xs,
+        borderRadius: Theme.borderRadius.base,
+        zIndex: 1000,
+    },
+    statusText: {
+        color: '#fff',
+        fontSize: Theme.typography.fontSize.xs,
+        fontWeight: Theme.typography.fontWeight.medium,
+        marginLeft: Theme.spacing.xs,
+    },
+    processingOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2000,
+    },
+    processingContainer: {
+        backgroundColor: Theme.colors.background.paper,
+        padding: Theme.spacing.lg,
+        borderRadius: Theme.borderRadius.lg,
+        alignItems: 'center',
+        minWidth: 250,
+        ...Theme.shadows.lg,
+    },
+    processingTitle: {
+        fontSize: Theme.typography.fontSize.base,
+        fontWeight: Theme.typography.fontWeight.bold,
+        color: Theme.colors.text.primary,
+        marginTop: Theme.spacing.sm,
+        marginBottom: Theme.spacing.xs,
+    },
+    processingSubtitle: {
+        fontSize: Theme.typography.fontSize.sm,
+        color: Theme.colors.text.secondary,
+        textAlign: 'center',
+        marginBottom: Theme.spacing.md,
+    },
+    progressBar: {
+        width: '100%',
+        height: 3,
+        backgroundColor: Theme.colors.gray[200],
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: Theme.colors.primary.main,
+        width: '100%',
+    },
+    bottomSheet: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: Theme.colors.background.paper,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingHorizontal: Theme.spacing.md,
+        paddingTop: Theme.spacing.xs,
+        ...Theme.shadows.lg,
+        overflow: 'hidden',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    handleBar: {
+        width: 40,
+        height: 4,
+        backgroundColor: Theme.colors.gray[300],
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginBottom: Theme.spacing.sm,
+    },
+    expandButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: Theme.spacing.sm,
+        marginBottom: Theme.spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: Theme.colors.gray[100],
+    },
+    expandButtonText: {
+        fontSize: Theme.typography.fontSize.xs,
+        fontWeight: Theme.typography.fontWeight.medium,
+        color: Theme.colors.primary.main,
+        marginRight: Theme.spacing.xs,
+    },
+    endpointsContainer: {
+        marginBottom: Theme.spacing.md,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Theme.spacing.sm,
+    },
+    sectionTitle: {
+        fontSize: Theme.typography.fontSize.sm,
+        fontWeight: Theme.typography.fontWeight.semiBold,
+        color: Theme.colors.text.primary,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: Theme.spacing.xs,
+    },
+    actionButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fitButton: {
+        backgroundColor: Theme.colors.gray[100],
+    },
+    locationButton: {
+        backgroundColor: Theme.colors.primary.main + '15',
+        borderWidth: 1,
+        borderColor: Theme.colors.primary.main + '30',
+    },
+    optimizeButton: {
+        backgroundColor: Theme.colors.primary.main,
+        ...Theme.shadows.sm,
+    },
+    actionButtonDisabled: {
+        opacity: 0.5,
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: Theme.colors.gray[50],
+        borderRadius: Theme.borderRadius.base,
+        borderWidth: 1,
+        borderColor: Theme.colors.gray[200],
+        marginBottom: Theme.spacing.xs,
+        minHeight: 40,
+    },
+    inputWrapperFocused: {
+        borderColor: Theme.colors.primary.main,
+        backgroundColor: '#fff',
+    },
+    inputWrapperSuccess: {
+        borderColor: Theme.colors.status.success,
+        backgroundColor: Theme.colors.status.success + '10',
+    },
+    endpointInput: {
+        flex: 1,
+        paddingVertical: Theme.spacing.xs,
+        paddingHorizontal: Theme.spacing.sm,
+        fontSize: Theme.typography.fontSize.xs,
+        color: Theme.colors.text.primary,
+    },
+    geocodeButton: {
+        padding: Theme.spacing.sm,
+        borderRadius: Theme.borderRadius.base,
+        marginRight: Theme.spacing.xs,
+    },
+    geocodeButtonDisabled: {
+        opacity: 0.5,
+    },
+    routeInfoContainer: {
+        backgroundColor: Theme.colors.primary.main + '10',
+        borderRadius: Theme.borderRadius.base,
+        padding: Theme.spacing.sm,
+        marginBottom: Theme.spacing.md,
+        borderLeftWidth: 3,
+        borderLeftColor: Theme.colors.primary.main,
+    },
+    routeInfoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: Theme.spacing.xs,
+    },
+    routeInfoTitle: {
+        fontSize: Theme.typography.fontSize.sm,
+        fontWeight: Theme.typography.fontWeight.semiBold,
+        color: Theme.colors.text.primary,
+        marginLeft: Theme.spacing.xs,
+    },
+    routeInfoStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    routeInfoStat: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'center',
+    },
+    routeInfoStatText: {
+        fontSize: Theme.typography.fontSize.xs,
+        fontWeight: Theme.typography.fontWeight.medium,
+        color: Theme.colors.text.primary,
+        marginLeft: Theme.spacing.xs,
+    },
+    deliveriesContainer: {
+        marginBottom: Theme.spacing.md,
+    },
+    deliveriesHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Theme.spacing.sm,
+    },
+    deliveriesCount: {
+        fontSize: Theme.typography.fontSize.xs,
+        color: Theme.colors.text.secondary,
+        fontWeight: Theme.typography.fontWeight.medium,
+    },
+    statusFilterNote: {
+        fontSize: Theme.typography.fontSize.xs,
+        color: Theme.colors.primary.main,
+        fontWeight: Theme.typography.fontWeight.normal,
+    },
+    flatListContainer: {
+        flex: 1,
+    },
+    stopItem: {
+        backgroundColor: Theme.colors.background.paper,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Theme.spacing.xs,
+        paddingHorizontal: Theme.spacing.xs,
+        borderBottomWidth: 1,
+        borderBottomColor: Theme.colors.gray[100],
+        borderRadius: Theme.borderRadius.base,
+        marginBottom: Theme.spacing.xs,
+    },
+    stopItemChanged: {
+        backgroundColor: Theme.colors.primary.main + '05',
+        borderLeftWidth: 2,
+        borderLeftColor: Theme.colors.primary.main,
+    },
+    draggingItem: {
+        backgroundColor: '#fff',
+        opacity: 0.95,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 6,
+        borderRadius: Theme.borderRadius.base,
+        transform: [{ scale: 1.01 }],
+    },
+    stopInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1
+    },
+    dragHandle: {
+        marginRight: Theme.spacing.xs,
+        padding: 2
+    },
+    stopIndex: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: Theme.colors.gray[100],
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Theme.spacing.sm,
+    },
+    stopIndexActive: {
+        backgroundColor: Theme.colors.primary.main,
+    },
+    stopIndexText: {
+        fontSize: Theme.typography.fontSize.xs,
+        fontWeight: Theme.typography.fontWeight.bold,
+        color: Theme.colors.text.secondary,
+    },
+    stopIndexTextActive: {
+        color: '#fff',
+    },
+    stopDetails: {
+        flex: 1,
+    },
+    stopName: {
+        fontWeight: Theme.typography.fontWeight.semiBold,
+        color: Theme.colors.text.primary,
+        marginBottom: 1,
+        fontSize: Theme.typography.fontSize.sm
+    },
+    stopAddress: {
+        fontSize: Theme.typography.fontSize.xs,
+        color: Theme.colors.text.secondary,
+        marginBottom: 2
+    },
+    orderInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    orderNumber: {
+        fontSize: Theme.typography.fontSize.xs,
+        color: Theme.colors.primary.main,
+        fontWeight: Theme.typography.fontWeight.medium,
+    },
+    orderStatus: {
+        fontSize: Theme.typography.fontSize.xs,
+        color: Theme.colors.text.secondary,
+        fontWeight: Theme.typography.fontWeight.medium,
+        paddingHorizontal: Theme.spacing.xs,
+        paddingVertical: 2,
+        borderRadius: Theme.borderRadius.sm,
+        backgroundColor: Theme.colors.gray[100],
+    },
+    statusInRoute: {
+        color: Theme.colors.status.success,
+        backgroundColor: Theme.colors.status.success + '15',
+    },
+    saveContainer: {
+        paddingTop: Theme.spacing.sm,
+        paddingBottom: Theme.spacing.md,
+    },
+    saveButton: {
+        backgroundColor: Theme.colors.gray[400],
+        paddingVertical: Theme.spacing.md,
+        borderRadius: Theme.borderRadius.base,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 48,
+    },
+    saveButtonActive: {
+        backgroundColor: Theme.colors.primary.main,
+        ...Theme.shadows.base,
+    },
+    saveButtonDisabled: {
+        opacity: 0.7,
+    },
+    saveButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontSize: Theme.typography.fontSize.sm,
+        fontWeight: Theme.typography.fontWeight.semiBold,
+        marginLeft: Theme.spacing.xs,
+    },
+    marker: {
+        backgroundColor: Theme.colors.primary.main,
+        borderRadius: 16,
+        width: 28,
+        height: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+        ...Theme.shadows.sm,
+    },
+    markerText: {
+        color: '#fff',
+        fontSize: Theme.typography.fontSize.xs,
+        fontWeight: Theme.typography.fontWeight.bold,
+    },
+    endpointMarker: {
+        backgroundColor: Theme.colors.status.success,
+        borderRadius: 16,
+        width: 28,
+        height: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+        ...Theme.shadows.sm,
+    },
+    endMarker: {
+        backgroundColor: Theme.colors.status.error,
+    },
 });
