@@ -250,7 +250,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     });
 
     socketRef.current.on('disconnect', () => setIsConnected(false));
-
+    
     socketRef.current.onAny(() => {
         // Apenas atualiza o contador do sininho quando o app está aberto
         fetchNotifications();
@@ -352,7 +352,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     });
 
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener);
+      notificationListener.remove();
     };
   }, [fetchNotifications]);
 
@@ -361,7 +361,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       console.log('Usuário tocou na notificação:', response);
       
-      // Marcar como lida
       const notificationData = response.notification.request.content.data;
       if (notificationData && typeof notificationData === 'object' && 'notificationId' in notificationData) {
         const notificationId = notificationData.notificationId as string;
@@ -369,16 +368,10 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
           markAsRead(notificationId);
         }
       }
-      
-      // Aqui você pode adicionar navegação baseada no tipo de notificação
-      // Exemplo:
-      // if (notificationData?.type === 'new_order') {
-      //   navigation.navigate('OrderDetails', { orderId: notificationData.orderId });
-      // }
     });
 
     return () => {
-      Notifications.removeNotificationSubscription(responseListener);
+      responseListener.remove();
     };
   }, [markAsRead]);
 
@@ -389,7 +382,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       if (response) {
         console.log('App aberto por notificação:', response);
         
-        // Mesmo tratamento do listener acima
         const notificationData = response.notification.request.content.data;
         if (notificationData && typeof notificationData === 'object' && 'notificationId' in notificationData) {
           const notificationId = notificationData.notificationId as string;
@@ -397,11 +389,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
             markAsRead(notificationId);
           }
         }
-        
-        // Navegação se necessário
-        // if (notificationData?.type === 'new_order') {
-        //   navigation.navigate('OrderDetails', { orderId: notificationData.orderId });
-        // }
       }
     };
 
