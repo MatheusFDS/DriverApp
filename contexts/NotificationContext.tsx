@@ -221,13 +221,13 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   }, []);
 
   const connectSocket = useCallback(async () => {
-    if (!user?.id) return;
+    // **Refatoração Principal:** Verificação única para evitar reconexões desnecessárias.
+    if (socketRef.current?.connected || !user?.id) return;
+
     processOfflineLocations();
 
     const token = await AsyncStorage.getItem('auth_token');
     if (!token) return;
-
-    if (socketRef.current?.connected) return;
 
     if (socketRef.current) {
       socketRef.current.removeAllListeners();

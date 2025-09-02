@@ -79,37 +79,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout]);
 
   useEffect(() => {
-    const bootstrapAsync = async () => {
-      let userJson: string | null = null;
-      try {
-        userJson = await AsyncStorage.getItem('user');
-        if (userJson) {
-          setUser(JSON.parse(userJson));
-        }
-      } catch {
-        // Silently fail on storage read error
-      }
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const idToken = await getIdToken(firebaseUser, true);
+          await AsyncStorage.setItem('auth_token', idToken);
 
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          try {
-            const idToken = await getIdToken(firebaseUser, true);
-            await AsyncStorage.setItem('auth_token', idToken);
-            await refreshUser();
-          } catch (error) {
-            console.warn("Falha ao atualizar a sessão em background, o usuário continuará logado com dados locais.", error);
+          // Carrega os dados do usuário do backend
+          const profileResponse = await api.getProfile();
+          if (profileResponse.success && profileResponse.data) {
+            const backendUser = profileResponse.data;
+            await AsyncStorage.setItem('user', JSON.stringify(backendUser));
+            setUser(backendUser);
+          } else {
+            // Se não conseguir pegar o perfil, faz o logout
+            await logout();
           }
-        } else {
-          await logout();
+        } catch (error) {
+          console.warn("Falha ao atualizar a sessão em background, o usuário continuará logado com dados locais.", error);
         }
-        setIsLoading(false);
-      });
+      } else {
+        await logout();
+      }
+      setIsLoading(false);
+    });
 
-      return () => unsubscribe();
-    };
+    return () => unsubscribe();
+  }, [auth, logout]);
 
-    bootstrapAsync();
-  }, [auth, logout, refreshUser]);
 
   useProtectedRoute(user, isLoading);
 
