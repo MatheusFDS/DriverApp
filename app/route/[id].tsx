@@ -2,7 +2,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -27,6 +27,7 @@ import {
   RouteMobile as Route,
   StatusUpdatePayload
 } from '../../types';
+import { formatCurrency } from '../../utils/formatters';
 
 Dimensions.get('window');
 
@@ -94,13 +95,26 @@ export default function RouteDetailsScreen() {
       if (response.success && response.data) {
         await loadRouteDetails(false);
         
-        if (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE') {
+        if (newStatus === 'ENTREGUE') {
           Alert.alert(
             'Status Atualizado', 
-            response.data.message || 'Status da entrega atualizado.',
+            'Entrega marcada como realizada. Você será redirecionado para anexar o comprovante.',
             [
-              { text: 'Ir para a Entrega', onPress: () => router.push(`/delivery/${deliveryItem.id}`) },
-              { text: 'Continuar', style: 'cancel' }
+              { 
+                text: 'Anexar Comprovante', 
+                onPress: () => router.push(`/delivery/${deliveryItem.id}`) 
+              }
+            ]
+          );
+        } else if (newStatus === 'NAO_ENTREGUE') {
+          Alert.alert(
+            'Status Atualizado', 
+            'Entrega marcada como não realizada. Você será redirecionado para anexar o comprovante da tentativa.',
+            [
+              { 
+                text: 'Anexar Comprovante', 
+                onPress: () => router.push(`/delivery/${deliveryItem.id}`) 
+              }
             ]
           );
         } else {
@@ -153,12 +167,19 @@ export default function RouteDetailsScreen() {
           } else if (action.targetStatus === 'ENTREGUE') {
             Alert.alert(
               'Confirmar Entrega',
-              `Confirma que a entrega foi realizada para "${deliveryItem.customerName}"?`,
+              `Confirma que a entrega foi realizada para "${deliveryItem.customerName}"?\n\nVocê será redirecionado para anexar o comprovante de entrega.`,
               [
                 { text: 'Cancelar', style: 'cancel' },
                 {
                   text: 'Sim, Entregue',
-                  onPress: () => handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus)
+                  onPress: () => {
+                    // Primeiro atualiza o status
+                    handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus);
+                    // Depois redireciona para a tela de detalhes da entrega para anexar comprovante
+                    setTimeout(() => {
+                      router.push(`/delivery/${deliveryItem.id}`);
+                    }, 1000);
+                  }
                 }
               ]
             );
@@ -176,9 +197,7 @@ export default function RouteDetailsScreen() {
     router.push(`/delivery/${deliveryItemId}`);
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {

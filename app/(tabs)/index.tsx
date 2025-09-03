@@ -3,23 +3,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import {
-  DeliveryItemMobile,
-  RouteMobile as Route,
-} from '../../types';
+import { CommonStyles, Theme } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
-import { CommonStyles, Theme } from '../../components/ui';
+import {
+    DeliveryItemMobile,
+    RouteMobile as Route,
+} from '../../types';
+import { formatCurrency } from '../../utils/formatters';
 
 Dimensions.get('window');
 
@@ -83,13 +84,6 @@ export default function DashboardScreen() {
 
   const navigateToDelivery = (deliveryId: string) => {
     router.push(`/delivery/${deliveryId}`);
-  };
-
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    });
   };
 
   const formatDate = (dateString: string) => {

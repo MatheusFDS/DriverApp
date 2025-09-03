@@ -14,6 +14,7 @@ import {
 import { Button, Card, CommonStyles, StatusBadge, Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import { RouteMobile as Route } from '../../types';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function HistoryScreen() {
   const [allRoutes, setAllRoutes] = useState<Route[]>([]);
@@ -103,12 +104,7 @@ export default function HistoryScreen() {
     router.push(`/route/${routeId}`);
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', { 
-      style: 'currency', 
-      currency: 'BRL' 
-    });
-  };
+
 
   const hasMoreRoutes = displayedRoutes.length < allRoutes.length;
 

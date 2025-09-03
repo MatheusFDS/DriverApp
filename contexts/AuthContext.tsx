@@ -1,18 +1,18 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApp } from '@react-native-firebase/app';
+import { getAuth, getIdToken, onAuthStateChanged, signInWithEmailAndPassword, signOut } from '@react-native-firebase/auth';
+import { router, useSegments } from 'expo-router';
 import React, {
   createContext,
-  useContext,
-  useState,
-  useEffect,
   ReactNode,
   useCallback,
+  useContext,
+  useEffect,
+  useState,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useSegments } from 'expo-router';
-import { User } from '../types';
-import { api } from '../services/api';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, getIdToken } from '@react-native-firebase/auth';
-import { getApp } from '@react-native-firebase/app';
 import { Alert } from 'react-native';
+import { api } from '../services/api';
+import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -32,7 +32,7 @@ function useProtectedRoute(user: User | null, isLoading: boolean) {
       return;
     }
 
-    const isPublicRoute = segments[0] === 'login' || segments[0] === 'invite';
+    const isPublicRoute = segments[0] === 'login' || segments[0] === 'convite';
 
     if (!user && !isPublicRoute) {
       router.replace('/login');

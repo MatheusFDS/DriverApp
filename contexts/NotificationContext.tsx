@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
+import * as TaskManager from 'expo-task-manager';
 import React, {
     createContext,
     PropsWithChildren,
@@ -13,9 +13,9 @@ import React, {
 } from 'react';
 import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
 import { io, Socket } from 'socket.io-client';
-import { Notification } from '../types';
 import { currentApiConfig } from '../config/apiConfig';
 import { api } from '../services/api';
+import { Notification } from '../types';
 import { useAuth } from './AuthContext';
 
 // --- CONFIGURAÇÃO DAS NOTIFICAÇÕES NATIVAS ---
@@ -139,10 +139,14 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   const registerForPushNotificationsAsync = useCallback(async () => {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+        name: 'Notificações do App',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
       });
     }
 
@@ -150,11 +154,22 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
       finalStatus = status;
     }
+    
     if (finalStatus !== 'granted') {
-      console.warn('Permissão para notificações push não concedida!');
+      Alert.alert(
+        'Notificações Desabilitadas',
+        'Para receber notificações sobre novos roteiros, ative as notificações nas configurações do app.',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
@@ -163,9 +178,17 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         projectId: "5d97bc80-8444-4e65-b09a-e107ebc4ff5b",
       })).data;
       
-      await api.registerPushToken(token);
+      const response = await api.registerPushToken(token);
+      if (response.success) {
+        await AsyncStorage.setItem('push_token', token);
+      }
     } catch (error) {
       console.error("Erro ao obter e registrar o token de notificação push:", error);
+      Alert.alert(
+        'Erro nas Notificações',
+        'Não foi possível configurar as notificações. Verifique sua conexão e tente novamente.',
+        [{ text: 'OK' }]
+      );
     }
   }, []);
 
@@ -192,6 +215,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       // Error silently handled
     }
   }, []);
+
+
   
   const processOfflineLocations = useCallback(async () => {
     const isApiConnected = await api.checkConnection();
@@ -314,11 +339,34 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   }, []);
 
   const stopBackgroundLocationTracking = useCallback(async () => {
-    const isTracking = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-    if (isTracking) {
+    try {
+      const isTracking = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+      if (isTracking) {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+        console.log('📍 Rastreamento de localização parado');
+      }
+      setIsLocationActive(false);
+    } catch (error) {
+      console.error('Erro ao parar rastreamento de localização:', error);
+      setIsLocationActive(false);
     }
-    setIsLocationActive(false);
+  }, []);
+
+  // Função para verificar se o token de push precisa ser re-registrado
+  const checkAndReRegisterPushToken = useCallback(async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('push_token');
+      const currentToken = (await Notifications.getExpoPushTokenAsync({
+        projectId: "5d97bc80-8444-4e65-b09a-e107ebc4ff5b",
+      })).data;
+      
+      if (storedToken !== currentToken) {
+        await api.registerPushToken(currentToken);
+        await AsyncStorage.setItem('push_token', currentToken);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar token de push:', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -327,28 +375,45 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       connectSocket();
       startBackgroundLocationTracking();
       registerForPushNotificationsAsync();
+      
+      // Verifica o token de push a cada 5 minutos
+      const tokenCheckInterval = setInterval(checkAndReRegisterPushToken, 5 * 60 * 1000);
+      
+      return () => {
+        clearInterval(tokenCheckInterval);
+      };
     } else {
+      // Para tudo quando o usuário sair
       disconnectSocket();
       stopBackgroundLocationTracking();
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
     }
+  }, [user?.id, fetchNotifications, connectSocket, disconnectSocket, startBackgroundLocationTracking, stopBackgroundLocationTracking, registerForPushNotificationsAsync, checkAndReRegisterPushToken]);
 
+  // Cleanup adicional quando o componente for desmontado
+  useEffect(() => {
     return () => {
-      if (!user?.id) {
-          disconnectSocket();
-          stopBackgroundLocationTracking();
-      }
+      // Para o rastreamento quando o app for fechado
+      stopBackgroundLocationTracking();
     };
-  }, [user?.id, fetchNotifications, connectSocket, disconnectSocket, startBackgroundLocationTracking, stopBackgroundLocationTracking, registerForPushNotificationsAsync]);
+  }, [stopBackgroundLocationTracking]);
 
   // Listener para notificações recebidas (app aberto)
   useEffect(() => {
     const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notificação recebida:', notification);
       // Atualiza a lista de notificações quando uma nova chega
       fetchNotifications();
+      
+      // Mostra um alerta para notificações importantes
+      if (notification.request.content.data?.type === 'delivery-approved-for-driver') {
+        Alert.alert(
+          'Novo Roteiro Disponível!',
+          notification.request.content.body || 'Você tem um novo roteiro para executar.',
+          [{ text: 'Ver Detalhes', onPress: () => fetchNotifications() }]
+        );
+      }
     });
 
     return () => {
@@ -359,8 +424,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   // Listener para quando usuário toca na notificação
   useEffect(() => {
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Usuário tocou na notificação:', response);
-      
       const notificationData = response.notification.request.content.data;
       if (notificationData && typeof notificationData === 'object' && 'notificationId' in notificationData) {
         const notificationId = notificationData.notificationId as string;
@@ -380,8 +443,6 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     const checkInitialNotification = async () => {
       const response = await Notifications.getLastNotificationResponseAsync();
       if (response) {
-        console.log('App aberto por notificação:', response);
-        
         const notificationData = response.notification.request.content.data;
         if (notificationData && typeof notificationData === 'object' && 'notificationId' in notificationData) {
           const notificationId = notificationData.notificationId as string;

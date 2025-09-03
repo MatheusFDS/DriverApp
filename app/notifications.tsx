@@ -3,18 +3,18 @@
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  RefreshControl,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
-import { Notification } from '../types';
-import { useNotifications } from '../contexts/NotificationContext';
 import { Button, Card, CommonStyles, Theme } from '../components/ui';
+import { useNotifications } from '../contexts/NotificationContext';
+import { Notification } from '../types';
 
 export default function NotificationsScreen() {
   const { 
@@ -24,7 +24,7 @@ export default function NotificationsScreen() {
     unreadCount,
     markAsRead, 
     markAllAsRead,
-    fetchNotifications 
+    fetchNotifications
   } = useNotifications();
 
   useEffect(() => {

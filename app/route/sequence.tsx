@@ -1,27 +1,27 @@
 // app/route/sequence.tsx
 
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Keyboard,
+  Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Keyboard,
-  Animated,
-  Dimensions,
-  Platform,
-  ScrollView,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LatLng as MapLatLng } from 'react-native-maps';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import MapView, { LatLng as MapLatLng, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
@@ -426,7 +426,8 @@ export default function RoutePlanningScreen() {
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
-    showStatus('loading', 'Carregando roteiro...');
+    setOperationStatus('loading');
+    setStatusMessage('Carregando roteiro...');
 
     try {
       if (!id) throw new Error('ID do roteiro não fornecido.');
@@ -442,7 +443,12 @@ export default function RoutePlanningScreen() {
         setEndPoint('');
         setPolyline('');
 
-        showStatus('success', 'Roteiro carregado com sucesso!');
+        setOperationStatus('success');
+        setStatusMessage('Roteiro carregado com sucesso!');
+        setTimeout(() => {
+          setOperationStatus('idle');
+          setStatusMessage('');
+        }, 2000);
 
         // NOVO: Encontra o primeiro item com status 'EM_ROTA'
         const firstInRouteItem = sorted.find(item => item.status === 'EM_ROTA');
@@ -460,7 +466,37 @@ export default function RoutePlanningScreen() {
             });
           } else {
             // Se não encontrar, apenas ajusta o mapa para todos os pontos como antes
-            fitMapToRoute();
+            // Chama fitMapToRoute diretamente sem dependências
+            if (mapRef.current) {
+              setTimeout(() => {
+                const coordinates: MapLatLng[] = [];
+                
+                if (startMarker) {
+                  coordinates.push({ latitude: startMarker.lat, longitude: startMarker.lng });
+                }
+                
+                filteredItems.forEach(item => {
+                  if (item.latitude && item.longitude) {
+                    coordinates.push({ latitude: item.latitude, longitude: item.longitude });
+                  }
+                });
+                
+                if (endMarker) {
+                  coordinates.push({ latitude: endMarker.lat, longitude: endMarker.lng });
+                }
+                
+                if (coordinates.length > 0) {
+                  const edgePadding = isExpanded
+                    ? { top: 50, right: 30, bottom: EXPANDED_HEIGHT + 30, left: 30 }
+                    : { top: 50, right: 30, bottom: COLLAPSED_HEIGHT + 30, left: 30 };
+                  
+                  mapRef.current?.fitToCoordinates(coordinates, {
+                    edgePadding,
+                    animated: true,
+                  });
+                }
+              }, 500);
+            }
           }
         }, 1000); // 1 segundo de delay para garantir a renderização
 
@@ -468,12 +504,17 @@ export default function RoutePlanningScreen() {
         throw new Error(response.message || 'Erro ao carregar roteiro');
       }
     } catch (error) {
-      showStatus('error', 'Erro ao carregar roteiro');
+      setOperationStatus('error');
+      setStatusMessage('Erro ao carregar roteiro');
+      setTimeout(() => {
+        setOperationStatus('idle');
+        setStatusMessage('');
+      }, 2000);
       Alert.alert('Erro', (error as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [id, showStatus, fitMapToRoute]);
+  }, [id, startMarker, endMarker, filteredItems, isExpanded]);
 
   useEffect(() => {
     loadInitialData();
@@ -1024,7 +1065,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 2000,
+        zIndex: 9999,
+        elevation: 9999, // Para Android
     },
     processingContainer: {
         backgroundColor: Theme.colors.background.paper,
@@ -1071,6 +1113,8 @@ const styles = StyleSheet.create({
         paddingTop: Theme.spacing.xs,
         ...Theme.shadows.lg,
         overflow: 'hidden',
+        zIndex: 100,
+        elevation: 100, // Para Android
     },
     scrollView: {
         flex: 1,

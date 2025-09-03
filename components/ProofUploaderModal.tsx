@@ -3,14 +3,14 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
-  Alert,
-  Image,
-  Modal,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    Modal,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { api } from '../services/api';
 import { Button, Card, CommonStyles, Theme } from './ui';
@@ -59,7 +59,7 @@ export default function ProofUploaderModal({
 
     try {
       const result = await launchFunction({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaType.Images,
         allowsEditing: false, // <-- ALTERAÇÃO: Remove a etapa de edição/corte
         aspect: [4, 3],
         quality: 0.7, // <-- Otimiza a imagem para um upload mais rápido
