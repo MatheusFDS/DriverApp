@@ -59,7 +59,7 @@ export default function ProofUploaderModal({
 
     try {
       const result = await launchFunction({
-        mediaTypes: ImagePicker.MediaType.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false, // <-- ALTERAÇÃO: Remove a etapa de edição/corte
         aspect: [4, 3],
         quality: 0.7, // <-- Otimiza a imagem para um upload mais rápido

@@ -20,6 +20,8 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Este app precisa acessar sua localização para rastrear entregas e permitir que a central acompanhe seu progresso em tempo real.",
         "NSLocationWhenInUseUsageDescription": "Este app precisa acessar sua localização para rastrear entregas e permitir que a central acompanhe seu progresso.",
         "NSLocationAlwaysUsageDescription": "Este app precisa acessar sua localização em segundo plano para continuar o rastreamento durante as entregas, mesmo quando o app não estiver em primeiro plano.",
+        "NSCameraUsageDescription": "Este app precisa acessar a câmera para tirar fotos dos comprovantes de entrega.",
+        "NSPhotoLibraryUsageDescription": "Este app precisa acessar a galeria de fotos para anexar comprovantes de entrega.",
         "UIBackgroundModes": ["location", "background-processing", "remote-notification"]
       }
     },
@@ -39,7 +41,11 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
       ],
       "config": {
         "googleMaps": {
@@ -82,6 +88,13 @@
           "color": "#00695c",
           "defaultChannel": "default",
           "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Este app precisa acessar a galeria de fotos para anexar comprovantes de entrega.",
+          "cameraPermission": "Este app precisa acessar a câmera para tirar fotos dos comprovantes de entrega."
         }
       ]
     ],

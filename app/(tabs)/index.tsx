@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import CheckInOutButton from '../../components/CheckInOutButton';
 import { CommonStyles, Theme } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
@@ -162,6 +163,9 @@ export default function DashboardScreen() {
             month: 'long' 
           })}</Text>
         </View>
+
+        {/* Check-in/Check-out Button */}
+        <CheckInOutButton />
 
         {/* Card de Entrega Ativa Simplificado */}
         {activeDelivery && (

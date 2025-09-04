@@ -13,6 +13,11 @@ import {
     RouteMobile,
     StatusUpdatePayload,
     User,
+    Policy,
+    Terms,
+    AcceptPolicyDto,
+    CheckInOutData,
+    WorkSessionData,
 } from '../types';
 
 class ApiService {
@@ -332,6 +337,60 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ token }),
     });
+  }
+
+  // Legal Documents API
+  async getPendingPolicies(): Promise<ApiResponse<Policy[]>> {
+    return this.request<Policy[]>('/policies/pending');
+  }
+
+  async getPendingTerms(): Promise<ApiResponse<Terms[]>> {
+    return this.request<Terms[]>('/terms/pending');
+  }
+
+  async acceptPolicy(acceptData: AcceptPolicyDto): Promise<ApiResponse<any>> {
+    return this.request<any>('/policies/accept', {
+      method: 'POST',
+      body: JSON.stringify(acceptData),
+    });
+  }
+
+  async acceptTerms(termsId: string): Promise<ApiResponse<any>> {
+    return this.request<any>(`/terms/${termsId}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  async getUserPolicyAcceptances(): Promise<ApiResponse<Policy[]>> {
+    return this.request<Policy[]>('/policies/my-acceptances');
+  }
+
+  async getUserAcceptedTerms(): Promise<ApiResponse<Terms[]>> {
+    return this.request<Terms[]>('/terms/my-acceptances');
+  }
+
+  // Check-in/Check-out methods
+  async checkIn(location?: { latitude: number; longitude: number; address?: string }): Promise<ApiResponse<CheckInOutData>> {
+    return this.request<CheckInOutData>('/drivers/checkin', {
+      method: 'POST',
+      body: JSON.stringify({ location }),
+    });
+  }
+
+  async checkOut(location?: { latitude: number; longitude: number; address?: string }): Promise<ApiResponse<CheckInOutData>> {
+    return this.request<CheckInOutData>('/drivers/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ location }),
+    });
+  }
+
+  async getCurrentWorkSession(): Promise<ApiResponse<WorkSessionData | null>> {
+    return this.request<WorkSessionData | null>('/drivers/current-session');
+  }
+
+  async getWorkSessionHistory(): Promise<ApiResponse<WorkSessionData[]>> {
+    return this.request<WorkSessionData[]>('/drivers/session-history');
   }
 }
 

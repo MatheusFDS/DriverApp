@@ -20,12 +20,8 @@ import { CommonStyles, Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import {
   DeliveryItemMobile as Delivery,
-  getAvailableOrderActions,
   getOrderMobileStatusConfig,
-  OrderActionMobile,
-  OrderMobileStatus,
   RouteMobile as Route,
-  StatusUpdatePayload
 } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -36,7 +32,7 @@ export default function RouteDetailsScreen() {
   const [route, setRoute] = useState<Route | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [updatingStatusDeliveryId, setUpdatingStatusDeliveryId] = useState<string | null>(null);
+  // const [updatingStatusDeliveryId, setUpdatingStatusDeliveryId] = useState<string | null>(null); // Removido - não atualiza status aqui
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     pending: true,
     inProgress: true,
@@ -81,117 +77,9 @@ export default function RouteDetailsScreen() {
     }
   };
   
-  const handleUpdateDeliveryItemStatus = async (deliveryItem: Delivery, newStatus: OrderMobileStatus, motivo?: string) => {
-    try {
-      setUpdatingStatusDeliveryId(deliveryItem.id);
-      
-      const payload: StatusUpdatePayload = { status: newStatus };
-      if (newStatus === 'NAO_ENTREGUE' && motivo) {
-        payload.motivoNaoEntrega = motivo;
-      }
+  // Função removida - não atualiza status de entrega nesta tela
 
-      const response = await api.updateDeliveryStatus(deliveryItem.id, payload);
-      
-      if (response.success && response.data) {
-        await loadRouteDetails(false);
-        
-        if (newStatus === 'ENTREGUE') {
-          Alert.alert(
-            'Status Atualizado', 
-            'Entrega marcada como realizada. Você será redirecionado para anexar o comprovante.',
-            [
-              { 
-                text: 'Anexar Comprovante', 
-                onPress: () => router.push(`/delivery/${deliveryItem.id}`) 
-              }
-            ]
-          );
-        } else if (newStatus === 'NAO_ENTREGUE') {
-          Alert.alert(
-            'Status Atualizado', 
-            'Entrega marcada como não realizada. Você será redirecionado para anexar o comprovante da tentativa.',
-            [
-              { 
-                text: 'Anexar Comprovante', 
-                onPress: () => router.push(`/delivery/${deliveryItem.id}`) 
-              }
-            ]
-          );
-        } else {
-          Alert.alert('Sucesso', response.data.message || 'Status da entrega atualizado.');
-        }
-      } else {
-        throw new Error(response.message || 'Erro ao atualizar status da entrega.');
-      }
-    } catch (err) {
-      Alert.alert('Erro', err instanceof Error ? err.message : 'Não foi possível atualizar o status.');
-    } finally {
-      setUpdatingStatusDeliveryId(null);
-    }
-  };
-
-  const showDeliveryItemStatusUpdateOptions = (deliveryItem: Delivery) => {
-    const currentRouteStatus = route?.status;
-    const availableActions = getAvailableOrderActions(deliveryItem.status, currentRouteStatus);
-
-    if (availableActions.length === 0) {
-      const currentItemStatusConfig = getOrderMobileStatusConfig(deliveryItem.status);
-      Alert.alert('Sem ações disponíveis', `A entrega já está ${currentItemStatusConfig.text.toLowerCase()}.`);
-      return;
-    }
-
-    const alertOptions = [
-      { text: 'Cancelar', style: 'cancel' as const },
-      ...availableActions.map((action: OrderActionMobile) => ({
-        text: action.label.replace(/[^\w\s]/g, '').trim(),
-        onPress: () => {
-          if (action.targetStatus === 'NAO_ENTREGUE') {
-            Alert.prompt(
-              'Motivo da Não Entrega',
-              `Por que não foi possível entregar para "${deliveryItem.customerName}"?`,
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Confirmar',
-                  onPress: (motivo) => {
-                    if (motivo && motivo.trim() !== "") {
-                      handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus, motivo.trim());
-                    } else {
-                      Alert.alert("Atenção", "O motivo é obrigatório.")
-                    }
-                  },
-                },
-              ],
-              'plain-text'
-            );
-          } else if (action.targetStatus === 'ENTREGUE') {
-            Alert.alert(
-              'Confirmar Entrega',
-              `Confirma que a entrega foi realizada para "${deliveryItem.customerName}"?\n\nVocê será redirecionado para anexar o comprovante de entrega.`,
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Sim, Entregue',
-                  onPress: () => {
-                    // Primeiro atualiza o status
-                    handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus);
-                    // Depois redireciona para a tela de detalhes da entrega para anexar comprovante
-                    setTimeout(() => {
-                      router.push(`/delivery/${deliveryItem.id}`);
-                    }, 1000);
-                  }
-                }
-              ]
-            );
-          } else {
-            handleUpdateDeliveryItemStatus(deliveryItem, action.targetStatus);
-          }
-        }
-      }))
-    ];
-    
-    Alert.alert('Atualizar Status', `Escolha uma ação para: ${deliveryItem.customerName}`, alertOptions);
-  };
+  // Função removida - não permite atualizar status nesta tela
 
   const navigateToDeliveryItemDetails = (deliveryItemId: string) => {
     router.push(`/delivery/${deliveryItemId}`);
@@ -293,7 +181,7 @@ export default function RouteDetailsScreen() {
               <Ionicons name={expandedSections.inProgress ? "chevron-up" : "chevron-down"} size={20} color={Theme.colors.text.secondary} />
             </TouchableOpacity>
             {expandedSections.inProgress && inProgressDeliveries.map((delivery, index) => (
-              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} onLongPress={() => showDeliveryItemStatusUpdateOptions(delivery)} isUpdating={updatingStatusDeliveryId === delivery.id} isPriority={true} />
+              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} isPriority={true} />
             ))}
           </View>
         )}
@@ -309,7 +197,7 @@ export default function RouteDetailsScreen() {
               <Ionicons name={expandedSections.pending ? "chevron-up" : "chevron-down"} size={20} color={Theme.colors.text.secondary} />
             </TouchableOpacity>
             {expandedSections.pending && pendingDeliveries.map((delivery, index) => (
-              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || inProgressDeliveries.length + index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} onLongPress={() => showDeliveryItemStatusUpdateOptions(delivery)} isUpdating={updatingStatusDeliveryId === delivery.id} />
+              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || inProgressDeliveries.length + index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} />
             ))}
           </View>
         )}
@@ -325,7 +213,7 @@ export default function RouteDetailsScreen() {
               <Ionicons name={expandedSections.completed ? "chevron-up" : "chevron-down"} size={20} color={Theme.colors.text.secondary} />
             </TouchableOpacity>
             {expandedSections.completed && completedDeliveries.map((delivery, index) => (
-              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || inProgressDeliveries.length + pendingDeliveries.length + index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} onLongPress={() => showDeliveryItemStatusUpdateOptions(delivery)} isUpdating={updatingStatusDeliveryId === delivery.id} isCompleted={true} />
+              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || inProgressDeliveries.length + pendingDeliveries.length + index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} isCompleted={true} />
             ))}
           </View>
         )}
@@ -334,11 +222,11 @@ export default function RouteDetailsScreen() {
   );
 }
 
-function DeliveryCard({ delivery, index, onPress, onLongPress, isUpdating, isCompleted = false, isPriority = false }: { delivery: Delivery; index: number; onPress: () => void; onLongPress: () => void; isUpdating: boolean; isCompleted?: boolean; isPriority?: boolean; }) {
+function DeliveryCard({ delivery, index, onPress, isCompleted = false, isPriority = false }: { delivery: Delivery; index: number; onPress: () => void; isCompleted?: boolean; isPriority?: boolean; }) {
   const statusConfig = getOrderMobileStatusConfig(delivery.status);
   
   return (
-    <TouchableOpacity style={[styles.deliveryCard, isCompleted && styles.completedCard, isPriority && styles.priorityCard, isUpdating && styles.updatingCard]} onPress={onPress} onLongPress={onLongPress} disabled={isUpdating} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.deliveryCard, isCompleted && styles.completedCard, isPriority && styles.priorityCard]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.deliveryContent}>
         <View style={[styles.deliveryIndex, isPriority && styles.priorityIndex]}><Text style={styles.deliveryIndexText}>{index}</Text></View>
         
@@ -355,7 +243,6 @@ function DeliveryCard({ delivery, index, onPress, onLongPress, isUpdating, isCom
           <Ionicons name="chevron-forward" size={20} color={Theme.colors.text.hint} />
         </View>
       </View>
-      {isUpdating && <View style={styles.updatingOverlay}><ActivityIndicator color={Theme.colors.primary.main} size="small" /></View>}
     </TouchableOpacity>
   );
 }

@@ -108,6 +108,31 @@ export interface DeliveryItemMobile {
   routeStatus?: RouteMobileStatus;
   latitude: number | null;
   longitude: number | null;
+  completedAt?: string;
+  motivoNaoEntrega?: string;
+}
+
+export interface CheckInOutData {
+  id: string;
+  driverId: string;
+  type: 'CHECK_IN' | 'CHECK_OUT';
+  timestamp: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+}
+
+export interface WorkSessionData {
+  id: string;
+  driverId: string;
+  checkInTime: string;
+  checkOutTime?: string;
+  duration?: number; // in minutes
+  totalDeliveries?: number;
+  completedDeliveries?: number;
+  isActive: boolean;
 }
 
 export interface OptimizeRouteRequest {
@@ -279,4 +304,50 @@ export interface AcceptInviteDto {
   license?: string;
   model?: string;
   plate?: string;
+}
+
+// Legal Documents Types
+export enum PolicyType {
+  PRIVACY = 'PRIVACY',
+  TERMS_OF_USE = 'TERMS_OF_USE',
+  DATA_PROCESSING = 'DATA_PROCESSING',
+  COOKIES = 'COOKIES',
+  OTHER = 'OTHER',
+}
+
+export enum DocumentStatus {
+  DRAFT = 'DRAFT',
+  PUBLISHED = 'PUBLISHED',
+  ARCHIVED = 'ARCHIVED',
+}
+
+export interface Policy {
+  id: string;
+  code: string;
+  title: string;
+  content: string;
+  type: PolicyType;
+  status: DocumentStatus;
+  version: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Terms {
+  id: string;
+  code: string;
+  title: string;
+  content: string;
+  status: DocumentStatus;
+  version: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AcceptPolicyDto {
+  policyId: string;
+  ipAddress?: string;
+  userAgent?: string;
 }

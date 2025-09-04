@@ -166,6 +166,9 @@ export default function DeliveryDetailsScreen() {
       // Já temos o motivo, então atualiza o status
       const motivoFinal = selectedMotivo === 'Outro motivo' ? motivoTexto : selectedMotivo;
       handleUpdateStatus('NAO_ENTREGUE', motivoFinal);
+    } else {
+      // Apenas adicionando comprovante adicional, recarrega os detalhes
+      loadDeliveryDetails(false);
     }
   };
 
@@ -263,13 +266,42 @@ export default function DeliveryDetailsScreen() {
           <View style={styles.infoRow}><Text style={styles.infoLabel}>Forma de Pagamento</Text><Text style={styles.infoValue}>{deliveryItem.paymentMethod}</Text></View>
           {deliveryItem.nomeContato && <View style={styles.infoRow}><Text style={styles.infoLabel}>Contato no Local</Text><Text style={styles.infoValue}>{deliveryItem.nomeContato}</Text></View>}
           {deliveryItem.cpfCnpjDestinatario && <View style={styles.infoRow}><Text style={styles.infoLabel}>CPF/CNPJ</Text><Text style={styles.infoValue}>{deliveryItem.cpfCnpjDestinatario}</Text></View>}
+          
+          {isFinalized && deliveryItem.completedAt && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>
+                {deliveryItem.status === 'ENTREGUE' ? 'Entregue em' : 'Finalizado em'}
+              </Text>
+              <Text style={styles.infoValue}>
+                {new Date(deliveryItem.completedAt).toLocaleString('pt-BR')}
+              </Text>
+            </View>
+          )}
+          
+          {deliveryItem.status === 'NAO_ENTREGUE' && deliveryItem.motivoNaoEntrega && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Motivo</Text>
+              <Text style={[styles.infoValue, styles.reasonText]}>{deliveryItem.motivoNaoEntrega}</Text>
+            </View>
+          )}
         </View>
 
         {deliveryItem.notes && <View style={styles.notesCard}><Ionicons name="information-circle-outline" size={20} color={Theme.colors.text.secondary} /><Text style={styles.notesText}>{deliveryItem.notes}</Text></View>}
 
         {hasProofs && (
           <View style={styles.proofCard}>
-            <Text style={styles.sectionTitle}>Comprovantes</Text>
+            <View style={styles.proofHeader}>
+              <Text style={styles.sectionTitle}>Comprovantes</Text>
+              {!isFinalized && (
+                <TouchableOpacity 
+                  style={styles.editProofButton} 
+                  onPress={() => setShowProofModal(true)}
+                >
+                  <Ionicons name="camera-outline" size={18} color={Theme.colors.primary.main} />
+                  <Text style={styles.editProofText}>Adicionar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <View style={styles.proofsGrid}>
               {deliveryItem.proofs!.map((proof: DeliveryProof) => {
                 const fullProofUrl = proof.proofUrl.startsWith('http') ? proof.proofUrl : `${currentApiConfig.baseURL.replace(/\/$/, '')}${proof.proofUrl.startsWith('/') ? '' : '/'}${proof.proofUrl}`;
@@ -447,10 +479,14 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: Theme.colors.gray[100] },
   infoLabel: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.secondary },
   infoValue: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.primary, fontWeight: Theme.typography.fontWeight.medium, textAlign: 'right', flex: 1, marginLeft: Theme.spacing.md },
+  reasonText: { color: Theme.colors.status.error, fontWeight: Theme.typography.fontWeight.semiBold },
   notesCard: { flexDirection: 'row', backgroundColor: Theme.colors.background.paper, borderRadius: Theme.borderRadius.lg, padding: Theme.spacing.lg, ...Theme.shadows.sm, borderWidth: 1, borderColor: Theme.colors.gray[100], marginBottom: Theme.spacing.lg, alignItems: 'center', gap: Theme.spacing.md },
   notesText: { flex: 1, fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.primary, lineHeight: 20 },
   proofCard: { backgroundColor: Theme.colors.background.paper, borderRadius: Theme.borderRadius.lg, padding: Theme.spacing.lg, ...Theme.shadows.sm, borderWidth: 1, borderColor: Theme.colors.gray[100], marginBottom: Theme.spacing.lg },
-  proofsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm, marginTop: Theme.spacing.md },
+  proofHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Theme.spacing.md },
+  editProofButton: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.xs, paddingHorizontal: Theme.spacing.md, paddingVertical: Theme.spacing.sm, backgroundColor: Theme.colors.primary.main + '10', borderRadius: Theme.borderRadius.base, borderWidth: 1, borderColor: Theme.colors.primary.main + '20' },
+  editProofText: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.primary.main, fontWeight: Theme.typography.fontWeight.semiBold },
+  proofsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Theme.spacing.sm },
   proofThumbContainer: { borderRadius: Theme.borderRadius.base, overflow: 'hidden' },
   proofThumb: { width: 80, height: 80, backgroundColor: Theme.colors.gray[200] },
   actionZone: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Theme.colors.background.paper, paddingHorizontal: Theme.spacing.lg, paddingVertical: Theme.spacing.md, paddingBottom: Platform.OS === 'ios' ? 34 : Theme.spacing.md, borderTopWidth: 1, borderTopColor: Theme.colors.divider, ...Theme.shadows.lg, flexDirection: 'row', gap: Theme.spacing.md },
