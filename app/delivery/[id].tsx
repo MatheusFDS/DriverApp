@@ -1,8 +1,8 @@
 // app/delivery/[id].tsx
 
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,7 +36,32 @@ import { api } from '../../services/api';
 
 Dimensions.get('window');
 
-// Enum de motivos comuns para não entrega
+// Função para calcular e formatar a duração entre duas datas
+const calculateDuration = (start?: string, end?: string): string | null => {
+  if (!start || !end) return null;
+  const startTime = new Date(start).getTime();
+  const endTime = new Date(end).getTime();
+  if (isNaN(startTime) || isNaN(endTime) || endTime < startTime) return null;
+
+  let diff = Math.floor((endTime - startTime) / 1000); // in seconds
+
+  const hours = Math.floor(diff / 3600);
+  diff %= 3600;
+  const minutes = Math.floor(diff / 60);
+  const seconds = diff % 60;
+
+  const pad = (num: number) => num.toString().padStart(2, '0');
+  
+  if (hours > 0) {
+    return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${pad(seconds)}s`;
+  }
+  return `${seconds}s`;
+};
+
+// Constante de motivos de não entrega
 const MOTIVOS_NAO_ENTREGA = [
   'Cliente ausente',
   'Endereço incorreto',
@@ -61,6 +86,11 @@ export default function DeliveryDetailsScreen() {
   const [motivoTexto, setMotivoTexto] = useState('');
   const [selectedMotivo, setSelectedMotivo] = useState('');
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState<OrderMobileStatus | null>(null);
+
+  const [elapsedServiceTime, setElapsedServiceTime] = useState<string | null>(null);
+  
+  // CORREÇÃO: useMemo movido para o topo do componente, antes de qualquer retorno condicional.
+  const serviceDuration = useMemo(() => calculateDuration(deliveryItem?.arrivedAt, deliveryItem?.completedAt), [deliveryItem?.arrivedAt, deliveryItem?.completedAt]);
 
   const loadDeliveryDetails = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -92,6 +122,17 @@ export default function DeliveryDetailsScreen() {
     }, [loadDeliveryDetails, deliveryItem])
   );
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (deliveryItem?.status === 'NO_CLIENTE' && deliveryItem.arrivedAt) {
+      timer = setInterval(() => {
+        setElapsedServiceTime(calculateDuration(deliveryItem.arrivedAt, new Date().toISOString()));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [deliveryItem]);
+
+
   const handleUpdateStatus = async (newStatus: OrderMobileStatus, motivo?: string) => {
     if (!deliveryItem || !id) return;
 
@@ -105,9 +146,13 @@ export default function DeliveryDetailsScreen() {
       const response = await api.updateDeliveryStatus(id, payload);
       
       if (response.success && response.data) {
-        Alert.alert('Sucesso', `Entrega marcada como ${getOrderMobileStatusConfig(newStatus).text}.`, [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
+        loadDeliveryDetails(false); 
+        
+        if (newStatus === 'ENTREGUE' || newStatus === 'NAO_ENTREGUE') {
+            Alert.alert('Sucesso', `Entrega marcada como ${getOrderMobileStatusConfig(newStatus).text}.`, [
+                { text: 'OK', onPress: () => router.back() }
+            ]);
+        }
       } else {
         throw new Error(response.message || 'Erro ao atualizar status');
       }
@@ -134,12 +179,21 @@ export default function DeliveryDetailsScreen() {
       return;
     }
     
-    if (targetStatus === 'EM_ROTA' || targetStatus === 'EM_ENTREGA') {
-      Alert.alert('Iniciar Deslocamento', `Confirma o início do deslocamento para a entrega de "${deliveryItem?.customerName}"?`, [
-        { text: 'Cancelar', style: 'cancel', onPress: () => setPendingStatusUpdate(null) },
-        { text: 'Sim, Iniciar', onPress: () => handleUpdateStatus(targetStatus) }
-      ]);
+    let title = 'Confirmar Ação';
+    let message = `Deseja realmente continuar?`;
+
+    if (targetStatus === 'EM_ENTREGA') {
+        title = 'Iniciar Deslocamento';
+        message = `Confirma o início do deslocamento para a entrega de "${deliveryItem?.customerName}"?`;
+    } else if (targetStatus === 'NO_CLIENTE') {
+        title = 'Confirmar Chegada';
+        message = `Você está no local do cliente "${deliveryItem?.customerName}"? Isso iniciará a contagem do tempo de atendimento.`;
     }
+
+    Alert.alert(title, message, [
+      { text: 'Cancelar', style: 'cancel', onPress: () => setPendingStatusUpdate(null) },
+      { text: 'Sim, Confirmar', onPress: () => handleUpdateStatus(targetStatus) }
+    ]);
   };
   
   const submitMotivoNaoEntrega = () => {
@@ -152,7 +206,6 @@ export default function DeliveryDetailsScreen() {
     
     setShowMotivoModal(false);
     
-    // Para não entregue, primeiro pede o motivo, depois o comprovante
     setPendingStatusUpdate('NAO_ENTREGUE');
     setShowProofModal(true);
   };
@@ -163,11 +216,9 @@ export default function DeliveryDetailsScreen() {
     if (pendingStatusUpdate === 'ENTREGUE') {
       handleUpdateStatus('ENTREGUE');
     } else if (pendingStatusUpdate === 'NAO_ENTREGUE') {
-      // Já temos o motivo, então atualiza o status
       const motivoFinal = selectedMotivo === 'Outro motivo' ? motivoTexto : selectedMotivo;
       handleUpdateStatus('NAO_ENTREGUE', motivoFinal);
     } else {
-      // Apenas adicionando comprovante adicional, recarrega os detalhes
       loadDeliveryDetails(false);
     }
   };
@@ -175,7 +226,6 @@ export default function DeliveryDetailsScreen() {
   const handleProofCancel = () => {
     setShowProofModal(false);
     setPendingStatusUpdate(null);
-    // Não altera o status se o usuário cancelar o envio do comprovante
   };
 
   const callCustomer = () => {
@@ -235,7 +285,7 @@ export default function DeliveryDetailsScreen() {
   const availableActions = getAvailableOrderActions(deliveryItem.status, deliveryItem.routeStatus);
   const hasProofs = deliveryItem.proofs && deliveryItem.proofs.length > 0;
   const isFinalized = deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE';
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.statusHeader}>
@@ -260,6 +310,20 @@ export default function DeliveryDetailsScreen() {
             <TouchableOpacity style={styles.actionButton} onPress={openMaps}><Ionicons name="navigate" size={20} color={Theme.colors.primary.main} /><Text style={styles.actionButtonText}>Navegar</Text></TouchableOpacity>
           </View>
         </View>
+        
+        {(deliveryItem.status === 'NO_CLIENTE' || serviceDuration) && (
+            <View style={styles.timerCard}>
+                <Ionicons name="time-outline" size={24} color={Theme.colors.primary.main} />
+                <View style={styles.timerInfo}>
+                    <Text style={styles.timerLabel}>
+                        {isFinalized ? 'Tempo de Atendimento' : 'Tempo no Cliente'}
+                    </Text>
+                    <Text style={styles.timerValue}>
+                        {isFinalized ? serviceDuration : elapsedServiceTime}
+                    </Text>
+                </View>
+            </View>
+        )}
 
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>Detalhes</Text>
@@ -322,9 +386,9 @@ export default function DeliveryDetailsScreen() {
         <View style={styles.actionZone}>
           {availableActions.map((action) => {
             let buttonStyle = styles.primaryActionButton;
-            if (action.targetStatus === 'ENTREGUE') buttonStyle = styles.successActionButton;
-            else if (action.targetStatus === 'NAO_ENTREGUE') buttonStyle = styles.dangerActionButton;
-            else if (action.targetStatus === 'EM_ROTA') buttonStyle = styles.warningActionButton;
+            if (action.style === 'success') buttonStyle = styles.successActionButton;
+            else if (action.style === 'warning') buttonStyle = styles.dangerActionButton;
+            else if (action.style === 'info') buttonStyle = styles.infoActionButton;
             
             return (
               <TouchableOpacity 
@@ -341,7 +405,8 @@ export default function DeliveryDetailsScreen() {
                       name={
                         action.targetStatus === 'ENTREGUE' ? 'checkmark-circle' : 
                         action.targetStatus === 'NAO_ENTREGUE' ? 'close-circle' : 
-                        action.targetStatus === 'EM_ROTA' ? 'arrow-forward-circle' :
+                        action.targetStatus === 'EM_ENTREGA' ? 'arrow-forward-circle' :
+                        action.targetStatus === 'NO_CLIENTE' ? 'business' :
                         'arrow-forward-circle'
                       } 
                       size={24} 
@@ -371,7 +436,7 @@ export default function DeliveryDetailsScreen() {
             <Text style={styles.modalSubtitle}>Selecione o motivo principal da falha na entrega:</Text>
             
             <ScrollView style={styles.motivosList} showsVerticalScrollIndicator={false}>
-              {MOTIVOS_NAO_ENTREGA.map((motivo) => (
+              {MOTIVOS_NAO_ENTREGA.map((motivo: string) => (
                 <TouchableOpacity
                   key={motivo}
                   style={[
@@ -463,7 +528,7 @@ const styles = StyleSheet.create({
     fontSize: Theme.typography.fontSize.sm,
     fontWeight: Theme.typography.fontWeight.bold,
   },
-  headerValue: { fontSize: Theme.typography.fontSize.xl, color: '#ffffff', fontWeight: Theme.typography.fontWeight.bold },
+  headerValue: { fontSize: Theme.typography.fontSize.xl, color: Theme.colors.text.primary, fontWeight: Theme.typography.fontWeight.bold },
   scrollView: { flex: 1 },
   scrollContent: { padding: Theme.spacing.lg },
   mainCard: { backgroundColor: Theme.colors.background.paper, borderRadius: Theme.borderRadius.lg, padding: Theme.spacing.lg, ...Theme.shadows.base, borderWidth: 1, borderColor: Theme.colors.gray[100], marginBottom: Theme.spacing.lg },
@@ -472,8 +537,31 @@ const styles = StyleSheet.create({
   addressSection: { flexDirection: 'row', alignItems: 'center', paddingTop: Theme.spacing.lg, borderTopWidth: 1, borderTopColor: Theme.colors.divider },
   addressText: { flex: 1, marginLeft: Theme.spacing.md, fontSize: Theme.typography.fontSize.base, color: Theme.colors.text.primary, lineHeight: 22 },
   quickActions: { flexDirection: 'row', gap: Theme.spacing.md, marginTop: Theme.spacing.xl },
-  actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Theme.spacing.sm, backgroundColor: Theme.colors.gray[50], borderRadius: Theme.borderRadius.base, padding: Theme.spacing.md, borderWidth: 1, borderColor: Theme.colors.gray[200] },
+  actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Theme.spacing.sm, backgroundColor: Theme.colors.gray[100], borderRadius: Theme.borderRadius.base, padding: Theme.spacing.md, borderWidth: 1, borderColor: Theme.colors.gray[200] },
   actionButtonText: { fontSize: Theme.typography.fontSize.base, fontWeight: Theme.typography.fontWeight.semiBold, color: Theme.colors.primary.main },
+  timerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Theme.colors.status.info + '15',
+    borderRadius: Theme.borderRadius.lg,
+    padding: Theme.spacing.lg,
+    marginBottom: Theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: Theme.colors.status.info + '30',
+  },
+  timerInfo: {
+    marginLeft: Theme.spacing.md,
+  },
+  timerLabel: {
+    fontSize: Theme.typography.fontSize.sm,
+    color: Theme.colors.status.info,
+    fontWeight: Theme.typography.fontWeight.medium,
+  },
+  timerValue: {
+    fontSize: Theme.typography.fontSize.xl,
+    color: Theme.colors.primary.dark,
+    fontWeight: Theme.typography.fontWeight.bold,
+  },
   infoCard: { backgroundColor: Theme.colors.background.paper, borderRadius: Theme.borderRadius.lg, padding: Theme.spacing.lg, ...Theme.shadows.sm, borderWidth: 1, borderColor: Theme.colors.gray[100], marginBottom: Theme.spacing.lg },
   sectionTitle: { fontSize: Theme.typography.fontSize.lg, fontWeight: Theme.typography.fontWeight.semiBold, color: Theme.colors.text.primary, marginBottom: Theme.spacing.md },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: Theme.colors.gray[100] },
@@ -490,10 +578,10 @@ const styles = StyleSheet.create({
   proofThumbContainer: { borderRadius: Theme.borderRadius.base, overflow: 'hidden' },
   proofThumb: { width: 80, height: 80, backgroundColor: Theme.colors.gray[200] },
   actionZone: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: Theme.colors.background.paper, paddingHorizontal: Theme.spacing.lg, paddingVertical: Theme.spacing.md, paddingBottom: Platform.OS === 'ios' ? 34 : Theme.spacing.md, borderTopWidth: 1, borderTopColor: Theme.colors.divider, ...Theme.shadows.lg, flexDirection: 'row', gap: Theme.spacing.md },
-  primaryActionButton: { flex: 1, backgroundColor: Theme.colors.primary.main, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
+  primaryActionButton: { flex: 1, backgroundColor: Theme.colors.status.warning, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
+  infoActionButton: { flex: 1, backgroundColor: Theme.colors.status.info, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
   successActionButton: { flex: 1, backgroundColor: Theme.colors.status.success, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
-  dangerActionButton: { flex: 1, backgroundColor: Theme.colors.status.error, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
-  warningActionButton: { flex: 1, backgroundColor: Theme.colors.status.warning, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
+  dangerActionButton: { flex: 1, backgroundColor: Theme.colors.status.warning, borderRadius: Theme.borderRadius.base, paddingVertical: Theme.spacing.lg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Theme.spacing.sm, ...Theme.shadows.sm },
   primaryActionText: { fontSize: Theme.typography.fontSize.base, fontWeight: Theme.typography.fontWeight.bold, color: '#ffffff' },
   disabledButton: { opacity: 0.5 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Theme.spacing.xl },
@@ -522,3 +610,4 @@ const styles = StyleSheet.create({
   backButton: { paddingVertical: Theme.spacing.md, paddingHorizontal: Theme.spacing.xl, borderWidth: 1, borderColor: Theme.colors.primary.main, borderRadius: Theme.borderRadius.base },
   backButtonText: { color: Theme.colors.primary.main, fontWeight: Theme.typography.fontWeight.semiBold },
 });
+

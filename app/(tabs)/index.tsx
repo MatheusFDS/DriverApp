@@ -13,7 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import CheckInOutButton from '../../components/CheckInOutButton';
+// A importação do CheckInOutButton foi removida.
 import { CommonStyles, Theme } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
@@ -46,11 +46,11 @@ export default function DashboardScreen() {
       if (response.success && response.data) {
         setRoutes(response.data);
         
-        // Identificar entrega ativa (EM_ENTREGA)
+        // Identificar entrega ativa (EM_ENTREGA ou NO_CLIENTE)
         let foundActiveDelivery = null;
         for (const route of response.data) {
           if (route.status === 'INICIADO') {
-            const activeDeliveryItem = route.deliveries.find(d => d.status === 'EM_ENTREGA');
+            const activeDeliveryItem = route.deliveries.find(d => d.status === 'EM_ENTREGA' || d.status === 'NO_CLIENTE');
             if (activeDeliveryItem) {
               foundActiveDelivery = { route, delivery: activeDeliveryItem };
               break;
@@ -164,8 +164,7 @@ export default function DashboardScreen() {
           })}</Text>
         </View>
 
-        {/* Check-in/Check-out Button */}
-        <CheckInOutButton />
+        {/* O CheckInOutButton foi removido daqui */}
 
         {/* Card de Entrega Ativa Simplificado */}
         {activeDelivery && (
@@ -177,7 +176,9 @@ export default function DashboardScreen() {
             <View style={styles.activeDeliveryContent}>
               <View style={styles.pulsingDot} />
               <View style={styles.activeDeliveryInfo}>
-                <Text style={styles.activeDeliveryLabel}>ENTREGA EM ANDAMENTO</Text>
+                <Text style={styles.activeDeliveryLabel}>
+                  {activeDelivery.delivery.status === 'NO_CLIENTE' ? 'ATENDENDO CLIENTE' : 'ENTREGA EM ANDAMENTO'}
+                </Text>
                 <Text style={styles.activeCustomerName} numberOfLines={1}>
                   {activeDelivery.delivery.numeroPedido}
                 </Text>

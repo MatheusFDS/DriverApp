@@ -34,6 +34,7 @@ export type OrderMobileStatus =
   | 'EM_ROTA_AGUARDANDO_LIBERACAO'
   | 'EM_ROTA'
   | 'EM_ENTREGA'
+  | 'NO_CLIENTE' // <-- NOVO STATUS ADICIONADO
   | 'ENTREGUE'
   | 'NAO_ENTREGUE';
 
@@ -108,6 +109,8 @@ export interface DeliveryItemMobile {
   routeStatus?: RouteMobileStatus;
   latitude: number | null;
   longitude: number | null;
+  startedAt?: string; // Horário que o motorista iniciou o deslocamento
+  arrivedAt?: string; // <-- NOVO CAMPO ADICIONADO: Horário que chegou no cliente
   completedAt?: string;
   motivoNaoEntrega?: string;
 }
@@ -212,7 +215,7 @@ export interface OrderActionMobile {
   id: string;
   label: string;
   targetStatus: OrderMobileStatus;
-  style: 'primary' | 'success' | 'warning' | 'secondary';
+  style: 'primary' | 'success' | 'warning' | 'secondary' | 'info'; // <-- Adicionado 'info'
   requiresReason?: boolean;
   requiresProof?: boolean;
 }
@@ -232,7 +235,8 @@ export const getOrderMobileStatusConfig = (status: OrderMobileStatus): StatusCon
     'SEM_ROTA': { color: '#BDBDBD', text: 'SEM ROTA', icon: '📍', description: 'Aguardando inclusão em roteiro.' },
     'EM_ROTA_AGUARDANDO_LIBERACAO': { color: '#FFD54F', text: 'AG. LIBERAÇÃO', icon: '⏳', description: 'Roteiro aguarda liberação.' },
     'EM_ROTA': { color: '#90CAF9', text: 'PENDENTE', icon: '🎯', description: 'Pronto para entrega. Toque para iniciar.' },
-    'EM_ENTREGA': { color: '#2196F3', text: 'EM ENTREGA', icon: '🚚', description: 'Motorista a caminho do cliente.' },
+    'EM_ENTREGA': { color: '#FFA726', text: 'A CAMINHO', icon: '🚚', description: 'Motorista em deslocamento para o cliente.' },
+    'NO_CLIENTE': { color: '#2196F3', text: 'NO CLIENTE', icon: '🏢', description: 'Motorista no local do cliente.' }, // <-- CONFIGURAÇÃO DO NOVO STATUS
     'ENTREGUE': { color: '#4CAF50', text: 'ENTREGUE', icon: '📦✅', description: 'Entrega realizada com sucesso!' },
     'NAO_ENTREGUE': { color: '#EF5350', text: 'NAO ENTREGUE', icon: '⚠️', description: 'Problema na entrega.' }
   };
@@ -244,27 +248,33 @@ export const getAvailableOrderActions = (currentStatus: OrderMobileStatus, route
     return [];
   }
   const actions: Partial<Record<OrderMobileStatus, OrderActionMobile[]>> = {
-    'EM_ROTA': [{ 
-      id: 'iniciar_entrega', 
-      label: '🚚 Iniciar Entrega', 
-      targetStatus: 'EM_ENTREGA', 
-      style: 'primary' 
+    'EM_ROTA': [{
+      id: 'iniciar_entrega',
+      label: '🚚 Iniciar Deslocamento',
+      targetStatus: 'EM_ENTREGA',
+      style: 'primary'
     }],
-    'EM_ENTREGA': [
-      { 
-        id: 'marcar_entregue', 
-        label: '✅ Entregue', 
-        targetStatus: 'ENTREGUE', 
-        style: 'success', 
-        requiresProof: true 
+    'EM_ENTREGA': [{ // <-- NOVA AÇÃO
+      id: 'cheguei_no_cliente',
+      label: '🏢 Cheguei no Cliente',
+      targetStatus: 'NO_CLIENTE',
+      style: 'info'
+    }],
+    'NO_CLIENTE': [ // <-- NOVO CONJUNTO DE AÇÕES
+      {
+        id: 'marcar_entregue',
+        label: '✅ Entregue',
+        targetStatus: 'ENTREGUE',
+        style: 'success',
+        requiresProof: true
       },
-      { 
-        id: 'reportar_nao_entrega', 
-        label: '⚠️ Nao Entregue', 
-        targetStatus: 'NAO_ENTREGUE', 
-        style: 'warning', 
-        requiresReason: true, 
-        requiresProof: true 
+      {
+        id: 'reportar_nao_entrega',
+        label: '⚠️ Nao Entregue',
+        targetStatus: 'NAO_ENTREGUE',
+        style: 'warning',
+        requiresReason: true,
+        requiresProof: true
       }
     ],
   };
@@ -273,7 +283,8 @@ export const getAvailableOrderActions = (currentStatus: OrderMobileStatus, route
 
 export const getActionColor = (style: OrderActionMobile['style']): string => {
   const colors: Record<OrderActionMobile['style'], string> = {
-    'primary': '#2196F3',
+    'primary': '#FFA726', // Laranja para "A Caminho"
+    'info': '#2196F3', // Azul para "No Cliente"
     'success': '#4CAF50',
     'warning': '#ff9800',
     'secondary': '#9E9E9E'

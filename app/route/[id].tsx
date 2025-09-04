@@ -32,10 +32,9 @@ export default function RouteDetailsScreen() {
   const [route, setRoute] = useState<Route | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  // const [updatingStatusDeliveryId, setUpdatingStatusDeliveryId] = useState<string | null>(null); // Removido - não atualiza status aqui
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
-    pending: true,
     inProgress: true,
+    pending: true,
     completed: false,
   });
 
@@ -76,19 +75,18 @@ export default function RouteDetailsScreen() {
       Alert.alert("Erro", "Não foi possível identificar o roteiro para planejamento.");
     }
   };
-  
-  // Função removida - não atualiza status de entrega nesta tela
-
-  // Função removida - não permite atualizar status nesta tela
 
   const navigateToDeliveryItemDetails = (deliveryItemId: string) => {
     router.push(`/delivery/${deliveryItemId}`);
   };
 
-
-
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+    // Adicionado um fallback para o caso de a data ser inválida
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Data inválida';
+    }
+    return date.toLocaleDateString('pt-BR', {
       weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
     });
   };
@@ -127,8 +125,8 @@ export default function RouteDetailsScreen() {
     );
   }
 
+  const inProgressDeliveries = route.deliveries.filter(d => d.status === 'EM_ENTREGA' || d.status === 'NO_CLIENTE');
   const pendingDeliveries = route.deliveries.filter(d => d.status === 'EM_ROTA' || d.status === 'EM_ROTA_AGUARDANDO_LIBERACAO');
-  const inProgressDeliveries = route.deliveries.filter(d => d.status === 'EM_ENTREGA');
   const completedDeliveries = route.deliveries.filter(d => d.status === 'ENTREGUE' || d.status === 'NAO_ENTREGUE');
   const completedCount = route.deliveries.filter(d => d.status === 'ENTREGUE').length;
   const progress = route.deliveries.length > 0 ? (completedCount / route.deliveries.length) * 100 : 0;
@@ -152,11 +150,13 @@ export default function RouteDetailsScreen() {
         </View>
       </LinearGradient>
 
-           <View style={styles.routeHeader}>
+      <View style={styles.routeHeader}>
         <View style={styles.headerContent}>
           <Text style={styles.headerCode}>Roteiro #{route.code}</Text>
-          <Text style={styles.headerDate}>{formatDate(route.date)}</Text>
-          <Text style={styles.headerValue}>{formatCurrency(route.totalValue)}</Text>
+          {/* CORREÇÃO: Adicionada verificação para evitar erro em route.date */}
+          <Text style={styles.headerDate}>{route.date ? formatDate(route.date) : 'Data indisponível'}</Text>
+          {/* CORREÇÃO: Adicionada verificação para evitar erro em route.freightValue */}
+          <Text style={styles.headerValue}>{typeof route.freightValue === 'number' ? formatCurrency(route.freightValue) : formatCurrency(0)}</Text>
         </View>
         <TouchableOpacity style={styles.planButton} onPress={navigateToPlanning}>
           <Ionicons name="options-outline" size={20} color={Theme.colors.primary.main} />
@@ -180,8 +180,8 @@ export default function RouteDetailsScreen() {
               </View>
               <Ionicons name={expandedSections.inProgress ? "chevron-up" : "chevron-down"} size={20} color={Theme.colors.text.secondary} />
             </TouchableOpacity>
-            {expandedSections.inProgress && inProgressDeliveries.map((delivery, index) => (
-              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} isPriority={true} />
+            {expandedSections.inProgress && inProgressDeliveries.map((delivery) => (
+              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting} onPress={() => navigateToDeliveryItemDetails(delivery.id)} isPriority={true} />
             ))}
           </View>
         )}
@@ -196,8 +196,8 @@ export default function RouteDetailsScreen() {
               </View>
               <Ionicons name={expandedSections.pending ? "chevron-up" : "chevron-down"} size={20} color={Theme.colors.text.secondary} />
             </TouchableOpacity>
-            {expandedSections.pending && pendingDeliveries.map((delivery, index) => (
-              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || inProgressDeliveries.length + index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} />
+            {expandedSections.pending && pendingDeliveries.map((delivery) => (
+              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting} onPress={() => navigateToDeliveryItemDetails(delivery.id)} />
             ))}
           </View>
         )}
@@ -212,8 +212,8 @@ export default function RouteDetailsScreen() {
               </View>
               <Ionicons name={expandedSections.completed ? "chevron-up" : "chevron-down"} size={20} color={Theme.colors.text.secondary} />
             </TouchableOpacity>
-            {expandedSections.completed && completedDeliveries.map((delivery, index) => (
-              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting || inProgressDeliveries.length + pendingDeliveries.length + index + 1} onPress={() => navigateToDeliveryItemDetails(delivery.id)} isCompleted={true} />
+            {expandedSections.completed && completedDeliveries.map((delivery) => (
+              <DeliveryCard key={delivery.id} delivery={delivery} index={delivery.sorting} onPress={() => navigateToDeliveryItemDetails(delivery.id)} isCompleted={true} />
             ))}
           </View>
         )}
@@ -222,13 +222,13 @@ export default function RouteDetailsScreen() {
   );
 }
 
-function DeliveryCard({ delivery, index, onPress, isCompleted = false, isPriority = false }: { delivery: Delivery; index: number; onPress: () => void; isCompleted?: boolean; isPriority?: boolean; }) {
+function DeliveryCard({ delivery, index, onPress, isCompleted = false, isPriority = false }: { delivery: Delivery; index?: number | null; onPress: () => void; isCompleted?: boolean; isPriority?: boolean; }) {
   const statusConfig = getOrderMobileStatusConfig(delivery.status);
   
   return (
     <TouchableOpacity style={[styles.deliveryCard, isCompleted && styles.completedCard, isPriority && styles.priorityCard]} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.deliveryContent}>
-        <View style={[styles.deliveryIndex, isPriority && styles.priorityIndex]}><Text style={styles.deliveryIndexText}>{index}</Text></View>
+        <View style={[styles.deliveryIndex, isPriority && styles.priorityIndex]}><Text style={styles.deliveryIndexText}>{index || '?'}</Text></View>
         
         <View style={styles.deliveryInfo}>
           <Text style={styles.orderNumberText}>Pedido #{delivery.numeroPedido}</Text>
@@ -278,14 +278,13 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Theme.colors.background.paper, paddingHorizontal: Theme.spacing.lg, paddingVertical: Theme.spacing.md, borderBottomWidth: 1, borderBottomColor: Theme.colors.divider },
   sectionTitleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: Theme.spacing.sm },
-  sectionTitle: { fontSize: Theme.typography.fontSize.base, fontWeight: Theme.typography.fontWeight.semiBold, color: Theme.colors.text.primary, flex: 1 },
+  sectionTitle: { fontSize: Theme.typography.fontSize.base, fontWeight: Theme.typography.fontWeight.semiBold, color: Theme.colors.text.primary, flexShrink: 1 },
   sectionBadge: { backgroundColor: Theme.colors.gray[200], paddingHorizontal: Theme.spacing.sm, paddingVertical: 2, borderRadius: Theme.borderRadius.full, marginLeft: Theme.spacing.sm },
   completedBadge: { backgroundColor: Theme.colors.green[100] },
   sectionBadgeText: { fontSize: Theme.typography.fontSize.xs, fontWeight: Theme.typography.fontWeight.bold, color: Theme.colors.text.primary },
   deliveryCard: { backgroundColor: Theme.colors.background.paper, marginHorizontal: Theme.spacing.lg, marginTop: Theme.spacing.sm, borderRadius: Theme.borderRadius.base, ...Theme.shadows.sm, borderWidth: 1, borderColor: Theme.colors.gray[200] },
   completedCard: { opacity: 0.7, backgroundColor: Theme.colors.gray[50] },
   priorityCard: { borderColor: Theme.colors.primary.main, borderWidth: 2 },
-  updatingCard: { opacity: 0.5 },
   deliveryContent: { flexDirection: 'row', alignItems: 'center', padding: Theme.spacing.md },
   deliveryIndex: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.colors.gray[200], justifyContent: 'center', alignItems: 'center', marginRight: Theme.spacing.md },
   priorityIndex: { backgroundColor: Theme.colors.primary.main },
@@ -297,7 +296,6 @@ const styles = StyleSheet.create({
   deliveryStatus: { alignItems: 'center', gap: Theme.spacing.xs },
   statusIndicator: { paddingHorizontal: Theme.spacing.sm, paddingVertical: Theme.spacing.xs, borderRadius: Theme.borderRadius.sm },
   statusText: { fontSize: 10, fontWeight: Theme.typography.fontWeight.bold, color: '#ffffff' },
-  updatingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255, 255, 255, 0.8)', justifyContent: 'center', alignItems: 'center', borderRadius: Theme.borderRadius.base },
   loadingText: { marginTop: Theme.spacing.md, color: Theme.colors.text.secondary },
   errorTitle: { marginTop: Theme.spacing.md, color: Theme.colors.status.error, textAlign: 'center' },
   errorText: { color: Theme.colors.text.secondary, textAlign: 'center', marginTop: Theme.spacing.sm, marginBottom: Theme.spacing.xl },
