@@ -243,7 +243,7 @@ class ApiService {
   
   async checkConnection(): Promise<boolean> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout aumentado para 10s
     try {
       const token = await this.getAuthToken();
       if (!token) return false;
@@ -252,13 +252,15 @@ class ApiService {
           method: 'GET', 
           signal: controller.signal,
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Cache-Control': 'no-cache'
           }
       });
       clearTimeout(timeoutId);
-      return response.status < 500;
-    } catch {
+      return response.ok; // Mudança: usar response.ok em vez de < 500
+    } catch (error) {
       clearTimeout(timeoutId);
+      console.warn('Falha na verificação de conexão:', error);
       return false;
     }
   }

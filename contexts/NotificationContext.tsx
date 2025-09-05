@@ -320,8 +320,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       try {
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 30000,
-          distanceInterval: 50,
+          timeInterval: 15000, // Reduzido para 15 segundos
+          distanceInterval: 25, // Reduzido para 25 metros
           showsBackgroundLocationIndicator: true,
           foregroundService: {
             notificationTitle: 'Rastreamento de Rota Ativo',
