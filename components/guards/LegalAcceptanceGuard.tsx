@@ -15,11 +15,9 @@ export default function LegalAcceptanceGuard({
   const [hasChecked, setHasChecked] = useState(false);
   
   const {
-    pendingTerms,
     pendingPolicies,
     hasPendingItems,
     loading,
-    acceptTerms,
     acceptPolicy,
     checkPendingAcceptances,
   } = useLegalAcceptance();
@@ -51,9 +49,7 @@ export default function LegalAcceptanceGuard({
     return (
       <AcceptanceModal
         visible={showModal}
-        pendingTerms={pendingTerms}
         pendingPolicies={pendingPolicies}
-        onAcceptTerms={acceptTerms}
         onAcceptPolicy={acceptPolicy}
         onClose={handleCloseModal}
         mandatory={mandatory}
@@ -66,9 +62,7 @@ export default function LegalAcceptanceGuard({
       {children}
       <AcceptanceModal
         visible={showModal}
-        pendingTerms={pendingTerms}
         pendingPolicies={pendingPolicies}
-        onAcceptTerms={acceptTerms}
         onAcceptPolicy={acceptPolicy}
         onClose={handleCloseModal}
         mandatory={mandatory}

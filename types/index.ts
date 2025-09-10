@@ -345,17 +345,6 @@ export interface Policy {
   updatedAt: string;
 }
 
-export interface Terms {
-  id: string;
-  code: string;
-  title: string;
-  content: string;
-  status: DocumentStatus;
-  version: string;
-  publishedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export interface AcceptPolicyDto {
   policyId: string;

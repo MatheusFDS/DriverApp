@@ -344,9 +344,6 @@ class ApiService {
     return this.request<Policy[]>('/policies/pending');
   }
 
-  async getPendingTerms(): Promise<ApiResponse<Terms[]>> {
-    return this.request<Terms[]>('/terms/pending');
-  }
 
   async acceptPolicy(acceptData: AcceptPolicyDto): Promise<ApiResponse<any>> {
     return this.request<any>('/policies/accept', {
@@ -355,20 +352,11 @@ class ApiService {
     });
   }
 
-  async acceptTerms(termsId: string): Promise<ApiResponse<any>> {
-    return this.request<any>(`/terms/${termsId}/accept`, {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-  }
 
   async getUserPolicyAcceptances(): Promise<ApiResponse<Policy[]>> {
     return this.request<Policy[]>('/policies/my-acceptances');
   }
 
-  async getUserAcceptedTerms(): Promise<ApiResponse<Terms[]>> {
-    return this.request<Terms[]>('/terms/my-acceptances');
-  }
 
   // Check-in/Check-out methods
   async checkIn(location?: { latitude: number; longitude: number; address?: string }): Promise<ApiResponse<CheckInOutData>> {
