@@ -96,6 +96,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: { data?: any;
     }
 });
 
+
 // --- CONTEXTO ---
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
@@ -268,7 +269,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         body = `${body}\n\nCódigo: ${deliveryCode}`;
       }
 
-      // Criar notificação local
+      // Criar notificação do sistema diretamente
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
@@ -285,9 +286,9 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         trigger: null, // Mostrar imediatamente
       });
 
-      console.log('🔔 Notificação local criada:', { title, body, type });
+      console.log('🔔 Notificação do sistema criada:', { title, body, type });
     } catch (error) {
-      console.error('Erro ao criar notificação local:', error);
+      console.error('Erro ao criar notificação do sistema:', error);
     }
   }, []);
 
