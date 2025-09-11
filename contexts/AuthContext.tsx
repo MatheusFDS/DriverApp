@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApp } from '@react-native-firebase/app';
-import { getAuth, getIdToken, onAuthStateChanged, signInWithEmailAndPassword, signOut } from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from '@react-native-firebase/auth';
 import { router, useSegments } from 'expo-router';
 import React, {
   createContext,
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const idToken = await getIdToken(firebaseUser, true);
+          const idToken = await firebaseUser.getIdToken(true);
           await AsyncStorage.setItem('auth_token', idToken);
 
           // Carrega os dados do usuário do backend
