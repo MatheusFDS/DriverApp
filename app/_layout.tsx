@@ -60,41 +60,24 @@ export default function RootLayout() {
           />
           <Stack.Screen 
             name="route/[id]" 
-            options={{ 
-              title: 'Detalhes do Roteiro',
-              headerStyle: {
-                backgroundColor: Theme.colors.primary.main,
-              },
-              headerTintColor: Theme.colors.primary.contrastText,
-            }} 
+            options={{ headerShown: false }} 
           />
           <Stack.Screen 
             name="delivery/[id]" 
-            options={{ 
-              title: 'Entrega',
-              headerStyle: {
-                backgroundColor: Theme.colors.primary.main,
-              },
-              headerTintColor: Theme.colors.primary.contrastText,
-            }} 
+            options={{ headerShown: false }} 
           />
            <Stack.Screen
             name="route/sequence" // Rota para a tela de planejamento
             options={{
-              title: 'Planejar Rota',
-              headerShown: true, 
+              headerShown: false, 
               presentation: 'modal', // Apresenta como um modal
             }}
           />
           <Stack.Screen
             name="notifications"
             options={{ 
-              title: 'Notificações', 
+              headerShown: false, 
               presentation: 'modal',
-              headerStyle: {
-                backgroundColor: Theme.colors.primary.main,
-              },
-              headerTintColor: Theme.colors.primary.contrastText,
             }}
           />
         </Stack>
