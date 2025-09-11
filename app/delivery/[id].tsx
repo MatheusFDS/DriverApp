@@ -284,7 +284,7 @@ export default function DeliveryDetailsScreen() {
   const isFinalized = deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE';
   
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <PageHeader 
         title={`Pedido #${deliveryItem.numeroPedido}`}
         rightComponent={
