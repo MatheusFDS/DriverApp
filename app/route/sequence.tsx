@@ -22,7 +22,7 @@ import {
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MapView, { LatLng as MapLatLng, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Theme } from '../../components/ui';
+import { Theme, PageHeader } from '../../components/ui';
 import { api } from '../../services/api';
 import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
 
@@ -814,6 +814,7 @@ export default function RoutePlanningScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
+        <PageHeader title={route?.code ? `Planejamento ${route.code}` : 'Planejamento'} />
         <MapView
           ref={mapRef}
           style={styles.map}
