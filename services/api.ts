@@ -1,5 +1,6 @@
 // app/services/api.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from '@react-native-firebase/auth';
 import { currentApiConfig } from '../config/apiConfig';
 import {
     ApiResponse,
@@ -14,7 +15,6 @@ import {
     StatusUpdatePayload,
     User,
     Policy,
-    Terms,
     AcceptPolicyDto,
     CheckInOutData,
     WorkSessionData,
@@ -31,7 +31,27 @@ class ApiService {
 
   private async getAuthToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem('auth_token');
+      const token = await AsyncStorage.getItem('auth_token');
+      if (!token) return null;
+
+      // Verificar se o token está próximo do vencimento (últimos 5 minutos)
+      try {
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+        
+        if (currentUser) {
+          // Força renovação do token se necessário
+          const freshToken = await currentUser.getIdToken(true);
+          if (freshToken !== token) {
+            await AsyncStorage.setItem('auth_token', freshToken);
+            return freshToken;
+          }
+        }
+      } catch (error) {
+        console.warn('Erro ao renovar token Firebase:', error);
+      }
+
+      return token;
     } catch (error) {
       console.error('Erro ao buscar token do AsyncStorage:', error);
       return null;
@@ -78,6 +98,49 @@ class ApiService {
       const responseBodyText = await response.text();
 
       if (!response.ok) {
+        // Se for erro 401 (token expirado), tentar renovar o token
+        if (response.status === 401) {
+          try {
+            const auth = getAuth();
+            const currentUser = auth.currentUser;
+            
+            if (currentUser) {
+              const freshToken = await currentUser.getIdToken(true);
+              await AsyncStorage.setItem('auth_token', freshToken);
+              
+              // Retry a requisição com o novo token
+              const retryConfig = {
+                ...config,
+                headers: {
+                  ...config.headers,
+                  Authorization: `Bearer ${freshToken}`,
+                },
+              };
+              
+              const retryResponse = await fetch(`${this.baseURL}${endpoint}`, retryConfig);
+              const retryBodyText = await retryResponse.text();
+              
+              if (retryResponse.ok) {
+                const retryData = retryBodyText ? JSON.parse(retryBodyText) : null;
+                if (retryData && typeof retryData === 'object' && 'success' in retryData && 'data' in retryData) {
+                  if (retryData.success) {
+                    return retryData as ApiResponse<T>;
+                  } else {
+                    throw new Error(retryData.message || 'Erro retornado pela API.');
+                  }
+                }
+                return {
+                  data: retryData as T,
+                  success: true,
+                  message: (retryData as any)?.message || 'Sucesso'
+                };
+              }
+            }
+          } catch (refreshError) {
+            console.warn('Falha ao renovar token:', refreshError);
+          }
+        }
+        
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         try {
             const errorJson = JSON.parse(responseBodyText);
@@ -243,22 +306,44 @@ class ApiService {
   
   async checkConnection(): Promise<boolean> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout reduzido para 5s
+    
     try {
       const token = await this.getAuthToken();
       if (!token) return false;
 
-      const response = await fetch(`${this.baseURL}/mobile/v1/profile`, { 
+      // Usar endpoint mais leve para verificação de conexão
+      const response = await fetch(`${this.baseURL}/mobile/v1/health`, { 
           method: 'GET', 
           signal: controller.signal,
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Cache-Control': 'no-cache'
           }
       });
       clearTimeout(timeoutId);
-      return response.status < 500;
-    } catch {
+      
+      if (response.status === 401) {
+        // Token expirado, tentar renovar
+        try {
+          const auth = getAuth();
+          const currentUser = auth.currentUser;
+          
+          if (currentUser) {
+            const freshToken = await currentUser.getIdToken(true);
+            await AsyncStorage.setItem('auth_token', freshToken);
+            return true; // Assumir que está conectado após renovar token
+          }
+        } catch (refreshError) {
+          console.warn('Falha ao renovar token na verificação de conexão:', refreshError);
+        }
+        return false;
+      }
+      
+      return response.ok;
+    } catch (error) {
       clearTimeout(timeoutId);
+      console.warn('Falha na verificação de conexão:', error);
       return false;
     }
   }

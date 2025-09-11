@@ -674,7 +674,15 @@ export default function RoutePlanningScreen() {
                 sorting: index + 1,
               }));
 
+              console.log('🔄 Salvando sequência:', {
+                routeId: id,
+                updates: updates,
+                itemsCount: items.length
+              });
+
               const response = await api.updateDeliverySequence(id!, updates);
+              console.log('🔄 Resposta da API:', response);
+              
               if (response.success) {
                 setHasChanges(false);
                 showStatus('success', 'Alterações salvas!');
@@ -685,9 +693,11 @@ export default function RoutePlanningScreen() {
                   ]);
                 }, 1000);
               } else {
+                console.error('🔄 Erro na resposta da API:', response.message);
                 throw new Error(response.message || 'Erro ao salvar sequência');
               }
             } catch (error) {
+              console.error('🔄 Erro ao salvar sequência:', error);
               showStatus('error', 'Erro ao salvar');
               Alert.alert('Erro', (error as Error).message);
             } finally {

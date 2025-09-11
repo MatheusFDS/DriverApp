@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import LogoImage from '../assets/images/logo.png';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
@@ -39,6 +40,7 @@ export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   // Estados para modal de esqueceu senha
   const [forgotPasswordVisible, setForgotPasswordVisible] = useState(false);
@@ -183,21 +185,35 @@ export default function LoginScreen() {
 
             {/* Input Senha - estilo linha */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={[
-                  styles.input,
-                  passwordFocused && styles.inputFocused
-                ]}
-                placeholder="Senha"
-                placeholderTextColor={Colors.textHint}
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
-                secureTextEntry
-                editable={!isSubmitting}
-                autoComplete="password"
-              />
+              <View style={styles.passwordInputWrapper}>
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    passwordFocused && styles.inputFocused
+                  ]}
+                  placeholder="Senha"
+                  placeholderTextColor={Colors.textHint}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  secureTextEntry={!showPassword}
+                  editable={!isSubmitting}
+                  autoComplete="password"
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  disabled={isSubmitting}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={Colors.textHint}
+                  />
+                </TouchableOpacity>
+              </View>
               <View style={[
                 styles.underline,
                 passwordFocused && styles.underlineFocused
@@ -381,6 +397,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     backgroundColor: 'transparent',
     borderWidth: 0,
+  },
+
+  passwordInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  passwordInput: {
+    flex: 1,
+  },
+
+  eyeButton: {
+    padding: 8,
+    marginRight: -8, // Compensar o padding para alinhar com o texto
   },
   
   inputFocused: {

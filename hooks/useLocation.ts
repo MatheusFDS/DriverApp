@@ -34,7 +34,7 @@ export const useLocation = (options: UseLocationOptions = {}): UseLocationReturn
   const {
     enabled = false,
     accuracy = Location.Accuracy.Balanced,
-    timeInterval = 30000, // 30 segundos
+    timeInterval = 15000, // 15 segundos - mais responsivo
     distanceInterval = 50, // 50 metros
     onLocationUpdate,
     onError,

@@ -113,6 +113,17 @@ export default function NotificationsScreen() {
     const match = item.message.match(routeCodeRegex);
     const routeCode = match ? match[1] : null;
     const message = routeCode ? item.message.replace(routeCodeRegex, '').replace('()', '').trim() : item.message;
+    
+    // Se não encontrou código na mensagem, tenta extrair do linkTo ou usar o ID
+    let displayCode = routeCode;
+    if (!displayCode && item.linkTo) {
+      // Tenta extrair ID do linkTo (ex: /route/123 -> ROT-000123)
+      const idMatch = item.linkTo.match(/\/route\/(\d+)/);
+      if (idMatch) {
+        const id = idMatch[1];
+        displayCode = `ROT-${id.padStart(6, '0')}`;
+      }
+    }
 
     return (
       <Card
@@ -146,9 +157,9 @@ export default function NotificationsScreen() {
             ]}>
               {message}
             </Text>
-            {routeCode && (
+            {displayCode && (
               <View style={styles.codeContainer}>
-                <Text style={styles.codeText}>{routeCode}</Text>
+                <Text style={styles.codeText}>{displayCode}</Text>
               </View>
             )}
             <Text style={[CommonStyles.bodySmall, styles.date]}>
@@ -216,7 +227,7 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <SafeAreaView style={CommonStyles.container}>
+    <SafeAreaView style={styles.container}>
       {renderHeader()}
       
       {loading && notifications.length === 0 ? (
@@ -240,6 +251,7 @@ export default function NotificationsScreen() {
             styles.listContent,
             notifications.length === 0 && styles.emptyContainer
           ]}
+          style={styles.list}
         />
       )}
     </SafeAreaView>
@@ -247,6 +259,15 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Theme.colors.background.default,
+  },
+  
+  list: {
+    flex: 1,
+  },
+  
   header: {
     backgroundColor: Theme.colors.background.paper,
     paddingHorizontal: Theme.spacing.lg,
@@ -275,8 +296,8 @@ const styles = StyleSheet.create({
   
   connectionText: {
     color: Theme.colors.primary.contrastText,
-    fontSize: Theme.typography.fontSize.xs,
-    fontWeight: Theme.typography.fontWeight.bold,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   
   markAllButton: {
@@ -344,23 +365,23 @@ const styles = StyleSheet.create({
   
   typeText: {
     color: Theme.colors.text.secondary,
-    fontWeight: Theme.typography.fontWeight.medium,
-    marginBottom: Theme.spacing.xs / 2,
+    fontWeight: '500',
+    marginBottom: 2,
   },
   
   unreadTypeText: {
     color: Theme.colors.primary.main,
-    fontWeight: Theme.typography.fontWeight.semiBold,
+    fontWeight: '600',
   },
   
   message: {
     color: Theme.colors.text.primary,
     marginBottom: Theme.spacing.xs,
-    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.normal,
+    lineHeight: 20,
   },
   
   unreadMessage: {
-    fontWeight: Theme.typography.fontWeight.semiBold,
+    fontWeight: '600',
   },
   
   date: {
@@ -378,9 +399,9 @@ const styles = StyleSheet.create({
 
   codeText: {
     fontFamily: 'monospace',
-    fontSize: Theme.typography.fontSize.sm,
+    fontSize: 12,
     color: Theme.colors.primary.main,
-    fontWeight: Theme.typography.fontWeight.bold,
+    fontWeight: 'bold',
   },
   
   arrowContainer: {
@@ -412,7 +433,7 @@ const styles = StyleSheet.create({
   emptyStateSubtitle: {
     color: Theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: Theme.typography.fontSize.base * Theme.typography.lineHeight.relaxed,
+    lineHeight: 22,
   },
   
   loadingState: {

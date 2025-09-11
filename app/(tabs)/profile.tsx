@@ -16,10 +16,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { LocationTrackingControl } from '../../components/LocationTrackingControl';
 import { Button, Card, CommonStyles, Theme } from '../../components/ui';
+import { useNavigationPreference } from '../../hooks/useNavigationPreference';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const { isConnected } = useNotifications();
+  const { preference, savePreference, resetPreference } = useNavigationPreference();
 
   const handleLogout = () => {
     Alert.alert(
@@ -30,6 +32,42 @@ export default function ProfileScreen() {
         { text: 'Sair', style: 'destructive', onPress: logout }
       ]
     );
+  };
+
+  const handleNavigationPreference = () => {
+    const options = [
+      { 
+        text: 'Sempre perguntar', 
+        onPress: () => savePreference('ask'),
+        style: preference === 'ask' ? 'default' : 'cancel'
+      },
+      { 
+        text: 'Google Maps', 
+        onPress: () => savePreference('maps'),
+        style: preference === 'maps' ? 'default' : 'cancel'
+      },
+      { 
+        text: 'Waze', 
+        onPress: () => savePreference('waze'),
+        style: preference === 'waze' ? 'default' : 'cancel'
+      },
+      { text: 'Cancelar', style: 'cancel' as const },
+    ];
+    
+    Alert.alert(
+      'Preferência de Navegação',
+      'Escolha seu app de navegação preferido:',
+      options
+    );
+  };
+
+  const getPreferenceText = () => {
+    switch (preference) {
+      case 'maps': return 'Google Maps';
+      case 'waze': return 'Waze';
+      case 'ask': return 'Sempre perguntar';
+      default: return 'Sempre perguntar';
+    }
   };
 
   const openSupport = () => {
@@ -165,6 +203,31 @@ export default function ProfileScreen() {
               </Text>
             )}
           </View>
+        </Card>
+
+        {/* Card de Configurações de Navegação */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="navigate" size={20} color={Theme.colors.primary.main} />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Navegação
+            </Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.preferenceRow} 
+            onPress={handleNavigationPreference}
+          >
+            <View style={styles.preferenceInfo}>
+              <Text style={[CommonStyles.body, styles.preferenceLabel]}>
+                App de navegação preferido
+              </Text>
+              <Text style={[CommonStyles.bodySmall, styles.preferenceValue]}>
+                {getPreferenceText()}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={Theme.colors.text.secondary} />
+          </TouchableOpacity>
         </Card>
 
         {/* Card do Veículo */}
@@ -383,6 +446,27 @@ const styles = StyleSheet.create({
     color: Theme.colors.text.secondary,
     marginLeft: Theme.spacing.sm,
     flex: 1,
+  },
+
+  // Estilos para preferências de navegação
+  preferenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Theme.spacing.sm,
+  },
+  
+  preferenceInfo: {
+    flex: 1,
+  },
+  
+  preferenceLabel: {
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.xs,
+  },
+  
+  preferenceValue: {
+    color: Theme.colors.text.secondary,
   },
   
   // Estilos para status de conexão

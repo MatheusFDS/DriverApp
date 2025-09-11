@@ -33,6 +33,7 @@ import {
 import { currentApiConfig } from '../../config/apiConfig';
 import { CommonStyles, Theme } from '../../components/ui';
 import { api } from '../../services/api';
+import { useNavigationPreference } from '../../hooks/useNavigationPreference';
 
 Dimensions.get('window');
 
@@ -234,18 +235,14 @@ export default function DeliveryDetailsScreen() {
     Linking.openURL(`tel:${phoneNumber}`).catch(() => Alert.alert('Erro', 'Não foi possível ligar.'));
   };
 
+  const { openNavigation } = useNavigationPreference();
+
   const openMaps = () => {
     if (!deliveryItem?.address) {
       Alert.alert('Aviso', 'Endereço não disponível.');
       return;
     }
-    const address = encodeURIComponent(deliveryItem.address);
-    const options = [
-      { text: 'Google Maps', onPress: () => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${address}`) },
-      { text: 'Waze', onPress: () => Linking.openURL(`https://waze.com/ul?q=${address}&navigate=yes`) },
-      { text: 'Cancelar', style: 'cancel' as const },
-    ];
-    Alert.alert('Escolha um App', 'Qual aplicativo de mapa você prefere?', options);
+    openNavigation(deliveryItem.address);
   };
   
   if (loading) {

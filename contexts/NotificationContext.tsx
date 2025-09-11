@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from '@react-native-firebase/auth';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -178,9 +179,16 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         projectId: "5d97bc80-8444-4e65-b09a-e107ebc4ff5b",
       })).data;
       
+      console.log('🔔 Token de notificação obtido:', token);
+      
       const response = await api.registerPushToken(token);
+      console.log('🔔 Resposta do registro do token:', response);
+      
       if (response.success) {
         await AsyncStorage.setItem('push_token', token);
+        console.log('🔔 Token salvo no AsyncStorage');
+      } else {
+        console.error('🔔 Falha ao registrar token:', response.message);
       }
     } catch (error) {
       console.error("Erro ao obter e registrar o token de notificação push:", error);
@@ -251,8 +259,25 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
     processOfflineLocations();
 
-    const token = await AsyncStorage.getItem('auth_token');
+    // Obter token fresco
+    let token = await AsyncStorage.getItem('auth_token');
     if (!token) return;
+
+    // Tentar renovar o token se necessário
+    try {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      
+      if (currentUser) {
+        const freshToken = await currentUser.getIdToken(true);
+        if (freshToken !== token) {
+          await AsyncStorage.setItem('auth_token', freshToken);
+          token = freshToken;
+        }
+      }
+    } catch (error) {
+      console.warn('Erro ao renovar token para socket:', error);
+    }
 
     if (socketRef.current) {
       socketRef.current.removeAllListeners();
@@ -266,6 +291,9 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       transports: ['websocket', 'polling'],
       forceNew: true,
       reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      timeout: 10000,
     });
 
     socketRef.current.on('connect', () => {
@@ -274,7 +302,15 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       processOfflineLocations();
     });
 
-    socketRef.current.on('disconnect', () => setIsConnected(false));
+    socketRef.current.on('disconnect', (reason) => {
+      console.log('Socket desconectado:', reason);
+      setIsConnected(false);
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.warn('Erro de conexão do socket:', error);
+      setIsConnected(false);
+    });
     
     socketRef.current.onAny(() => {
         // Apenas atualiza o contador do sininho quando o app está aberto
@@ -320,8 +356,8 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       try {
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 30000,
-          distanceInterval: 50,
+          timeInterval: 15000, // Reduzido para 15 segundos
+          distanceInterval: 25, // Reduzido para 25 metros
           showsBackgroundLocationIndicator: true,
           foregroundService: {
             notificationTitle: 'Rastreamento de Rota Ativo',
