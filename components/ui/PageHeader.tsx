@@ -3,15 +3,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import {
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Theme } from '../../constants/Theme';
 
 interface PageHeaderProps {
@@ -31,6 +24,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   backgroundColor = Theme.colors.primary.main,
   textColor = Theme.colors.primary.contrastText,
 }) => {
+  const insets = useSafeAreaInsets();
   const handleBackPress = () => {
     if (onBackPress) {
       onBackPress();
@@ -45,14 +39,19 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         barStyle={backgroundColor === Theme.colors.primary.main ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundColor}
       />
-      <SafeAreaView style={[styles.safeArea, { backgroundColor }]}>
-        <View style={[styles.container, { backgroundColor }]}>
+      <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor }]}>
+        <View
+          style={[
+            styles.container,
+            { backgroundColor, paddingTop: Platform.OS === 'android' ? 0 : 0 },
+          ]}
+        >
           <View style={styles.leftSection}>
             {showBackButton && (
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={handleBackPress}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
               >
                 <Ionicons
                   name="arrow-back"
