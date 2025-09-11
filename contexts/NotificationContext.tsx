@@ -139,11 +139,24 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
 
   const registerForPushNotificationsAsync = useCallback(async () => {
     if (Platform.OS === 'android') {
+      // Canal para notificações de roteiros
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Notificações do App',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
+        sound: 'default',
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
+      });
+
+      // Canal específico para roteiros
+      await Notifications.setNotificationChannelAsync('delivery-notifications', {
+        name: 'Roteiros e Entregas',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#00695c',
         sound: 'default',
         enableVibrate: true,
         enableLights: true,
@@ -180,6 +193,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       })).data;
       
       console.log('🔔 Token de notificação obtido:', token);
+      console.log('🔔 Tipo do token:', token.startsWith('ExponentPushToken') ? 'Expo' : 'FCM');
       
       const response = await api.registerPushToken(token);
       console.log('🔔 Resposta do registro do token:', response);
@@ -439,6 +453,13 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
   // Listener para notificações recebidas (app aberto)
   useEffect(() => {
     const notificationListener = Notifications.addNotificationReceivedListener(notification => {
+      console.log('🔔 Notificação recebida (app aberto):', {
+        title: notification.request.content.title,
+        body: notification.request.content.body,
+        data: notification.request.content.data,
+        channelId: Platform.OS === 'android' ? (notification.request.content as any).android?.channelId : 'N/A',
+      });
+      
       // Atualiza a lista de notificações quando uma nova chega
       fetchNotifications();
       
