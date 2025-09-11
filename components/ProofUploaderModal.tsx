@@ -5,7 +5,9 @@ import React, { useState } from 'react';
 import {
     Alert,
     Image,
+    Linking,
     Modal,
+    Platform,
     SafeAreaView,
     StyleSheet,
     Text,
@@ -60,9 +62,10 @@ export default function ProofUploaderModal({
     try {
       const result = await launchFunction({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, // <-- ALTERAÇÃO: Remove a etapa de edição/corte
+        allowsEditing: false,
         aspect: [4, 3],
-        quality: 0.7, // <-- Otimiza a imagem para um upload mais rápido
+        quality: 0.7,
+        exif: false, // Desabilita EXIF para evitar problemas
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -70,7 +73,19 @@ export default function ProofUploaderModal({
       }
     } catch (error) {
       console.error(`Error opening ${source}:`, error);
-      Alert.alert('Erro', `Não foi possível abrir a ${source}.`);
+      Alert.alert(
+        'Erro', 
+        `Não foi possível abrir a ${source}. Verifique se as permissões foram concedidas.`,
+        [
+          { text: 'OK' },
+          { text: 'Configurações', onPress: () => {
+            // Abrir configurações do app
+            if (Platform.OS === 'android') {
+              Linking.openSettings();
+            }
+          }}
+        ]
+      );
     }
   };
 
