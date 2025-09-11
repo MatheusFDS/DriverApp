@@ -669,7 +669,20 @@ export default function RoutePlanningScreen() {
             showStatus('loading', 'Salvando alterações...');
 
             try {
-              const updates = items.map((item, index) => ({
+              // Filtrar apenas pedidos que podem ser reordenados (EM_ROTA)
+              const reorderableItems = items.filter(item => item.status === 'EM_ROTA');
+              
+              if (reorderableItems.length === 0) {
+                Alert.alert(
+                  'Nenhum Pedido para Reordenar',
+                  'Não há pedidos com status "EM_ROTA" que possam ser reordenados.',
+                  [{ text: 'OK' }]
+                );
+                setSaving(false);
+                return;
+              }
+              
+              const updates = reorderableItems.map((item, index) => ({
                 orderId: item.id,
                 sorting: index + 1,
               }));
@@ -677,7 +690,8 @@ export default function RoutePlanningScreen() {
               console.log('🔄 Salvando sequência:', {
                 routeId: id,
                 updates: updates,
-                itemsCount: items.length
+                reorderableItemsCount: reorderableItems.length,
+                totalItemsCount: items.length
               });
 
               const response = await api.updateDeliverySequence(id!, updates);
