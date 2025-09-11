@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { CommonStyles, Theme } from '../../components/ui';
+import { CommonStyles, PageHeader, Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import {
   DeliveryItemMobile as Delivery,
@@ -132,7 +132,16 @@ export default function RouteDetailsScreen() {
   const progress = route.deliveries.length > 0 ? (completedCount / route.deliveries.length) * 100 : 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <PageHeader 
+        title={`Roteiro #${route.code}`}
+        rightComponent={
+          <TouchableOpacity style={styles.planButton} onPress={navigateToPlanning}>
+            <Ionicons name="options-outline" size={20} color={Theme.colors.primary.contrastText} />
+          </TouchableOpacity>
+        }
+      />
+      
       <LinearGradient
         colors={[Theme.colors.primary.light, Theme.colors.primary.main]}
         style={styles.progressHeader}
@@ -150,18 +159,9 @@ export default function RouteDetailsScreen() {
         </View>
       </LinearGradient>
 
-      <View style={styles.routeHeader}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerCode}>Roteiro #{route.code}</Text>
-          {/* CORREÇÃO: Adicionada verificação para evitar erro em route.date */}
-          <Text style={styles.headerDate}>{route.date ? formatDate(route.date) : 'Data indisponível'}</Text>
-          {/* CORREÇÃO: Adicionada verificação para evitar erro em route.freightValue */}
-          <Text style={styles.headerValue}>{typeof route.freightValue === 'number' ? formatCurrency(route.freightValue) : formatCurrency(0)}</Text>
-        </View>
-        <TouchableOpacity style={styles.planButton} onPress={navigateToPlanning}>
-          <Ionicons name="options-outline" size={20} color={Theme.colors.primary.main} />
-          <Text style={styles.planButtonText}>Planejar</Text>
-        </TouchableOpacity>
+      <View style={styles.routeInfo}>
+        <Text style={styles.routeDate}>{route.date ? formatDate(route.date) : 'Data indisponível'}</Text>
+        <Text style={styles.routeValue}>{typeof route.freightValue === 'number' ? formatCurrency(route.freightValue) : formatCurrency(0)}</Text>
       </View>
 
       <ScrollView 
@@ -249,22 +249,21 @@ function DeliveryCard({ delivery, index, onPress, isCompleted = false, isPriorit
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background.default },
-  routeHeader: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  routeInfo: { 
     backgroundColor: Theme.colors.background.paper, 
     paddingHorizontal: Theme.spacing.lg, 
     paddingVertical: Theme.spacing.md, 
     borderBottomWidth: 1, 
     borderBottomColor: Theme.colors.divider, 
-    ...Theme.shadows.sm 
+    alignItems: 'center'
   },
-  headerContent: { flex: 1 },
-  headerCode: { fontSize: Theme.typography.fontSize.base, fontWeight: 'bold', color: Theme.colors.primary.main, marginBottom: 4 },
-  headerDate: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.secondary, textTransform: 'capitalize' },
-  headerValue: { fontSize: Theme.typography.fontSize.xl, fontWeight: Theme.typography.fontWeight.bold, color: Theme.colors.status.success },
-  planButton: { flexDirection: 'row', alignItems: 'center', gap: Theme.spacing.sm, backgroundColor: Theme.colors.gray[100], paddingVertical: Theme.spacing.sm, paddingHorizontal: Theme.spacing.md, borderRadius: Theme.borderRadius.full },
-  planButtonText: { fontSize: 14, color: Theme.colors.primary.main, fontWeight: '600' },
+  routeDate: { fontSize: Theme.typography.fontSize.sm, color: Theme.colors.text.secondary, textTransform: 'capitalize', marginBottom: 4 },
+  routeValue: { fontSize: Theme.typography.fontSize.xl, fontWeight: Theme.typography.fontWeight.bold, color: Theme.colors.status.success },
+  planButton: { 
+    padding: Theme.spacing.sm, 
+    borderRadius: Theme.borderRadius.full, 
+    backgroundColor: 'rgba(255, 255, 255, 0.2)' 
+  },
   progressHeader: { paddingHorizontal: Theme.spacing.lg, paddingVertical: Theme.spacing.md },
   progressInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Theme.spacing.sm },
   progressLabel: { color: '#ffffff', fontSize: Theme.typography.fontSize.sm, fontWeight: Theme.typography.fontWeight.medium },

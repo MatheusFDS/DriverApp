@@ -7,12 +7,11 @@ import {
     Alert,
     FlatList,
     RefreshControl,
-    SafeAreaView,
     StyleSheet,
     Text,
     View,
 } from 'react-native';
-import { Button, Card, CommonStyles, Theme } from '../components/ui';
+import { Button, Card, CommonStyles, PageHeader, Theme } from '../components/ui';
 import { useNotifications } from '../contexts/NotificationContext';
 import { Notification } from '../types';
 
@@ -175,22 +174,19 @@ export default function NotificationsScreen() {
     );
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.titleContainer}>
-        <Text style={[CommonStyles.heading1, styles.title]}>
-          Notificações
-        </Text>
-        <View style={[
-          styles.connectionStatus,
-          { backgroundColor: isConnected ? Theme.colors.status.success : Theme.colors.status.error }
-        ]}>
-          <Text style={styles.connectionText}>
-            {isConnected ? 'Online' : 'Offline'}
-          </Text>
-        </View>
-      </View>
-      
+  const renderConnectionStatus = () => (
+    <View style={[
+      styles.connectionStatus,
+      { backgroundColor: isConnected ? Theme.colors.status.success : Theme.colors.status.error }
+    ]}>
+      <Text style={styles.connectionText}>
+        {isConnected ? 'Online' : 'Offline'}
+      </Text>
+    </View>
+  );
+
+  const renderSubHeader = () => (
+    <View style={styles.subHeader}>
       {unreadCount > 0 && (
         <Button
           title={`Marcar todas como lidas (${unreadCount})`}
@@ -227,8 +223,13 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {renderHeader()}
+    <View style={styles.container}>
+      <PageHeader 
+        title="Notificações" 
+        rightComponent={renderConnectionStatus()}
+      />
+      
+      {unreadCount > 0 && renderSubHeader()}
       
       {loading && notifications.length === 0 ? (
         renderLoadingState()
@@ -254,7 +255,7 @@ export default function NotificationsScreen() {
           style={styles.list}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -268,24 +269,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  header: {
+  subHeader: {
     backgroundColor: Theme.colors.background.paper,
     paddingHorizontal: Theme.spacing.lg,
     paddingVertical: Theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: Theme.colors.divider,
-    ...Theme.shadows.sm,
-  },
-  
-  titleContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Theme.spacing.md,
-  },
-  
-  title: {
-    color: Theme.colors.text.primary,
   },
   
   connectionStatus: {

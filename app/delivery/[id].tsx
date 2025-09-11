@@ -31,7 +31,7 @@ import {
   StatusUpdatePayload,
 } from '../../types';
 import { currentApiConfig } from '../../config/apiConfig';
-import { CommonStyles, Theme } from '../../components/ui';
+import { CommonStyles, PageHeader, Theme } from '../../components/ui';
 import { api } from '../../services/api';
 import { useNavigationPreference } from '../../hooks/useNavigationPreference';
 
@@ -284,11 +284,17 @@ export default function DeliveryDetailsScreen() {
   const isFinalized = deliveryItem.status === 'ENTREGUE' || deliveryItem.status === 'NAO_ENTREGUE';
   
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.statusHeader}>
-        <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
-          <Text style={styles.statusText}>{statusConfig.text}</Text>
-        </View>
+    <View style={styles.container}>
+      <PageHeader 
+        title={`Pedido #${deliveryItem.numeroPedido}`}
+        rightComponent={
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.color }]}>
+            <Text style={styles.statusText}>{statusConfig.text}</Text>
+          </View>
+        }
+      />
+      
+      <View style={styles.valueHeader}>
         <Text style={styles.headerValue}>
           {deliveryItem.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         </Text>
@@ -505,20 +511,20 @@ export default function DeliveryDetailsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background.default },
-  statusHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
+  valueHeader: { 
+    backgroundColor: Theme.colors.background.paper,
     paddingHorizontal: Theme.spacing.lg,
     paddingVertical: Theme.spacing.md,
-    backgroundColor: Theme.colors.background.paper,
     borderBottomWidth: 1,
-    borderBottomColor: Theme.colors.divider
+    borderBottomColor: Theme.colors.divider,
+    alignItems: 'center'
   },
   statusBadge: {
-    paddingHorizontal: Theme.spacing.md,
-    paddingVertical: Theme.spacing.sm,
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
     borderRadius: Theme.borderRadius.full,
+    minWidth: 60,
+    alignItems: 'center'
   },
   statusText: {
     color: '#fff',
