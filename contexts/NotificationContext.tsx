@@ -137,7 +137,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     }
   }, [user]);
 
-  const registerForPushNotificationsAsync = useCallback(async () => {
+  const setupLocalNotifications = useCallback(async () => {
     if (Platform.OS === 'android') {
       // Canal para notificações de roteiros
       await Notifications.setNotificationChannelAsync('default', {
@@ -184,34 +184,11 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
         'Para receber notificações sobre novos roteiros, ative as notificações nas configurações do app.',
         [{ text: 'OK' }]
       );
-      return;
+      return false;
     }
 
-    try {
-      const token = (await Notifications.getExpoPushTokenAsync({
-        projectId: "5d97bc80-8444-4e65-b09a-e107ebc4ff5b",
-      })).data;
-      
-      console.log('🔔 Token de notificação obtido:', token);
-      console.log('🔔 Tipo do token:', token.startsWith('ExponentPushToken') ? 'Expo' : 'FCM');
-      
-      const response = await api.registerPushToken(token);
-      console.log('🔔 Resposta do registro do token:', response);
-      
-      if (response.success) {
-        await AsyncStorage.setItem('push_token', token);
-        console.log('🔔 Token salvo no AsyncStorage');
-      } else {
-        console.error('🔔 Falha ao registrar token:', response.message);
-      }
-    } catch (error) {
-      console.error("Erro ao obter e registrar o token de notificação push:", error);
-      Alert.alert(
-        'Erro nas Notificações',
-        'Não foi possível configurar as notificações. Verifique sua conexão e tente novamente.',
-        [{ text: 'OK' }]
-      );
-    }
+    console.log('🔔 Notificações locais configuradas com sucesso');
+    return true;
   }, []);
 
   const markAsRead = useCallback(async (notificationId: string) => {
@@ -257,6 +234,60 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       }
     } catch {
       // Error silently handled
+    }
+  }, []);
+
+  // Função para criar notificações locais nativas
+  const createLocalNotification = useCallback(async (notificationData: any) => {
+    try {
+      const { type, message, deliveryCode } = notificationData;
+      
+      let title = 'Nova Notificação';
+      let body = message;
+      
+      // Personalizar título baseado no tipo
+      switch (type) {
+        case 'delivery-new-for-driver':
+          title = '🚚 Novo Roteiro Recebido';
+          break;
+        case 'delivery-approved-for-driver':
+          title = '✅ Roteiro Aprovado';
+          break;
+        case 'delivery-rejected':
+          title = '❌ Roteiro Rejeitado';
+          break;
+        case 'delivery-completed':
+          title = '🏁 Roteiro Finalizado';
+          break;
+        default:
+          title = '🔔 Nova Notificação';
+      }
+
+      // Adicionar código do roteiro se disponível
+      if (deliveryCode) {
+        body = `${body}\n\nCódigo: ${deliveryCode}`;
+      }
+
+      // Criar notificação local
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data: {
+            type,
+            notificationId: notificationData.id,
+            deliveryCode,
+            linkTo: notificationData.linkTo,
+          },
+          sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+        },
+        trigger: null, // Mostrar imediatamente
+      });
+
+      console.log('🔔 Notificação local criada:', { title, body, type });
+    } catch (error) {
+      console.error('Erro ao criar notificação local:', error);
     }
   }, []);
 
@@ -325,12 +356,23 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       console.warn('Erro de conexão do socket:', error);
       setIsConnected(false);
     });
+
+    // Listener específico para notificações de roteiros
+    socketRef.current.on('new_notification', async (notificationData) => {
+      console.log('🔔 Nova notificação recebida via socket:', notificationData);
+      
+      // Criar notificação local nativa
+      await createLocalNotification(notificationData);
+      
+      // Atualizar lista de notificações
+      fetchNotifications();
+    });
     
     socketRef.current.onAny(() => {
         // Apenas atualiza o contador do sininho quando o app está aberto
         fetchNotifications();
     });
-  }, [user?.id, getSocketUrl, fetchNotifications, processOfflineLocations]);
+  }, [user?.id, getSocketUrl, fetchNotifications, processOfflineLocations, createLocalNotification]);
 
   const disconnectSocket = useCallback(() => {
     if (socketRef.current) {
@@ -402,36 +444,13 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     }
   }, []);
 
-  // Função para verificar se o token de push precisa ser re-registrado
-  const checkAndReRegisterPushToken = useCallback(async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('push_token');
-      const currentToken = (await Notifications.getExpoPushTokenAsync({
-        projectId: "5d97bc80-8444-4e65-b09a-e107ebc4ff5b",
-      })).data;
-      
-      if (storedToken !== currentToken) {
-        await api.registerPushToken(currentToken);
-        await AsyncStorage.setItem('push_token', currentToken);
-      }
-    } catch (error) {
-      console.error('Erro ao verificar token de push:', error);
-    }
-  }, []);
 
   useEffect(() => {
     if (user?.id) {
       fetchNotifications();
       connectSocket();
       startBackgroundLocationTracking();
-      registerForPushNotificationsAsync();
-      
-      // Verifica o token de push a cada 5 minutos
-      const tokenCheckInterval = setInterval(checkAndReRegisterPushToken, 5 * 60 * 1000);
-      
-      return () => {
-        clearInterval(tokenCheckInterval);
-      };
+      setupLocalNotifications();
     } else {
       // Para tudo quando o usuário sair
       disconnectSocket();
@@ -440,7 +459,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [user?.id, fetchNotifications, connectSocket, disconnectSocket, startBackgroundLocationTracking, stopBackgroundLocationTracking, registerForPushNotificationsAsync, checkAndReRegisterPushToken]);
+  }, [user?.id, fetchNotifications, connectSocket, disconnectSocket, startBackgroundLocationTracking, stopBackgroundLocationTracking, setupLocalNotifications]);
 
   // Cleanup adicional quando o componente for desmontado
   useEffect(() => {
