@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuth } from '@react-native-firebase/auth';
+import messaging from '@react-native-firebase/messaging';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -191,6 +192,49 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
     console.log('🔔 Notificações locais configuradas com sucesso');
     return true;
   }, []);
+
+  const setupFCM = useCallback(async () => {
+    try {
+      // Solicitar permissão para FCM
+      const authStatus = await messaging().requestPermission();
+      const enabled = authStatus === messaging.AuthorizationStatus.AUTHORIZED || 
+                     authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+      if (!enabled) {
+        console.warn('Permissão FCM negada');
+        return null;
+      }
+
+      // Obter FCM token
+      const fcmToken = await messaging().getToken();
+      console.log('📱 FCM Token obtido:', fcmToken);
+
+      // Registrar token no backend
+      if (fcmToken && user?.id) {
+        try {
+          const response = await fetch(`${currentApiConfig.baseURL}/users/fcm-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await AsyncStorage.getItem('auth_token')}`,
+            },
+            body: JSON.stringify({ fcmToken }),
+          });
+          
+          if (response.ok) {
+            console.log('📱 FCM Token registrado no backend');
+          }
+        } catch (error) {
+          console.error('❌ Erro ao registrar FCM token:', error);
+        }
+      }
+
+      return fcmToken;
+    } catch (error) {
+      console.error('❌ Erro ao configurar FCM:', error);
+      return null;
+    }
+  }, [user?.id]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
@@ -452,6 +496,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       connectSocket();
       startBackgroundLocationTracking();
       setupLocalNotifications();
+      setupFCM();
     } else {
       // Para tudo quando o usuário sair
       disconnectSocket();
@@ -460,7 +505,7 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       setUnreadCount(0);
       setLoading(false);
     }
-  }, [user?.id, fetchNotifications, connectSocket, disconnectSocket, startBackgroundLocationTracking, stopBackgroundLocationTracking, setupLocalNotifications]);
+  }, [user?.id, fetchNotifications, connectSocket, disconnectSocket, startBackgroundLocationTracking, stopBackgroundLocationTracking, setupLocalNotifications, setupFCM]);
 
   // Cleanup adicional quando o componente for desmontado
   useEffect(() => {
@@ -514,6 +559,66 @@ export const NotificationProvider = ({ children }: PropsWithChildren) => {
       responseListener.remove();
     };
   }, [markAsRead]);
+
+  // Listeners FCM
+  useEffect(() => {
+    // Listener para notificações recebidas em foreground
+    const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
+      console.log('📱 Notificação FCM recebida em foreground:', remoteMessage);
+      
+      // Atualizar lista de notificações
+      fetchNotifications();
+      
+      // Mostrar alerta para notificações importantes
+      if (remoteMessage.data?.type === 'delivery-new-for-driver') {
+        Alert.alert(
+          'Novo Roteiro Disponível!',
+          remoteMessage.notification?.body || 'Você tem um novo roteiro para executar.',
+          [{ text: 'Ver Detalhes', onPress: () => fetchNotifications() }]
+        );
+      }
+    });
+
+    // Listener para notificações recebidas em background
+    messaging().setBackgroundMessageHandler(async remoteMessage => {
+      console.log('📱 Notificação FCM recebida em background:', remoteMessage);
+    });
+
+    return () => {
+      unsubscribeForeground();
+    };
+  }, [fetchNotifications]);
+
+  // Listener para quando o token FCM é atualizado
+  useEffect(() => {
+    const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (fcmToken) => {
+      console.log('📱 FCM Token atualizado:', fcmToken);
+      
+      // Registrar novo token no backend
+      if (fcmToken && user?.id) {
+        try {
+          const response = await fetch(`${currentApiConfig.baseURL}/users/fcm-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${await AsyncStorage.getItem('auth_token')}`,
+            },
+            body: JSON.stringify({ fcmToken }),
+          });
+          
+          if (response.ok) {
+            console.log('📱 Novo FCM Token registrado no backend');
+          }
+        } catch (error) {
+          console.error('❌ Erro ao registrar novo FCM token:', error);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeTokenRefresh();
+    };
+  }, [user?.id]);
 
   // Listener para notificações recebidas quando app estava fechado
   useEffect(() => {
