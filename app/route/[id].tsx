@@ -132,7 +132,7 @@ export default function RouteDetailsScreen() {
   const progress = route.deliveries.length > 0 ? (completedCount / route.deliveries.length) * 100 : 0;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <PageHeader 
         title={`Roteiro #${route.code}`}
         rightComponent={
