@@ -1,6 +1,6 @@
 // app/(tabs)/profile.tsx
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,11 +17,14 @@ import { useNotifications } from '../../contexts/NotificationContext';
 import { LocationTrackingControl } from '../../components/LocationTrackingControl';
 import { Button, Card, CommonStyles, Theme } from '../../components/ui';
 import { useNavigationPreference } from '../../hooks/useNavigationPreference';
+import PolicyViewerModal from '../../components/PolicyViewerModal';
 
 export default function ProfileScreen() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const { isConnected } = useNotifications();
   const { preference, savePreference, resetPreference } = useNavigationPreference();
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [selectedPolicyType, setSelectedPolicyType] = useState<'PRIVACY' | 'TERMS_OF_SERVICE' | null>(null);
 
   const handleLogout = () => {
     Alert.alert(
@@ -80,6 +83,16 @@ export default function ProfileScreen() {
         { text: 'Email', onPress: () => Linking.openURL('mailto:suporte@rotei.com.br') }
       ]
     );
+  };
+
+  const openPolicy = (policyType: 'PRIVACY' | 'TERMS_OF_SERVICE') => {
+    setSelectedPolicyType(policyType);
+    setShowPolicyModal(true);
+  };
+
+  const closePolicyModal = () => {
+    setShowPolicyModal(false);
+    setSelectedPolicyType(null);
   };
 
   if (authLoading) {
@@ -284,6 +297,52 @@ export default function ProfileScreen() {
           </Card>
         )}
 
+        {/* Card de Políticas */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="document-text" size={20} color={Theme.colors.primary.main} />
+            <Text style={[CommonStyles.heading3, styles.sectionTitle]}>
+              Políticas e Termos
+            </Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.policyButton} 
+            onPress={() => openPolicy('PRIVACY')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.policyContent}>
+              <View style={styles.policyInfo}>
+                <Text style={[CommonStyles.body, styles.policyLabel]}>
+                  Política de Privacidade
+                </Text>
+                <Text style={[CommonStyles.bodySmall, styles.policyDescription]}>
+                  Como coletamos e usamos seus dados
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Theme.colors.text.secondary} />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.policyButton} 
+            onPress={() => openPolicy('TERMS_OF_SERVICE')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.policyContent}>
+              <View style={styles.policyInfo}>
+                <Text style={[CommonStyles.body, styles.policyLabel]}>
+                  Termos de Uso
+                </Text>
+                <Text style={[CommonStyles.bodySmall, styles.policyDescription]}>
+                  Condições de uso do aplicativo
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Theme.colors.text.secondary} />
+            </View>
+          </TouchableOpacity>
+        </Card>
+
         {/* Card de Suporte */}
         <Card style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
@@ -344,6 +403,15 @@ export default function ProfileScreen() {
           />
         </View>
       </ScrollView>
+      
+      {/* Modal de Políticas */}
+      {selectedPolicyType && (
+        <PolicyViewerModal
+          visible={showPolicyModal}
+          policyType={selectedPolicyType}
+          onClose={closePolicyModal}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -523,6 +591,35 @@ const styles = StyleSheet.create({
     fontWeight: Theme.typography.fontWeight.medium,
   },
   
+  // Estilos para políticas
+  policyButton: {
+    borderRadius: Theme.borderRadius.base,
+    backgroundColor: Theme.colors.gray[50],
+    borderWidth: 1,
+    borderColor: Theme.colors.gray[200],
+    marginBottom: Theme.spacing.sm,
+  },
+  
+  policyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Theme.spacing.md,
+  },
+  
+  policyInfo: {
+    flex: 1,
+  },
+  
+  policyLabel: {
+    fontWeight: Theme.typography.fontWeight.medium,
+    color: Theme.colors.text.primary,
+    marginBottom: Theme.spacing.xs / 2,
+  },
+  
+  policyDescription: {
+    color: Theme.colors.text.secondary,
+  },
+
   // Estilos para suporte
   supportButton: {
     borderRadius: Theme.borderRadius.base,
