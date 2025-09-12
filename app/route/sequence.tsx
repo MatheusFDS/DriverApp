@@ -392,19 +392,52 @@ export default function RoutePlanningScreen() {
         coordinates.push({ latitude: endMarker.lat, longitude: endMarker.lng });
       }
 
-      // Se há uma rota traçada (polyline), adiciona pontos da rota para melhor foco
+      // Se há uma rota traçada (polyline), adiciona pontos estratégicos da rota
       if (polyline) {
         const routeCoordinates = decodePolyline(polyline);
-        // Adiciona pontos da rota (a cada 10 pontos para não sobrecarregar)
-        routeCoordinates.forEach((coord, index) => {
-          if (index % 10 === 0) {
-            coordinates.push({ latitude: coord.latitude, longitude: coord.longitude });
+        // Adiciona pontos estratégicos: início, meio e fim da rota
+        if (routeCoordinates.length > 0) {
+          // Primeiro ponto
+          coordinates.push(routeCoordinates[0]);
+          
+          // Ponto do meio
+          if (routeCoordinates.length > 2) {
+            const middleIndex = Math.floor(routeCoordinates.length / 2);
+            coordinates.push(routeCoordinates[middleIndex]);
           }
-        });
+          
+          // Último ponto
+          if (routeCoordinates.length > 1) {
+            coordinates.push(routeCoordinates[routeCoordinates.length - 1]);
+          }
+        }
       }
 
       if (coordinates.length > 0) {
-        const edgePadding = { top: 50, right: 30, bottom: 350, left: 30 };
+        // Calcula o centro das coordenadas para melhor centralização
+        const centerLat = coordinates.reduce((sum, coord) => sum + coord.latitude, 0) / coordinates.length;
+        const centerLng = coordinates.reduce((sum, coord) => sum + coord.longitude, 0) / coordinates.length;
+
+        // Calcula a distância máxima para determinar o zoom apropriado
+        let maxDistance = 0;
+        coordinates.forEach(coord => {
+          const distance = Math.sqrt(
+            Math.pow(coord.latitude - centerLat, 2) + 
+            Math.pow(coord.longitude - centerLng, 2)
+          );
+          maxDistance = Math.max(maxDistance, distance);
+        });
+
+        // Ajusta o padding baseado na área coberta
+        const basePadding = 50;
+        const dynamicPadding = Math.min(200, Math.max(50, maxDistance * 10000));
+        
+        const edgePadding = { 
+          top: basePadding, 
+          right: 30, 
+          bottom: 350 + dynamicPadding, 
+          left: 30 
+        };
 
         mapRef.current?.fitToCoordinates(coordinates, {
           edgePadding,
