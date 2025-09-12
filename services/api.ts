@@ -15,7 +15,6 @@ import {
     RouteMobile,
     StatusUpdatePayload,
     User,
-    AcceptPolicyDto,
     CheckInOutData,
     WorkSessionData,
 } from '../types';

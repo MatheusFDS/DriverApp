@@ -368,7 +368,7 @@ export default function RoutePlanningScreen() {
     };
   }, []);
 
-  // Função para enquadrar mapa - mostra apenas pedidos EM_ROTA
+  // Função para enquadrar mapa - mostra pedidos EM_ROTA e rota traçada
   const fitMapToRoute = useCallback(() => {
     if (!mapRef.current) return;
 
@@ -392,6 +392,17 @@ export default function RoutePlanningScreen() {
         coordinates.push({ latitude: endMarker.lat, longitude: endMarker.lng });
       }
 
+      // Se há uma rota traçada (polyline), adiciona pontos da rota para melhor foco
+      if (polyline) {
+        const routeCoordinates = decodePolyline(polyline);
+        // Adiciona pontos da rota (a cada 10 pontos para não sobrecarregar)
+        routeCoordinates.forEach((coord, index) => {
+          if (index % 10 === 0) {
+            coordinates.push({ latitude: coord.latitude, longitude: coord.longitude });
+          }
+        });
+      }
+
       if (coordinates.length > 0) {
         const edgePadding = { top: 50, right: 30, bottom: 350, left: 30 };
 
@@ -401,7 +412,7 @@ export default function RoutePlanningScreen() {
         });
       }
     }, 500);
-  }, [filteredItems, startMarker, endMarker]);
+  }, [filteredItems, startMarker, endMarker, polyline]);
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
