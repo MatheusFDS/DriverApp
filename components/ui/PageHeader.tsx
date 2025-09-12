@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Theme } from '../../constants/Theme';
 
 interface PageHeaderProps {
@@ -24,7 +24,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   backgroundColor = Theme.colors.primary.main,
   textColor = Theme.colors.primary.contrastText,
 }) => {
-  const insets = useSafeAreaInsets();
   const handleBackPress = () => {
     if (onBackPress) {
       onBackPress();
@@ -71,10 +70,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               {title}
             </Text>
           </View>
-
           <View style={styles.rightSection}>
             {rightComponent}
           </View>
+
         </View>
       </SafeAreaView>
     </>

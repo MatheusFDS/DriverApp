@@ -11,10 +11,10 @@ import {
     OptimizedRouteResult,
     OptimizeRouteRequest,
     PaginatedNotifications,
+    Policy,
     RouteMobile,
     StatusUpdatePayload,
     User,
-    Policy,
     AcceptPolicyDto,
     CheckInOutData,
     WorkSessionData,
@@ -367,6 +367,26 @@ class ApiService {
     throw new Error(response.message || 'Falha ao calcular a rota sequencial.');
   }
 
+  // --- MÉTODOS PARA POLÍTICAS ---
+  async getPendingPolicies(): Promise<ApiResponse<Policy[]>> {
+    return this.request('/mobile/v1/policies/pending', {
+      method: 'GET',
+    });
+  }
+
+  async acceptPolicy(policyId: string): Promise<ApiResponse<any>> {
+    return this.request('/mobile/v1/policies/accept', {
+      method: 'POST',
+      body: JSON.stringify({ policyId }),
+    });
+  }
+
+  async getPublicPolicy(type: string): Promise<ApiResponse<Policy>> {
+    return this.request(`/mobile/v1/policies/public/${type}`, {
+      method: 'GET',
+    });
+  }
+
   async optimizeRoute(data: OptimizeRouteRequest): Promise<OptimizedRouteResult> {
     const response = await this.request<OptimizedRouteResult>('/routes/optimize', {
       method: 'POST',
@@ -425,17 +445,6 @@ class ApiService {
   }
 
   // Legal Documents API
-  async getPendingPolicies(): Promise<ApiResponse<Policy[]>> {
-    return this.request<Policy[]>('/policies/pending');
-  }
-
-
-  async acceptPolicy(acceptData: AcceptPolicyDto): Promise<ApiResponse<any>> {
-    return this.request<any>('/policies/accept', {
-      method: 'POST',
-      body: JSON.stringify(acceptData),
-    });
-  }
 
 
   async getUserPolicyAcceptances(): Promise<ApiResponse<Policy[]>> {

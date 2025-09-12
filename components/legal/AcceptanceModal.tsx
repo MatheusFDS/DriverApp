@@ -10,8 +10,10 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Policy } from '../../types';
 import { Theme } from '../../constants/Theme';
+import PolicyViewerModal from '../PolicyViewerModal';
 
 interface AcceptanceModalProps {
   visible: boolean;
@@ -32,6 +34,8 @@ export default function AcceptanceModal({
 }: AcceptanceModalProps) {
   const [acceptedPolicies, setAcceptedPolicies] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  const [showPolicyViewer, setShowPolicyViewer] = useState(false);
+  const [selectedPolicyType, setSelectedPolicyType] = useState<'PRIVACY_POLICY' | 'TERMS_OF_USE' | null>(null);
 
   const handleAcceptPolicy = async (policyId: string) => {
     try {
@@ -57,6 +61,16 @@ export default function AcceptanceModal({
     }
   };
 
+  const handleViewPolicy = (policyType: 'PRIVACY_POLICY' | 'TERMS_OF_USE') => {
+    setSelectedPolicyType(policyType);
+    setShowPolicyViewer(true);
+  };
+
+  const handleClosePolicyViewer = () => {
+    setShowPolicyViewer(false);
+    setSelectedPolicyType(null);
+  };
+
   const renderDocument = (
     policy: Policy,
     isAccepted: boolean,
@@ -70,23 +84,32 @@ export default function AcceptanceModal({
             {policy.type} - Versão {policy.version}
           </Text>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.acceptButton,
-            isAccepted && styles.acceptedButton,
-            loading && styles.disabledButton
-          ]}
-          onPress={onAccept}
-          disabled={isAccepted || loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.acceptButtonText}>
-              {isAccepted ? 'Aceito ✓' : 'Aceitar'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.documentActions}>
+          <TouchableOpacity
+            style={styles.viewButton}
+            onPress={() => handleViewPolicy(policy.type as 'PRIVACY_POLICY' | 'TERMS_OF_USE')}
+          >
+            <Ionicons name="eye-outline" size={16} color={Theme.colors.primary.main} />
+            <Text style={styles.viewButtonText}>Ver</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.acceptButton,
+              isAccepted && styles.acceptedButton,
+              loading && styles.disabledButton
+            ]}
+            onPress={onAccept}
+            disabled={isAccepted || loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.acceptButtonText}>
+                {isAccepted ? 'Aceito ✓' : 'Aceitar'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
       
       <View style={styles.documentContent}>
@@ -152,6 +175,15 @@ export default function AcceptanceModal({
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Modal para visualizar políticas */}
+      {selectedPolicyType && (
+        <PolicyViewerModal
+          visible={showPolicyViewer}
+          policyType={selectedPolicyType}
+          onClose={handleClosePolicyViewer}
+        />
+      )}
     </Modal>
   );
 }
@@ -191,6 +223,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: 16,
+  },
+  documentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Theme.spacing.sm,
+  },
+  viewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Theme.spacing.sm,
+    paddingVertical: Theme.spacing.xs,
+    borderRadius: Theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: Theme.colors.primary.main,
+    gap: Theme.spacing.xs,
+  },
+  viewButtonText: {
+    fontSize: Theme.typography.fontSize.xs,
+    color: Theme.colors.primary.main,
+    fontWeight: Theme.typography.fontWeight.medium,
   },
   documentInfo: {
     flex: 1,
