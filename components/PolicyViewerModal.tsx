@@ -16,7 +16,7 @@ import { api } from '../services/api';
 
 interface PolicyViewerModalProps {
   visible: boolean;
-  policyType: 'PRIVACY_POLICY' | 'TERMS_OF_USE';
+  policyType: 'PRIVACY' | 'TERMS_OF_SERVICE';
   onClose: () => void;
 }
 
@@ -29,7 +29,7 @@ export default function PolicyViewerModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const policyTitle = policyType === 'PRIVACY_POLICY' ? 'Política de Privacidade' : 'Termos de Uso';
+  const policyTitle = policyType === 'PRIVACY' ? 'Política de Privacidade' : 'Termos de Uso';
 
   useEffect(() => {
     if (visible) {

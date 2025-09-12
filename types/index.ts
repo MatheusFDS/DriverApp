@@ -320,10 +320,9 @@ export interface AcceptInviteDto {
 // Legal Documents Types
 export enum PolicyType {
   PRIVACY = 'PRIVACY',
-  TERMS_OF_USE = 'TERMS_OF_USE',
-  DATA_PROCESSING = 'DATA_PROCESSING',
-  COOKIES = 'COOKIES',
-  OTHER = 'OTHER',
+  USAGE = 'USAGE',
+  TERMS_OF_SERVICE = 'TERMS_OF_SERVICE',
+  GENERAL = 'GENERAL',
 }
 
 export enum DocumentStatus {

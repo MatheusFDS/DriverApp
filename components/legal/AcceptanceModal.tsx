@@ -35,7 +35,7 @@ export default function AcceptanceModal({
   const [acceptedPolicies, setAcceptedPolicies] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [showPolicyViewer, setShowPolicyViewer] = useState(false);
-  const [selectedPolicyType, setSelectedPolicyType] = useState<'PRIVACY_POLICY' | 'TERMS_OF_USE' | null>(null);
+  const [selectedPolicyType, setSelectedPolicyType] = useState<'PRIVACY' | 'TERMS_OF_SERVICE' | null>(null);
 
   const handleAcceptPolicy = async (policyId: string) => {
     try {
@@ -61,7 +61,7 @@ export default function AcceptanceModal({
     }
   };
 
-  const handleViewPolicy = (policyType: 'PRIVACY_POLICY' | 'TERMS_OF_USE') => {
+  const handleViewPolicy = (policyType: 'PRIVACY' | 'TERMS_OF_SERVICE') => {
     setSelectedPolicyType(policyType);
     setShowPolicyViewer(true);
   };
@@ -87,7 +87,7 @@ export default function AcceptanceModal({
         <View style={styles.documentActions}>
           <TouchableOpacity
             style={styles.viewButton}
-            onPress={() => handleViewPolicy(policy.type as 'PRIVACY_POLICY' | 'TERMS_OF_USE')}
+            onPress={() => handleViewPolicy(policy.type as 'PRIVACY' | 'TERMS_OF_SERVICE')}
           >
             <Ionicons name="eye-outline" size={16} color={Theme.colors.primary.main} />
             <Text style={styles.viewButtonText}>Ver</Text>
