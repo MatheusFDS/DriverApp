@@ -95,9 +95,11 @@ const styles = StyleSheet.create({
     ...Theme.shadows.sm,
   },
   leftSection: {
-    width: 40,
+    minWidth: 40,
+    maxWidth: 60,
     alignItems: 'flex-start',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   centerSection: {
     flex: 1,
@@ -106,9 +108,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Theme.spacing.sm,
   },
   rightSection: {
-    width: 40,
+    minWidth: 40,
+    maxWidth: 120,
     alignItems: 'flex-end',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   backButton: {
     padding: Theme.spacing.xs,

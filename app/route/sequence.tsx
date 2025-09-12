@@ -368,7 +368,7 @@ export default function RoutePlanningScreen() {
     };
   }, []);
 
-  // Função para enquadrar mapa
+  // Função para enquadrar mapa - mostra apenas pedidos EM_ROTA
   const fitMapToRoute = useCallback(() => {
     if (!mapRef.current) return;
 
@@ -380,7 +380,7 @@ export default function RoutePlanningScreen() {
         coordinates.push({ latitude: startMarker.lat, longitude: startMarker.lng });
       }
 
-      // Adiciona todas as entregas
+      // Adiciona apenas as entregas EM_ROTA
       filteredItems.forEach(item => {
         if (item.latitude && item.longitude) {
           coordinates.push({ latitude: item.latitude, longitude: item.longitude });
