@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MapView, { LatLng as MapLatLng, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Theme, PageHeader } from '../../components/ui';
 import { api } from '../../services/api';
@@ -957,15 +958,17 @@ export default function RoutePlanningScreen() {
                 <Text style={styles.deliveriesCount}>{filteredItems.length} paradas</Text>
               </View>
 
-              <DraggableFlatList
-                data={filteredItems}
-                onDragEnd={handleDragEnd}
-                keyExtractor={(item) => item.id}
-                renderItem={renderItem}
-                containerStyle={styles.flatListContainer}
-                showsVerticalScrollIndicator={false}
-                scrollEnabled={false}
-              />
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <DraggableFlatList
+                  data={filteredItems}
+                  onDragEnd={handleDragEnd}
+                  keyExtractor={(item) => item.id}
+                  renderItem={renderItem}
+                  containerStyle={styles.flatListContainer}
+                  showsVerticalScrollIndicator={false}
+                  scrollEnabled={false}
+                />
+              </GestureHandlerRootView>
             </View>
 
             {/* Botão de salvar com melhor estado visual */}
