@@ -8,9 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Keyboard,
-  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -20,15 +18,11 @@ import {
   View,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MapView, { LatLng as MapLatLng, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Theme, PageHeader } from '../../components/ui';
 import { api } from '../../services/api';
 import { DeliveryItemMobile, LatLng, RouteMobile as Route } from '../../types';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const COLLAPSED_HEIGHT = SCREEN_HEIGHT * 0.5;
-const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.90;
 const LATITUDE_OFFSET = 0.0090;
 
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
@@ -228,8 +222,6 @@ export default function RoutePlanningScreen() {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Estados para expansão da lista
-  const [isExpanded, setIsExpanded] = useState(false);
-  const bottomSheetHeight = useRef(new Animated.Value(COLLAPSED_HEIGHT)).current;
 
   // Estados para feedback visual
   const [operationStatus, setOperationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -268,18 +260,6 @@ export default function RoutePlanningScreen() {
     setFilteredItems(filtered);
   }, [items]);
 
-  // Função para expandir/colapsar a lista
-  const toggleExpansion = useCallback(() => {
-    const targetHeight = isExpanded ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT;
-
-    Animated.timing(bottomSheetHeight, {
-      toValue: targetHeight,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-
-    setIsExpanded(!isExpanded);
-  }, [isExpanded, bottomSheetHeight]);
 
   // Função otimizada para mostrar status temporário
   const showStatus = useCallback((status: 'loading' | 'success' | 'error', message: string, duration = 2000) => {
@@ -412,9 +392,7 @@ export default function RoutePlanningScreen() {
       }
 
       if (coordinates.length > 0) {
-        const edgePadding = isExpanded
-          ? { top: 50, right: 30, bottom: EXPANDED_HEIGHT + 30, left: 30 }
-          : { top: 50, right: 30, bottom: COLLAPSED_HEIGHT + 30, left: 30 };
+        const edgePadding = { top: 50, right: 30, bottom: 350, left: 30 };
 
         mapRef.current?.fitToCoordinates(coordinates, {
           edgePadding,
@@ -422,7 +400,7 @@ export default function RoutePlanningScreen() {
         });
       }
     }, 500);
-  }, [filteredItems, startMarker, endMarker, isExpanded]);
+  }, [filteredItems, startMarker, endMarker]);
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
@@ -486,9 +464,7 @@ export default function RoutePlanningScreen() {
                 }
                 
                 if (coordinates.length > 0) {
-                  const edgePadding = isExpanded
-                    ? { top: 50, right: 30, bottom: EXPANDED_HEIGHT + 30, left: 30 }
-                    : { top: 50, right: 30, bottom: COLLAPSED_HEIGHT + 30, left: 30 };
+                  const edgePadding = { top: 50, right: 30, bottom: 350, left: 30 };
                   
                   mapRef.current?.fitToCoordinates(coordinates, {
                     edgePadding,
@@ -514,7 +490,7 @@ export default function RoutePlanningScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, startMarker, endMarker, filteredItems, isExpanded]);
+  }, [id, startMarker, endMarker, filteredItems]);
 
   useEffect(() => {
     loadInitialData();
@@ -812,9 +788,10 @@ export default function RoutePlanningScreen() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={styles.container}>
-        <PageHeader title={route?.code ? `Planejamento ${route.code}` : 'Planejamento'} />
+    <SafeAreaView style={styles.container}>
+      <PageHeader title={route?.code ? `Planejamento ${route.code}` : 'Planejamento'} />
+      
+      <View style={styles.mapContainer}>
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -877,32 +854,16 @@ export default function RoutePlanningScreen() {
             </Marker>
           )}
         </MapView>
+      </View>
 
-        {/* Indicador de status */}
-        <StatusIndicator status={operationStatus} text={statusMessage} />
+      {/* Indicador de status */}
+      <StatusIndicator status={operationStatus} text={statusMessage} />
 
-        <Animated.View style={[styles.bottomSheet, { height: bottomSheetHeight }]}>
-          <View style={styles.handleBar} />
-
-          {/* Botão de expansão */}
-          <TouchableOpacity
-            style={styles.expandButton}
-            onPress={toggleExpansion}
-          >
-            <Text style={styles.expandButtonText}>
-              {isExpanded ? 'Minimizar Lista' : 'Expandir Lista'}
-            </Text>
-            <Ionicons
-              name={isExpanded ? "chevron-down" : "chevron-up"}
-              size={16}
-              color={Theme.colors.primary.main}
-            />
-          </TouchableOpacity>
-
-          <ScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-          >
+      <ScrollView 
+        style={styles.contentScrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
             {/* Container de endpoints com melhor UX */}
             <View style={styles.endpointsContainer}>
               <View style={styles.sectionHeader}>
@@ -1033,14 +994,11 @@ export default function RoutePlanningScreen() {
                 </TouchableOpacity>
               </View>
             )}
-          </ScrollView>
-        </Animated.View>
-
+        
         {/* *** CORREÇÃO: Mover o Overlay para ser o último filho *** */}
         <ProcessingOverlay visible={optimizing} />
-
-      </SafeAreaView>
-    </GestureHandlerRootView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 // Estilos... (o restante do arquivo permanece o mesmo)
@@ -1048,6 +1006,21 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Theme.colors.background.default
+    },
+    mapContainer: {
+        height: 300,
+        marginHorizontal: Theme.spacing.md,
+        marginVertical: Theme.spacing.sm,
+        borderRadius: Theme.borderRadius.lg,
+        overflow: 'hidden',
+        ...Theme.shadows.base,
+    },
+    contentScrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingHorizontal: Theme.spacing.md,
+        paddingBottom: Theme.spacing.xl,
     },
     centeredContainer: {
         flex: 1,
@@ -1061,13 +1034,11 @@ const styles = StyleSheet.create({
         fontSize: Theme.typography.fontSize.sm
     },
     map: {
-        ...StyleSheet.absoluteFillObject
+        flex: 1,
     },
     statusIndicator: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 50 : 20,
-        left: Theme.spacing.sm,
-        right: Theme.spacing.sm,
+        marginHorizontal: Theme.spacing.md,
+        marginVertical: Theme.spacing.sm,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: Theme.spacing.sm,
